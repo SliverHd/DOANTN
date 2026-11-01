@@ -1,3 +1,4 @@
+import logoXayDung from '../assets/logo-xaydung.png'
 ﻿import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -156,8 +157,8 @@ function Sidebar({ thuGon }: SidebarProps) {
     <aside className={`sidebar ${thuGon ? 'thu-gon' : ''}`}>
       {/* Khung Logo ở đầu Sidebar theo phong cách mẫu ảnh */}
       <div className="sidebar-logo-box">
-        <div className="sidebar-logo-badge" title="Thời khóa biểu Đại học">
-          <span>ĐH</span>
+        <div className="sidebar-logo-badge" title="Trường Đại học Xây dựng Hà Nội">
+          <img src={logoXayDung} alt="Đại học Xây dựng" />
         </div>
         {!thuGon && (
           <div className="ms-2 sidebar-header-title">

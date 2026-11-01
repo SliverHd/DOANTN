@@ -113,15 +113,18 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border: 1.5px solid #dc2626;
+  width: 44px;
+  height: 44px;
   border-radius: 4px;
-  color: #dc2626;
-  font-weight: 800;
-  font-size: 15px;
-  letter-spacing: -0.5px;
   background: #ffffff;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar-logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sidebar-nav {

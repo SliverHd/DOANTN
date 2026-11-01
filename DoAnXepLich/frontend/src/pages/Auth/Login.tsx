@@ -1,3 +1,4 @@
+import logoXayDung from '../../assets/logo-xaydung.png'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
@@ -48,6 +49,7 @@ function Login() {
     <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light p-3">
       <div className="border bg-white p-4 shadow-sm" style={{ width: '100%', maxWidth: '380px' }}>
         <div className="text-center mb-4">
+          <img src={logoXayDung} alt="Đại học Xây dựng" style={{ height: '56px', width: 'auto', marginBottom: '12px' }} />
           <h2 className="h4 mb-1">Xếp Lịch Giảng Dạy</h2>
           <p className="text-muted small mb-0">Hệ thống phân công thời khóa biểu nội bộ</p>
         </div>
