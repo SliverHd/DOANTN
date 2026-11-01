@@ -35,6 +35,10 @@ public class NguyenVongDto
     public double TrongSoPhat { get; set; }
     public string? NoiDungGoc { get; set; }
     public string? LyDo { get; set; }
+    public string TrangThai { get; set; } = "ChoDuyet"; // ChoDuyet, DaDuyet, TuChoi
+    public DateTime? NgayTao { get; set; }
+    public DateTime? NgayDuyet { get; set; }
+    public string? GhiChuDuyet { get; set; }
 }
 
 public class ThemNguyenVongDto
@@ -68,3 +72,16 @@ public class LuuMaTranNguyenVongRequest
     public List<TaoNguyenVongDto> DanhSachNguyenVong { get; set; } = [];
 }
 
+public class XuLyNguyenVongRequest
+{
+    public string? GhiChu { get; set; }
+}
+
+public class KetQuaDuyetNguyenVongDto
+{
+    public bool ThanhCong { get; set; }
+    public string ThongDiep { get; set; } = string.Empty;
+    public int SoLopBiHuy { get; set; }
+    public List<string> DanhSachLopBiHuy { get; set; } = [];
+    public NguyenVongDto? NguyenVong { get; set; }
+}

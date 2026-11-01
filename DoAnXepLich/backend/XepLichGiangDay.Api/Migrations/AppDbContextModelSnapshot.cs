@@ -559,6 +559,10 @@ namespace XepLichGiangDay.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaNguyenVong"));
 
+                    b.Property<string>("GhiChuDuyet")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("ghi_chu_duyet");
+
                     b.Property<string>("LoaiNguyenVong")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
@@ -576,6 +580,14 @@ namespace XepLichGiangDay.Api.Migrations
                         .HasColumnType("int")
                         .HasColumnName("muc_do");
 
+                    b.Property<DateTime?>("NgayDuyet")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ngay_duyet");
+
+                    b.Property<DateTime?>("NgayTao")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ngay_tao");
+
                     b.Property<string>("NoiDungGoc")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("noi_dung_goc");
@@ -591,6 +603,11 @@ namespace XepLichGiangDay.Api.Migrations
                     b.Property<int?>("TietKetThuc")
                         .HasColumnType("int")
                         .HasColumnName("tiet_ket_thuc");
+
+                    b.Property<string>("TrangThai")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("trang_thai");
 
                     b.Property<double>("TrongSoPhat")
                         .HasColumnType("float")

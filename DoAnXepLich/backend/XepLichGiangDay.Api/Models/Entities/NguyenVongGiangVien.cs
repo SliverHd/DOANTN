@@ -12,5 +12,8 @@ public class NguyenVongGiangVien
     public int? TietKetThuc { get; set; }
     public double TrongSoPhat { get; set; }
     public string? NoiDungGoc { get; set; }
+    public string TrangThai { get; set; } = "ChoDuyet"; // ChoDuyet, DaDuyet, TuChoi
+    public DateTime? NgayTao { get; set; } = DateTime.Now;
+    public DateTime? NgayDuyet { get; set; }
+    public string? GhiChuDuyet { get; set; }
 }
-

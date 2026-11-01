@@ -30,6 +30,18 @@ export interface NguyenVong {
   trongSoPhat: number
   noiDungGoc?: string
   lyDo?: string
+  trangThai?: 'ChoDuyet' | 'DaDuyet' | 'TuChoi' | string
+  ngayTao?: string
+  ngayDuyet?: string
+  ghiChuDuyet?: string
+}
+
+export interface KetQuaDuyetNguyenVong {
+  thanhCong: boolean
+  thongBao: string
+  soLopBiHuy: number
+  danhSachLopBiHuy: string[]
+  trangThai: string
 }
 
 export interface ThemNguyenVongRequest {
@@ -137,4 +149,3 @@ export const DANH_MUC_RANG_BUOC_MEM: RangBuocMemItem[] = [
     moTa: 'Gom các buổi dạy lại, tránh đi dạy rải rác',
   },
 ]
-

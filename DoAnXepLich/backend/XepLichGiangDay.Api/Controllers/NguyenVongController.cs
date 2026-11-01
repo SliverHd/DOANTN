@@ -60,5 +60,33 @@ public class NguyenVongController(NguyenVongService service) : ControllerBase
         var success = await service.LuuMaTranAsync(request);
         return success ? Ok(new { Message = "Lưu lịch bận và nguyện vọng thành công." }) : BadRequest("Không thể lưu thông tin.");
     }
-}
 
+    /// <summary>
+    /// Trưởng bộ môn DUYỆT yêu cầu xin nghỉ / lịch bận của giảng viên:
+    /// Tự động kick giáo viên ra khỏi các lớp học phần trùng ca nghỉ
+    /// </summary>
+    [HttpPost("{id:int}/duyet")]
+    public async Task<ActionResult<KetQuaDuyetNguyenVongDto>> DuyetNguyenVong(int id, [FromBody] XuLyNguyenVongRequest? req, CancellationToken cancellationToken)
+    {
+        var result = await service.DuyetNguyenVongAsync(id, req?.GhiChu, cancellationToken);
+        if (!result.ThanhCong)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Trưởng bộ môn TỪ CHỐI yêu cầu xin nghỉ / lịch bận của giảng viên
+    /// </summary>
+    [HttpPost("{id:int}/tu-choi")]
+    public async Task<ActionResult<KetQuaDuyetNguyenVongDto>> TuChoiNguyenVong(int id, [FromBody] XuLyNguyenVongRequest? req, CancellationToken cancellationToken)
+    {
+        var result = await service.TuChoiNguyenVongAsync(id, req?.GhiChu, cancellationToken);
+        if (!result.ThanhCong)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+}
