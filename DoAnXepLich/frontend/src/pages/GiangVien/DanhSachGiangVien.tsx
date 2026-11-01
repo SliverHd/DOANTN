@@ -437,10 +437,6 @@ function DanhSachGiangVien() {
                 ></button>
               </div>
               <div className="modal-body">
-                <p className="small text-muted mb-2">
-                  Tích chọn các học phần mà thầy/cô có chuyên môn giảng dạy. Thuật toán sẽ dựa trên
-                  danh mục này để phân công lớp (Ràng buộc cứng: Đúng chuyên môn).
-                </p>
 
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <input
