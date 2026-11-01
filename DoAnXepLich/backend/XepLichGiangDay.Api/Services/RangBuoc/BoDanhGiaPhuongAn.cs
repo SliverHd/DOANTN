@@ -152,19 +152,23 @@ public class BoDanhGiaPhuongAn
                         ct1.Thu, ct1.TietBatDau, ct1.TietKetThuc, ct1.TuTuan, ct1.DenTuan,
                         ct2.Thu, ct2.TietBatDau, ct2.TietKetThuc, ct2.TuTuan, ct2.DenTuan))
                     {
-                        // Miá»…n trá»« náº¿u lĂ  lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n vĂ  cĂ¹ng khung giá»/phĂ²ng
+                        // Miễn trừ nếu là lớp ghép học chung cùng môn và cùng khung giờ/phòng
                         bool laLopGhep = boiCanh.LopTheoMa.TryGetValue(ct1.MaLopHocPhan, out var l1) &&
                                          boiCanh.LopTheoMa.TryGetValue(ct2.MaLopHocPhan, out var l2) &&
                                          l1.MaHocPhan == l2.MaHocPhan &&
                                          ct1.Thu == ct2.Thu &&
                                          ct1.TietBatDau == ct2.TietBatDau &&
-                                         ct1.TietKetThuc == ct2.TietKetThuc;
+                                         ct1.TietKetThuc == ct2.TietKetThuc &&
+                                         ct1.TuTuan == ct2.TuTuan &&
+                                         ct1.DenTuan == ct2.DenTuan &&
+                                         !string.IsNullOrWhiteSpace(ct1.PhongHoc) &&
+                                         string.Equals(ct1.PhongHoc?.Trim(), ct2.PhongHoc?.Trim(), StringComparison.OrdinalIgnoreCase);
 
                         if (!laLopGhep)
                         {
                             ketQua.SoViPhamTrungLich++;
                             ketQua.DiemPhatRangBuocCung += boiCanh.TrongSoTrungLich;
-                            ketQua.DanhSachViPham.Add($"{tenGv} bá»‹ trĂ¹ng giá» dáº¡y giá»¯a 2 lá»›p vĂ o Thá»© {ct1.Thu}, tiáº¿t {Math.Max(ct1.TietBatDau, ct2.TietBatDau)}-{Math.Min(ct1.TietKetThuc, ct2.TietKetThuc)}.");
+                            ketQua.DanhSachViPham.Add($"{tenGv} bị trùng giờ dạy giữa 2 lớp vào Thứ {ct1.Thu}, tiết {Math.Max(ct1.TietBatDau, ct2.TietBatDau)}-{Math.Min(ct1.TietKetThuc, ct2.TietKetThuc)}.");
                         }
                     }
                 }

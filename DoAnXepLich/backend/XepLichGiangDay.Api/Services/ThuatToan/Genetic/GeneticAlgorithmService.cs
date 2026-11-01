@@ -47,7 +47,8 @@ public class GeneticAlgorithmService(
         // Gom các lớp học phần học chung cùng môn, cùng thứ, tiết, tuần, phòng thành 1 ca dạy duy nhất
         string TaoChuKyCacBuoiHoc(int maLop, int maHocPhan)
         {
-            if (!boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt) || dsCt.Count == 0)
+            if (!boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt) || dsCt.Count == 0 ||
+                dsCt.Any(c => string.IsNullOrWhiteSpace(c.PhongHoc)))
             {
                 return $"HP_{maHocPhan}_LOP_{maLop}";
             }
@@ -404,48 +405,7 @@ public class GeneticAlgorithmService(
                 ChiTietViPham = finalCheck.DanhSachCanhBaoMem,
                 DanhSachPhanCong = dsPhanCongDto
             };
-        }
 
-        // KHI NGHIỆM THỎA MÃN 100% RÀNG BUỘC CỨNG: Cập nhật CSDL an toàn qua LuuKetQuaXepLichService
-        var dictPhanCongCuoi = bestOverall.DanhSachGen.ToDictionary(g => g.MaLopHocPhan, g => (int?)g.MaGiangVien);
-        var ketQuaLuu = await luuKetQuaService.LuuPhanCongAsync(
-            duLieu.MaHocKy,
-            TenThuatToan,
-            dictPhanCongCuoi,
-            boiCanh,
-            cancellationToken);
-
-        string thongBaoKhoa = ketQuaLuu.SoLopGiuKhoa > 0
-            ? $" ({ketQuaLuu.SoLopGiuKhoa} lớp đã khóa được giữ nguyên phân công)."
-            : "";
-
-        string trangThaiKetQua = finalCheck.TongDiemPhatMem <= 0.0001
-            ? "ToiUuTuyetDoi"
-            : "ThoaManRangBuocCung";
-
-        return new KetQuaXepLichDto
-        {
-            ThuatToan = TenThuatToan,
-            TongDiemPhat = finalCheck.TongDiemPhat,
-            DoThichNghi = finalCheck.DoThichNghi,
-            DiemPhatRangBuocCung = finalCheck.DiemPhatRangBuocCung,
-            DiemPhatNguyenVong = finalCheck.DiemPhatNguyenVong,
-            DiemPhatCanBangTai = finalCheck.DiemPhatCanBangTai,
-            DiemPhatGomLich = finalCheck.DiemPhatGomLich,
-            SoViPhamCung = 0,
-            SoLopChuaPhanCong = finalCheck.SoLopChuaPhanCong,
-            SoTheHeThucTe = theHeThucTe,
-            ThoiGianChayMiligiay = sw.ElapsedMilliseconds,
-            ThoiGianChayGiay = Math.Round(sw.Elapsed.TotalSeconds, 2),
-            TrangThai = trangThaiKetQua,
-            ThongDiep = (trangThaiKetQua == "ToiUuTuyetDoi"
-                ? $"GA tìm thấy phương án tối ưu tuyệt đối (điểm phạt = 0) tại thế hệ {theHeThucTe}."
-                : $"GA tìm thấy phương án thỏa mãn 100% ràng buộc cứng sau {theHeThucTe} thế hệ (Tổng điểm phạt mềm: {Math.Round(finalCheck.TongDiemPhatMem, 1)}).") + thongBaoKhoa,
-            LichSuDiemPhatTheoTheHe = lichSuDiemPhat,
-            DanhSachViPham = finalCheck.DanhSachViPham,
-            ChiTietViPham = finalCheck.DanhSachCanhBaoMem,
-            DanhSachPhanCong = dsPhanCongDto
-        };
     }
 
     private static CaThe SaoChepCaThe(CaThe goc)
