@@ -4,6 +4,7 @@ import { hocKyApi } from '../../api/hocKyApi'
 import { xepLichApi } from '../../api/xepLichApi'
 import type { HocKy } from '../../types/hocKy'
 import type { KetQuaXepLich, YeuCauXepLich } from '../../types/xepLich'
+import DoThiTienHoaGA from '../../components/DoThiTienHoaGA'
 
 function ChayXepLich() {
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
@@ -295,6 +296,16 @@ function ChayXepLich() {
                   <li key={idx}>{vp}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {ketQua.lichSuDiemPhatTheoTheHe && ketQua.lichSuDiemPhatTheoTheHe.length > 0 && (
+            <div className="mb-3">
+              <DoThiTienHoaGA
+                duLieu={ketQua.lichSuDiemPhatTheoTheHe}
+                soTheHe={ketQua.soTheHeThucTe ?? form.soTheHe}
+                thuatToan={ketQua.thuatToan}
+              />
             </div>
           )}
 

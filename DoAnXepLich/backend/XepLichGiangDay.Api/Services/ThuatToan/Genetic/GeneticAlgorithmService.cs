@@ -222,7 +222,7 @@ public class GeneticAlgorithmService(
         quanThe.Sort((a, b) => a.SoSanhVoi(b));
 
         var bestOverall = SaoChepCaThe(quanThe[0]);
-        var lichSuDiemPhat = new List<double> { bestOverall.DiemPhat };
+        var lichSuDiemPhat = new List<double> { Math.Round(quanThe[0].TongDiemPhatMem > 0 ? quanThe[0].TongDiemPhatMem : (quanThe[0].DiemPhat % 1000), 2) };
 
         int theHeThucTe = 0;
         int soTheHeKhongCaiThien = 0;
@@ -291,7 +291,8 @@ public class GeneticAlgorithmService(
                 soTheHeKhongCaiThien++;
             }
 
-            lichSuDiemPhat.Add(bestOverall.DiemPhat);
+            double diemTheHe = quanThe[0].TongDiemPhatMem > 0 ? quanThe[0].TongDiemPhatMem : (quanThe[0].DiemPhat % 1000);
+            lichSuDiemPhat.Add(Math.Round(diemTheHe, 2));
 
             // Dừng sớm khi quần thể đã hội tụ (nghiệm hợp lệ và không cải thiện sau N thế hệ liên tiếp)
             if (bestOverall.LaHopLe && soTheHeKhongCaiThien >= NguongTriTre)
