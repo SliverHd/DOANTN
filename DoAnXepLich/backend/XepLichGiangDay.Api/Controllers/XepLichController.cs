@@ -169,17 +169,18 @@ public class XepLichController(
         {
             var tongQuan = await xepLichService.LayThongTinTongQuanHocKyAsync(request.MaHocKy, cancellationToken);
 
-            // 1. Chạy CP-SAT
+            // 1. Chạy CP-SAT (Chế độ so sánh: LuuKetQua = false để không ghi đè CSDL)
             var duLieuCpSat = new DuLieuXepLichDto
             {
                 MaHocKy = request.MaHocKy,
                 ThuatToan = "CP_SAT",
                 ThoiGianChayToiDa = request.ThoiGianChayToiDa > 0 ? request.ThoiGianChayToiDa : 15,
-                SoLuongWorker = 1
+                SoLuongWorker = 1,
+                LuuKetQua = false
             };
             var kqCpSat = await cpSatAlgo.ChayAsync(duLieuCpSat, cancellationToken);
 
-            // 2. Chạy GA
+            // 2. Chạy GA (Chế độ so sánh: LuuKetQua = false để không ghi đè CSDL)
             var duLieuGa = new DuLieuXepLichDto
             {
                 MaHocKy = request.MaHocKy,
@@ -187,7 +188,8 @@ public class XepLichController(
                 KichThuocQuanThe = request.KichThuocQuanThe > 0 ? request.KichThuocQuanThe : 50,
                 SoTheHe = request.SoTheHe > 0 ? request.SoTheHe : 100,
                 TyLeLaiGhep = request.TyLeLaiGhep > 0 ? request.TyLeLaiGhep : 0.8,
-                TyLeDotBien = request.TyLeDotBien > 0 ? request.TyLeDotBien : 0.15
+                TyLeDotBien = request.TyLeDotBien > 0 ? request.TyLeDotBien : 0.15,
+                LuuKetQua = false
             };
             var kqGa = await gaAlgo.ChayAsync(duLieuGa, cancellationToken);
 

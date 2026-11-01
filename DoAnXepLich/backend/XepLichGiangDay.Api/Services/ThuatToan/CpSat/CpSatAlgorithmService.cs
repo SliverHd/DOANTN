@@ -422,20 +422,24 @@ public class CpSatAlgorithmService(
             // Đánh giá lại toàn diện bằng BoDanhGiaPhuongAn để kiểm tra ràng buộc cứng trước khi ghi CSDL
             var danhGia = boDanhGia.DanhGia(phanCongDict, boiCanh);
 
-            // Cập nhật CSDL thông qua LuuKetQuaXepLichService (có Transaction & bảo vệ lớp DaKhoa)
-            var ketQuaLuu = await luuKetQuaService.LuuPhanCongAsync(
-                duLieu.MaHocKy,
-                TenThuatToan,
-                phanCongDict,
-                boiCanh,
-                cancellationToken);
+            // Cập nhật CSDL thông qua LuuKetQuaXepLichService (nếu duLieu.LuuKetQua == true)
+            KetQuaLuuPhanCong ketQuaLuu = new();
+            if (duLieu.LuuKetQua)
+            {
+                ketQuaLuu = await luuKetQuaService.LuuPhanCongAsync(
+                    duLieu.MaHocKy,
+                    TenThuatToan,
+                    phanCongDict,
+                    boiCanh,
+                    cancellationToken);
+            }
 
             string thongBaoKhoa = ketQuaLuu.SoLopGiuKhoa > 0
                 ? $" ({ketQuaLuu.SoLopGiuKhoa} lớp đã khóa được giữ nguyên phân công)."
                 : "";
 
             string thongBaoBoTrong = danhGia.SoLopChuaPhanCong > 0
-                ? $" CẢNH BÁO: {danhGia.SoLopChuaPhanCong} lớp học phần bị BỎ TRỐNG (chưa có giảng viên) do xung đột không thể giải; các lớp còn lại đã được phân công đầy đủ và lưu CSDL."
+                ? $" CẢNH BÁO: {danhGia.SoLopChuaPhanCong} lớp học phần bị BỎ TRỐNG (chưa có giảng viên) do xung đột không thể giải; các lớp còn lại đã được phân công đầy đủ{(duLieu.LuuKetQua ? " và lưu CSDL" : "")}."
                 : "";
 
             int soViPhamCungThat = danhGia.SoViPhamChuyenMon + danhGia.SoViPhamTrungLich + danhGia.SoViPhamLichBan;
@@ -445,7 +449,7 @@ public class CpSatAlgorithmService(
             if (soViPhamCungThat > 0)
             {
                 trangThaiKetQua = "ConViPham";
-                thongDiepKetQua = $"CP-SAT tìm thấy nghiệm và đã lưu vào CSDL (Nguồn: CP_SAT). CẢNH BÁO: Còn vi phạm {soViPhamCungThat} ràng buộc cứng." + thongBaoKhoa;
+                thongDiepKetQua = $"CP-SAT tìm thấy nghiệm{(duLieu.LuuKetQua ? " và đã lưu vào CSDL (Nguồn: CP_SAT)" : " (Chế độ thử nghiệm)")}. CẢNH BÁO: Còn vi phạm {soViPhamCungThat} ràng buộc cứng." + thongBaoKhoa;
             }
             else
             {

@@ -73,6 +73,28 @@ public class NguyenVongService(AppDbContext context)
     {
         if (dto.MaHocKy <= 0 || dto.MaGiangVien <= 0) return null;
 
+        string noiDung = dto.LyDo?.Trim() ?? string.Empty;
+        if (dto.TuTuan.HasValue && dto.DenTuan.HasValue)
+        {
+            if (dto.TuTuan.Value == 1 && dto.DenTuan.Value == 20)
+            {
+                noiDung = string.IsNullOrWhiteSpace(noiDung) ? "Cả học kỳ (Tuần 1-20)" : $"[Cả học kỳ] {noiDung}";
+            }
+            else if (dto.TuTuan.Value == dto.DenTuan.Value)
+            {
+                // Nghỉ trong 1 tuần: Từ tuần == Đến tuần (vd: Tuần 15)
+                noiDung = string.IsNullOrWhiteSpace(noiDung)
+                    ? $"Tạm nghỉ Tuần {dto.TuTuan}"
+                    : $"[Tuần {dto.TuTuan}] {noiDung}";
+            }
+            else
+            {
+                noiDung = string.IsNullOrWhiteSpace(noiDung)
+                    ? $"Tạm nghỉ Tuần {dto.TuTuan}-{dto.DenTuan}"
+                    : $"[Tuần {dto.TuTuan}-{dto.DenTuan}] {noiDung}";
+            }
+        }
+
         var entity = new NguyenVongGiangVien
         {
             MaGiangVien = dto.MaGiangVien,
@@ -83,7 +105,7 @@ public class NguyenVongService(AppDbContext context)
             TietBatDau = dto.TietBatDau,
             TietKetThuc = dto.TietKetThuc,
             TrongSoPhat = dto.TrongSoPhat > 0 ? dto.TrongSoPhat : 10.0,
-            NoiDungGoc = dto.LyDo?.Trim(),
+            NoiDungGoc = noiDung,
             TrangThai = "ChoDuyet",
             NgayTao = DateTime.Now
         };
@@ -144,8 +166,21 @@ public class NguyenVongService(AppDbContext context)
 
         var danhSachLopBiHuy = new List<string>();
 
-        // Nếu là yêu cầu có khung giờ cụ thể (xin nghỉ ca dạy / lịch bận cụ thể)
-        if (nv.Thu.HasValue && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
+        // Chỉ sinh Lịch bận cố định (H3) và hủy phân công nếu là đơn nghỉ CẢ HỌC KỲ!
+        // Nếu chỉ xin nghỉ 1 hoặc 1 vài tuần (ví dụ: [Tuần 15] hoặc [Tuần 15-16]), đây là RÀNG BUỘC MỀM tạm hoãn,
+        // TUYỆT ĐỐI KHÔNG sinh Lịch bận cố định H3 và KHÔNG kick giảng viên khỏi lớp.
+        bool laNghiCaHocKy = !string.IsNullOrWhiteSpace(nv.NoiDungGoc) && (
+            nv.NoiDungGoc.Contains("Cả học kỳ", StringComparison.OrdinalIgnoreCase) ||
+            nv.NoiDungGoc.Contains("Tuần 1-20", StringComparison.OrdinalIgnoreCase) ||
+            nv.NoiDungGoc.Contains("cả kỳ", StringComparison.OrdinalIgnoreCase));
+
+        bool laNguyenVongNghiDay =
+            (nv.LoaiNguyenVong == "SC01" ||
+             nv.LoaiNguyenVong == "TranhDay" ||
+             nv.LoaiNguyenVong == "XinNghi") &&
+            laNghiCaHocKy;
+
+        if (laNguyenVongNghiDay && nv.Thu.HasValue && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
         {
             // 1. Đồng bộ sang Lịch bận cố định (H3) để thuật toán hoặc phân công tay không bao giờ xếp GV vào ca này
             var daCoLichBan = await context.LichBanGiangVien.AnyAsync(x =>

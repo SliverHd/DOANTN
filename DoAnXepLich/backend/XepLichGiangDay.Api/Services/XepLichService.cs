@@ -69,6 +69,14 @@ public class XepLichService(
             .GroupBy(x => x.MaGiangVien)
             .ToDictionary(g => g.Key, g => g.Select(x => x.MaLopHocPhan).ToList());
 
+        // Lấy danh sách nguyện vọng đã duyệt trong học kỳ để hiển thị ghi chú tạm nghỉ
+        var dsNguyenVongDaDuyet = await context.NguyenVongGiangVien
+            .Where(x => x.MaHocKy == maHocKy && x.TrangThai == "DaDuyet")
+            .ToListAsync(cancellationToken);
+        var nguyenVongTheoGv = dsNguyenVongDaDuyet
+            .GroupBy(x => x.MaGiangVien)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         var danhSachDong = new List<DongPhanCongLopDto>();
 
         foreach (var lop in dsLop)
@@ -122,6 +130,41 @@ public class XepLichService(
                 {
                     dong.TenGiangVien = gv.HoTen;
                     dong.EmailGiangVien = gv.Email;
+                }
+
+                // Kiểm tra xem giảng viên này có đơn xin nghỉ/hoãn ca này trong học kỳ không
+                if (nguyenVongTheoGv.TryGetValue(pc.MaGiangVien, out var dsNvCuaGv))
+                {
+                    var nvNghi = dsNvCuaGv.FirstOrDefault(nv =>
+                        nv.Thu == ct?.Thu &&
+                        Math.Max(nv.TietBatDau ?? 1, ct?.TietBatDau ?? 1) <= Math.Min(nv.TietKetThuc ?? 12, ct?.TietKetThuc ?? 12));
+
+                    if (nvNghi != null)
+                    {
+                        dong.CoLichTamNghi = true;
+                        var m = System.Text.RegularExpressions.Regex.Match(nvNghi.NoiDungGoc ?? "", @"Tuần\s*(\d+(?:\s*-\s*\d+)?)");
+                        if (m.Success)
+                        {
+                            var rawTuan = m.Groups[1].Value.Replace(" ", "");
+                            if (rawTuan.Contains('-'))
+                            {
+                                var parts = rawTuan.Split('-');
+                                dong.TuanTamNghi = (parts.Length == 2 && parts[0] == parts[1]) ? parts[0] : rawTuan;
+                            }
+                            else
+                            {
+                                dong.TuanTamNghi = rawTuan;
+                            }
+                        }
+                        else
+                        {
+                            dong.TuanTamNghi = dong.TuTuan > 0 ? $"{dong.TuTuan}" : "15";
+                        }
+
+                        dong.GhiChuTamNghi = !string.IsNullOrWhiteSpace(nvNghi.NoiDungGoc)
+                            ? nvNghi.NoiDungGoc
+                            : "Tạm nghỉ theo đơn đã duyệt";
+                    }
                 }
             }
 
@@ -467,8 +510,10 @@ public class XepLichService(
             // Đánh giá trạng thái tải so với định mức cả học kỳ (mặc định 60 - 120 tiết)
             bool isThinhGiang = (gv.ChucDanh != null && gv.ChucDanh.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase)) ||
                                 gv.HoTen.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase);
-            int maxTuanChuan = isThinhGiang ? 16 : 25;
-            int minTuanChuan = isThinhGiang ? 3 : 6;
+            bool isTroGiang = (gv.ChucDanh != null && gv.ChucDanh.Contains("trợ giảng", StringComparison.OrdinalIgnoreCase)) ||
+                              gv.HoTen.Contains("Trợ giảng", StringComparison.OrdinalIgnoreCase);
+            int maxTuanChuan = isTroGiang ? 12 : (isThinhGiang ? 16 : 25);
+            int minTuanChuan = isTroGiang ? 0 : (isThinhGiang ? 3 : 6);
             int maxTietTuanGv = (item.SoTietToiDa > 0 && item.SoTietToiDa <= maxTuanChuan) ? item.SoTietToiDa : maxTuanChuan;
             int minTietTuanGv = item.SoTietToiThieu > 0 ? (item.SoTietToiThieu <= 30 ? item.SoTietToiThieu : (int)Math.Ceiling(item.SoTietToiThieu / 15.0)) : minTuanChuan;
             item.SoTietToiThieu = minTietTuanGv;

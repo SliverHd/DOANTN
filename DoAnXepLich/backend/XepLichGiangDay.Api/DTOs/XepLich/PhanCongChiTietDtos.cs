@@ -43,6 +43,11 @@ public class DongPhanCongLopDto
     public bool DaKhoa => TrangThai == "DaKhoa";
     public double DiemPhat { get; set; }
 
+    // Thông tin trạng thái tạm hoãn / tạm nghỉ tuần
+    public bool CoLichTamNghi { get; set; }
+    public string? TuanTamNghi { get; set; }
+    public string? GhiChuTamNghi { get; set; }
+
     // Danh sách gợi ý giảng viên ứng viên cho lớp này
     public List<UngVienLopDto> DanhSachUngVien { get; set; } = [];
 }

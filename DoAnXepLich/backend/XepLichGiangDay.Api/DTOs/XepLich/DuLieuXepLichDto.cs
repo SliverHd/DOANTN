@@ -36,5 +36,8 @@ public class DuLieuXepLichDto
 
     [Range(0.0, 1.0)]
     public double? KhoangCachToiUuGap { get; set; } = 0.01;
+
+    /// <summary>Có lưu kết quả phân công vào CSDL hay chỉ chạy thử nghiệm/so sánh</summary>
+    public bool LuuKetQua { get; set; } = true;
 }
 
