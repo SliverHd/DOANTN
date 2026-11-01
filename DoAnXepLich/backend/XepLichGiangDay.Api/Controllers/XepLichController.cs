@@ -110,6 +110,16 @@ public class XepLichController(
     }
 
     /// <summary>
+    /// Đặt lại phân công của học kỳ: Xóa toàn bộ phân công dự kiến (chưa khóa) để đưa về trống, bảo toàn các lớp đã khóa.
+    /// </summary>
+    [HttpPost("dat-lai-phan-cong/{maHocKy:int}")]
+    public async Task<IActionResult> DatLaiPhanCong(int maHocKy, CancellationToken cancellationToken)
+    {
+        var soLopXoa = await xepLichService.DatLaiPhanCongAsync(maHocKy, cancellationToken);
+        return Ok(new { thanhCong = true, soLopXoa, thongBao = $"Đã đặt lại bảng phân công. Đã xóa {soLopXoa} lớp dự kiến; các lớp đã khóa (nếu có) được giữ nguyên." });
+    }
+
+    /// <summary>
     /// Thống kê khối lượng giảng dạy của toàn bộ giảng viên trong kỳ và so sánh định mức.
     /// </summary>
     [HttpGet("thong-ke-tai/{maHocKy:int}")]

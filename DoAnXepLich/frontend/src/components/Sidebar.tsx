@@ -156,8 +156,12 @@ function Sidebar({ thuGon }: SidebarProps) {
     <aside className={`sidebar ${thuGon ? 'thu-gon' : ''}`}>
       {/* Khung Logo ở đầu Sidebar theo phong cách mẫu ảnh */}
       <div className="sidebar-logo-box">
-        <div className="sidebar-logo-badge" title="Thời khóa biểu Đại học">
-          <span>ĐH</span>
+        <div className="sidebar-logo-badge" title="Trường Đại học Xây dựng">
+          <img
+            src="/logo.png"
+            alt="Logo Trường"
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
         </div>
         {!thuGon && (
           <div className="ms-2 sidebar-header-title">

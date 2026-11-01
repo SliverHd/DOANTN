@@ -374,6 +374,24 @@ public class XepLichService(
     }
 
     /// <summary>
+    /// Đặt lại phân công học kỳ: xóa toàn bộ các phân công dự kiến (chưa khóa) để đưa bảng về trống, giữ nguyên các lớp đã khóa.
+    /// </summary>
+    public async Task<int> DatLaiPhanCongAsync(int maHocKy, CancellationToken cancellationToken = default)
+    {
+        var cacPhanCongDuKien = await context.PhanCongGiangDay
+            .Where(x => x.MaHocKy == maHocKy && x.TrangThai != "DaKhoa")
+            .ToListAsync(cancellationToken);
+
+        if (cacPhanCongDuKien.Count > 0)
+        {
+            context.PhanCongGiangDay.RemoveRange(cacPhanCongDuKien);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        return cacPhanCongDuKien.Count;
+    }
+
+    /// <summary>
     /// Thống kê khối lượng tải giảng dạy của tất cả giảng viên trong học kỳ và so sánh với định mức.
     /// </summary>
     public async Task<List<ThongKeTaiGvDto>> LayThongKeTaiAsync(int maHocKy, CancellationToken cancellationToken = default)

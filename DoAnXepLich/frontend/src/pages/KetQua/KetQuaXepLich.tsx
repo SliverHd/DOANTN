@@ -177,6 +177,25 @@ function KetQuaXepLich() {
     }
   }
 
+  // 5b. Đặt lại bảng phân công (Làm trống các lớp chưa khóa)
+  const handleDatLaiPhanCong = async () => {
+    const xacNhan = window.confirm(
+      'Bạn có chắc chắn muốn đặt lại bảng phân công?\n\nToàn bộ các phân công dự kiến (chưa khóa) sẽ bị xóa để đưa bảng về trạng thái trống.\nCác lớp đã Khóa (nếu có) sẽ được giữ nguyên.'
+    )
+    if (!xacNhan) return
+
+    try {
+      setDangXuLy(true)
+      const res = await xepLichApi.datLaiPhanCong(maHocKy)
+      alert(res.data.thongBao || 'Đã đặt lại bảng phân công thành công.')
+      await taiDuLieu(maHocKy)
+    } catch {
+      alert('Lỗi khi đặt lại bảng phân công.')
+    } finally {
+      setDangXuLy(false)
+    }
+  }
+
   // 6. Xuất báo cáo Excel
   const [dangXuatExcel, setDangXuatExcel] = useState<boolean>(false)
 
@@ -358,13 +377,15 @@ function KetQuaXepLich() {
               </option>
             ))}
           </select>
+
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => taiDuLieu(maHocKy)}
-            disabled={dangTai || dangXuLy || dangXuatExcel}
+            className="btn btn-sm btn-outline-danger"
+            onClick={handleDatLaiPhanCong}
+            disabled={dangTai || dangXuLy || dangXuatExcel || !bangPhanCong || bangPhanCong.soLopDaPhanCong === 0}
+            title="Xóa tất cả các phân công dự kiến để làm trống bảng (các lớp đã khóa sẽ được giữ nguyên)"
           >
-            Làm mới
+            Đặt lại bảng (Làm trống)
           </button>
           <button
             type="button"
