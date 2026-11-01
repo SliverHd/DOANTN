@@ -16,12 +16,7 @@ const adminMenuItems: MenuItem[] = [
   { path: '/nam-hoc', label: 'Quản lý năm học', icon: 'calendar' },
   { path: '/hoc-ky', label: 'Quản lý học kỳ', icon: 'layers' },
   { path: '/bo-mon', label: 'Quản lý bộ môn', icon: 'briefcase' },
-  { path: '/giang-vien', label: 'Quản lý giảng viên', icon: 'users' },
-  { path: '/hoc-phan', label: 'Quản lý học phần', icon: 'book' },
-  { path: '/thoi-khoa-bieu', label: 'Thời khóa biểu', icon: 'table' },
-  { path: '/rang-buoc', label: 'Cấu hình ràng buộc', icon: 'sliders' },
-  { path: '/xep-lich', label: 'Xếp lịch tự động', icon: 'cpu' },
-  { path: '/ket-qua', label: 'Kết quả xếp lịch', icon: 'check-square' },
+  { path: '/thoi-khoa-bieu', label: 'Import thời khóa biểu', icon: 'table' },
 ]
 
 const truongBoMonMenuItems: MenuItem[] = [

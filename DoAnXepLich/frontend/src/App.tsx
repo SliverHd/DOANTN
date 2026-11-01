@@ -1,4 +1,4 @@
-﻿import Dashboard from './pages/Dashboard/Dashboard'
+import Dashboard from './pages/Dashboard/Dashboard'
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import MainLayout from './layouts/MainLayout'
@@ -29,9 +29,14 @@ function ProtectedLayout() {
   return <MainLayout />
 }
 
-function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
+interface RoleRouteProps {
+  allowedRoles: string[]
+  children: React.ReactNode
+}
+
+function RoleRoute({ allowedRoles, children }: RoleRouteProps) {
   const { user } = useAuth()
-  if (user?.vaiTro !== 'Admin') {
+  if (!user || !allowedRoles.includes(user.vaiTro)) {
     return <Navigate to="/" replace />
   }
   return <>{children}</>
@@ -58,23 +63,108 @@ const router = createBrowserRouter([
     element: <ProtectedLayout />,
     children: [
       { index: true, element: <TrangChuRedirect /> },
-      { path: 'dashboard', element: <Dashboard /> },
-      { path: 'nam-hoc', element: <DanhSachNamHoc /> },
-      { path: 'hoc-ky', element: <DanhSachHocKy /> },
-      { path: 'bo-mon', element: <DanhSachBoMon /> },
-      { path: 'giang-vien', element: <DanhSachGiangVien /> },
-      { path: 'hoc-phan', element: <DanhSachHocPhan /> },
-      { path: 'thoi-khoa-bieu', element: <DanhSachLopHocPhan /> },
-      { path: 'nguyen-vong', element: <DanhSachNguyenVong /> },
-      { path: 'rang-buoc', element: <DanhSachRangBuoc /> },
-      { path: 'xep-lich', element: <ChayXepLich /> },
-      { path: 'ket-qua', element: <KetQuaXepLich /> },
+
+      // Chức năng quản trị hệ thống (Chỉ dành cho Admin)
       {
         path: 'tai-khoan',
         element: (
-          <AdminOnlyRoute>
+          <RoleRoute allowedRoles={['Admin']}>
             <DanhSachNguoiDung />
-          </AdminOnlyRoute>
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'nam-hoc',
+        element: (
+          <RoleRoute allowedRoles={['Admin']}>
+            <DanhSachNamHoc />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'hoc-ky',
+        element: (
+          <RoleRoute allowedRoles={['Admin']}>
+            <DanhSachHocKy />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'bo-mon',
+        element: (
+          <RoleRoute allowedRoles={['Admin']}>
+            <DanhSachBoMon />
+          </RoleRoute>
+        ),
+      },
+
+      // Thời khóa biểu & Import Excel (Admin import dữ liệu; Trưởng bộ môn & Giảng viên xem lịch)
+      {
+        path: 'thoi-khoa-bieu',
+        element: (
+          <RoleRoute allowedRoles={['Admin', 'TruongBoMon', 'GiangVien']}>
+            <DanhSachLopHocPhan />
+          </RoleRoute>
+        ),
+      },
+
+      // Chức năng quản lý chuyên môn, thuật toán & xếp lịch (Chỉ dành cho Trưởng bộ môn)
+      {
+        path: 'dashboard',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon']}>
+            <Dashboard />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'giang-vien',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon']}>
+            <DanhSachGiangVien />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'hoc-phan',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon']}>
+            <DanhSachHocPhan />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'rang-buoc',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon']}>
+            <DanhSachRangBuoc />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'xep-lich',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon']}>
+            <ChayXepLich />
+          </RoleRoute>
+        ),
+      },
+
+      // Chức năng liên quan giảng viên (Trưởng bộ môn & Giảng viên)
+      {
+        path: 'nguyen-vong',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon', 'GiangVien']}>
+            <DanhSachNguyenVong />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'ket-qua',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon', 'GiangVien']}>
+            <KetQuaXepLich />
+          </RoleRoute>
         ),
       },
     ],
