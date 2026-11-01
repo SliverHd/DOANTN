@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using XepLichGiangDay.Api.Data;
 using XepLichGiangDay.Api.Models.Entities;
 
@@ -152,9 +152,20 @@ public class BoDanhGiaPhuongAn
                         ct1.Thu, ct1.TietBatDau, ct1.TietKetThuc, ct1.TuTuan, ct1.DenTuan,
                         ct2.Thu, ct2.TietBatDau, ct2.TietKetThuc, ct2.TuTuan, ct2.DenTuan))
                     {
-                        ketQua.SoViPhamTrungLich++;
-                        ketQua.DiemPhatRangBuocCung += boiCanh.TrongSoTrungLich;
-                        ketQua.DanhSachViPham.Add($"{tenGv} bị trùng giờ dạy giữa 2 lớp vào Thứ {ct1.Thu}, tiết {Math.Max(ct1.TietBatDau, ct2.TietBatDau)}-{Math.Min(ct1.TietKetThuc, ct2.TietKetThuc)}.");
+                        // Miá»…n trá»« náº¿u lĂ  lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n vĂ  cĂ¹ng khung giá»/phĂ²ng
+                        bool laLopGhep = boiCanh.LopTheoMa.TryGetValue(ct1.MaLopHocPhan, out var l1) &&
+                                         boiCanh.LopTheoMa.TryGetValue(ct2.MaLopHocPhan, out var l2) &&
+                                         l1.MaHocPhan == l2.MaHocPhan &&
+                                         ct1.Thu == ct2.Thu &&
+                                         ct1.TietBatDau == ct2.TietBatDau &&
+                                         ct1.TietKetThuc == ct2.TietKetThuc;
+
+                        if (!laLopGhep)
+                        {
+                            ketQua.SoViPhamTrungLich++;
+                            ketQua.DiemPhatRangBuocCung += boiCanh.TrongSoTrungLich;
+                            ketQua.DanhSachViPham.Add($"{tenGv} bá»‹ trĂ¹ng giá» dáº¡y giá»¯a 2 lá»›p vĂ o Thá»© {ct1.Thu}, tiáº¿t {Math.Max(ct1.TietBatDau, ct2.TietBatDau)}-{Math.Min(ct1.TietKetThuc, ct2.TietKetThuc)}.");
+                        }
                     }
                 }
 
@@ -351,14 +362,27 @@ public class BoDanhGiaPhuongAn
         canhBao = string.Empty;
         if (maGiangVien <= 0 || dsMaLopPhanCong == null) return 0;
 
-        var cacBuoiHoc = new List<ChiTietThoiKhoaBieu>();
+        var cacBuoiHocRaw = new List<ChiTietThoiKhoaBieu>();
         foreach (var maLop in dsMaLopPhanCong)
         {
             if (boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt))
             {
-                cacBuoiHoc.AddRange(dsCt);
+                cacBuoiHocRaw.AddRange(dsCt);
             }
         }
+
+        // Vá»›i lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n, cĂ¹ng thá»©, tiáº¿t: chá»‰ tĂ­nh 1 ca thá»±c táº¿ Ä‘á»©ng lá»›p
+        var cacBuoiHoc = cacBuoiHocRaw
+            .GroupBy(b => (
+                b.Thu,
+                b.TietBatDau,
+                b.TietKetThuc,
+                b.TuTuan,
+                b.DenTuan,
+                MaHp: boiCanh.LopTheoMa.TryGetValue(b.MaLopHocPhan, out var l) ? l.MaHocPhan : b.MaLopHocPhan
+            ))
+            .Select(g => g.First())
+            .ToList();
 
         int maxTietTuan = 0; // Tuần cao điểm nhất (Peak week load)
         int tongTietToanKy = 0;
@@ -458,14 +482,27 @@ public class BoDanhGiaPhuongAn
         canhBao = string.Empty;
         if (maGiangVien <= 0 || dsMaLopPhanCong.Count == 0) return 0;
 
-        var cacBuoiHoc = new List<ChiTietThoiKhoaBieu>();
+        var cacBuoiHocRaw = new List<ChiTietThoiKhoaBieu>();
         foreach (var maLop in dsMaLopPhanCong)
         {
             if (boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt))
             {
-                cacBuoiHoc.AddRange(dsCt);
+                cacBuoiHocRaw.AddRange(dsCt);
             }
         }
+
+        // Vá»›i lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n, cĂ¹ng thá»©, tiáº¿t: chá»‰ tĂ­nh 1 ca thá»±c táº¿ Ä‘á»©ng lá»›p
+        var cacBuoiHoc = cacBuoiHocRaw
+            .GroupBy(b => (
+                b.Thu,
+                b.TietBatDau,
+                b.TietKetThuc,
+                b.TuTuan,
+                b.DenTuan,
+                MaHp: boiCanh.LopTheoMa.TryGetValue(b.MaLopHocPhan, out var l) ? l.MaHocPhan : b.MaLopHocPhan
+            ))
+            .Select(g => g.First())
+            .ToList();
 
         if (cacBuoiHoc.Count == 0) return 0;
 
@@ -564,14 +601,27 @@ public class BoDanhGiaPhuongAn
         canhBao = string.Empty;
         if (maGiangVien <= 0 || dsMaLopPhanCong.Count <= 1) return 0;
 
-        var cacBuoiHoc = new List<ChiTietThoiKhoaBieu>();
+        var cacBuoiHocRaw = new List<ChiTietThoiKhoaBieu>();
         foreach (var maLop in dsMaLopPhanCong)
         {
             if (boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt))
             {
-                cacBuoiHoc.AddRange(dsCt);
+                cacBuoiHocRaw.AddRange(dsCt);
             }
         }
+
+        // Vá»›i lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n, cĂ¹ng thá»©, tiáº¿t: chá»‰ tĂ­nh 1 ca thá»±c táº¿ Ä‘á»©ng lá»›p
+        var cacBuoiHoc = cacBuoiHocRaw
+            .GroupBy(b => (
+                b.Thu,
+                b.TietBatDau,
+                b.TietKetThuc,
+                b.TuTuan,
+                b.DenTuan,
+                MaHp: boiCanh.LopTheoMa.TryGetValue(b.MaLopHocPhan, out var l) ? l.MaHocPhan : b.MaLopHocPhan
+            ))
+            .Select(g => g.First())
+            .ToList();
         if (cacBuoiHoc.Count <= 1) return 0;
 
         double diemPhat = 0;

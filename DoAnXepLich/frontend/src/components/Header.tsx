@@ -1,10 +1,31 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-function Header() {
+interface HeaderProps {
+  sidebarThuGon?: boolean
+  onToggleSidebar?: () => void
+}
+
+// Ánh xạ đường dẫn tới tiêu đề trang hiển thị trên Header chuẩn như ảnh mẫu
+const pageTitles: Record<string, string> = {
+  '/thoi-khoa-bieu': 'Thời khóa biểu & Lớp học phần',
+  '/xep-lich': 'Xếp lịch tự động',
+  '/ket-qua': 'Kết quả xếp lịch & Phân công',
+  '/giang-vien': 'Quản lý giảng viên',
+  '/hoc-phan': 'Quản lý học phần',
+  '/rang-buoc': 'Cấu hình ràng buộc & Định mức',
+  '/nguyen-vong': 'Lịch bận & Nguyện vọng',
+  '/tai-khoan': 'Quản lý tài khoản',
+  '/nam-hoc': 'Quản lý năm học',
+  '/hoc-ky': 'Quản lý học kỳ',
+  '/bo-mon': 'Quản lý bộ môn',
+}
+
+function Header({ onToggleSidebar }: HeaderProps) {
   const { user, dangXuat, doiMatKhau } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [hienModalDoiMk, setHienModalDoiMk] = useState(false)
   const [matKhauCu, setMatKhauCu] = useState('')
@@ -47,16 +68,41 @@ function Header() {
     return ten
   }
 
-  return (
-    <header className="border-bottom bg-white px-4 py-2 d-flex justify-content-between align-items-center">
-      <h1 className="h6 mb-0 text-secondary">Hệ thống phân công giảng viên vào thời khóa biểu</h1>
+  const tieuDeTrangHienTai = pageTitles[location.pathname] || 'Phân công giảng dạy'
 
+  return (
+    <header className="header-bar">
+      {/* Góc trái: Nút thu gọn Sidebar và Tiêu đề chức năng hiện tại */}
+      <div className="d-flex align-items-center gap-3">
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm px-2"
+          onClick={onToggleSidebar}
+          title="Thu gọn / Mở rộng menu"
+          style={{ width: '32px', height: '32px', border: '1px solid #cbd5e1' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
+        <span className="fw-semibold" style={{ fontSize: '15px', color: '#0f172a' }}>
+          {tieuDeTrangHienTai}
+        </span>
+      </div>
+
+      {/* Góc phải: Lời chào và Tài khoản cá nhân */}
       <div className="d-flex align-items-center gap-2">
         {user ? (
           <>
-            <span className="small text-muted">Xin chào:</span>
-            <span className="small fw-semibold">{hienThiHoTen(user.hoTen)}</span>
-            <span className="badge bg-secondary small">{user.vaiTro === 'Admin' ? 'Quản trị viên' : user.vaiTro}</span>
+            <span style={{ fontSize: '13px', color: '#475569' }}>
+              Xin chào, <strong style={{ color: '#0f172a' }}>{hienThiHoTen(user.hoTen)}</strong>
+            </span>
+            <span className="badge bg-light text-secondary border" style={{ fontSize: '11px' }}>
+              {user.vaiTro === 'Admin' ? 'Quản trị' : user.vaiTro}
+            </span>
 
             <div className="btn-group ms-2">
               <button
@@ -67,7 +113,7 @@ function Header() {
                   setHienModalDoiMk(true)
                 }}
               >
-                Đổi mật khẩu
+                Đổi MK
               </button>
               <button
                 className="btn btn-outline-danger btn-sm"
@@ -87,17 +133,17 @@ function Header() {
         )}
       </div>
 
-      {/* Modal Doi Mat Khau */}
+      {/* Modal Đổi Mật Khẩu */}
       {hienModalDoiMk && (
         <div
           className="modal show d-block"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
         >
-          <div className="modal-dialog modal-sm">
-            <div className="modal-content">
+          <div className="modal-dialog modal-sm modal-dialog-centered">
+            <div className="modal-content" style={{ borderRadius: '4px', border: '1px solid #cbd5e1' }}>
               <form onSubmit={handleDoiMatKhau}>
-                <div className="modal-header py-2">
-                  <h5 className="modal-title h6">Đổi mật khẩu</h5>
+                <div className="modal-header py-2" style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <h5 className="modal-title h6 mb-0">Đổi mật khẩu</h5>
                   <button
                     type="button"
                     className="btn-close"
@@ -129,7 +175,7 @@ function Header() {
                     />
                   </div>
                 </div>
-                <div className="modal-footer py-2">
+                <div className="modal-footer py-2" style={{ borderTop: '1px solid #e2e8f0' }}>
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"

@@ -1,13 +1,13 @@
-namespace XepLichGiangDay.Api.Services.ThuatToan.Genetic;
+﻿namespace XepLichGiangDay.Api.Services.ThuatToan.Genetic;
 
 public class CauHinhGa
 {
-    public int KichThuocQuanThe { get; set; } = 50;
-    public int SoTheHe { get; set; } = 100;
-    public double TyLeLaiGhep { get; set; } = 0.8;
-    public double TyLeDotBien { get; set; } = 0.05;
-    public int KichThuocGiaiDau { get; set; } = 3;
-    public int SoCaTheUuTu { get; set; } = 2;
+    public int KichThuocQuanThe { get; set; } = 80;
+    public int SoTheHe { get; set; } = 350;
+    public double TyLeLaiGhep { get; set; } = 0.85;
+    public double TyLeDotBien { get; set; } = 0.08;
+    public int KichThuocGiaiDau { get; set; } = 4;
+    public int SoCaTheUuTu { get; set; } = 3;
     public int? RandomSeed { get; set; }
     public double ThoiGianChayToiDaGiay { get; set; } = 30.0;
 
