@@ -1,54 +1,312 @@
-body {
-  margin: 0;
-  background: #f7f8fa;
+/* ==========================================================================
+   GIAO DIỆN HỆ THỐNG QUẢN LÝ ĐẠI HỌC TRUYỀN THỐNG
+   Tuân thủ nghiêm ngặt:
+   - Đơn giản, thực dụng, trực quan, không cầu kỳ kiểu SaaS/Startup.
+   - Nền xám xanh rất nhạt (#f0f4f8), Sidebar & Header nền trắng.
+   - Bảng biểu viền mảnh, dòng xen kẽ trắng - xanh nhạt (Zebra striping).
+   - Nút bấm chữ nhật bo góc nhẹ 4px, màu xanh dương chuẩn.
+   ========================================================================== */
+
+:root {
+  --dh-bg-app: #f0f4f8;
+  --dh-bg-white: #ffffff;
+  --dh-bg-table-header: #eaf1f7;
+  --dh-bg-table-stripe: #f4f8fb;
+  --dh-bg-table-hover: #e6f0fa;
+  --dh-border-color: #dbe4ed;
+  --dh-border-subtle: #e8edf3;
+  --dh-primary: #0b5ed7;
+  --dh-primary-hover: #0a58ca;
+  --dh-text-main: #1e293b;
+  --dh-text-muted: #64748b;
+  --dh-sidebar-width: 250px;
 }
 
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13.5px;
+  color: var(--dh-text-main);
+  background-color: var(--dh-bg-app);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Khung cấu trúc tổng thể */
 .app-shell {
   display: flex;
   min-height: 100vh;
+  background-color: var(--dh-bg-app);
 }
 
 .sidebar {
-  flex: 0 0 250px;
+  flex: 0 0 var(--dh-sidebar-width);
+  width: var(--dh-sidebar-width);
+  background: var(--dh-bg-white);
+  border-right: 1px solid var(--dh-border-color);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease-in-out;
+  z-index: 100;
+}
+
+.sidebar.thu-gon {
+  flex: 0 0 68px;
+  width: 68px;
+}
+
+.sidebar.thu-gon .sidebar-text,
+.sidebar.thu-gon .sidebar-header-title,
+.sidebar.thu-gon .sidebar-group-title {
+  display: none !important;
+}
+
+.sidebar.thu-gon .sidebar-link {
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .main-panel {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--dh-bg-app);
 }
 
-@media (max-width: 768px) {
-  .app-shell {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    flex-basis: auto;
-  }
+/* Header phía trên */
+.header-bar {
+  height: 56px;
+  min-height: 56px;
+  background: var(--dh-bg-white);
+  border-bottom: 1px solid var(--dh-border-color);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
+/* Vùng nội dung chính */
+.main-content {
+  flex: 1;
+  padding: 20px 24px;
+}
+
+/* Tiêu đề trang */
+.page-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+}
+
+/* Menu bên trái */
+.sidebar-logo-box {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--dh-border-subtle);
+}
+
+.sidebar-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1.5px solid #dc2626;
+  border-radius: 4px;
+  color: #dc2626;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.5px;
+  background: #ffffff;
+}
+
+.sidebar-nav {
+  padding: 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #334155;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.sidebar-link:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Trạng thái menu đang chọn (Active): Hình chữ nhật bo nhẹ, nền xanh dương, chữ trắng */
+.sidebar-link.active {
+  background-color: var(--dh-primary);
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.sidebar-link.active svg,
+.sidebar-link.active i {
+  color: #ffffff !important;
+}
+
+/* Nút bấm (Buttons) chuẩn đại học */
+.btn {
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  height: 36px;
+  border-radius: 4px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: none !important;
+}
+
+.btn-primary {
+  background-color: var(--dh-primary) !important;
+  border-color: var(--dh-primary) !important;
+  color: #ffffff !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--dh-primary-hover) !important;
+  border-color: var(--dh-primary-hover) !important;
+}
+
+.btn-sm {
+  height: 30px;
+  padding: 3px 10px;
+  font-size: 12.5px;
+}
+
+/* Khối khung chứa (Cards) - Phẳng, viền mảnh, không đổ bóng lớn */
+.card {
+  background: var(--dh-bg-white);
+  border: 1px solid var(--dh-border-color) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  background: var(--dh-bg-white) !important;
+  border-bottom: 1px solid var(--dh-border-color) !important;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.card-body {
+  padding: 16px;
+}
+
+/* Bảng dữ liệu (Table) chuẩn hệ thống trường đại học */
+.table-responsive {
+  border: 1px solid var(--dh-border-color);
+  border-radius: 4px;
+  background: var(--dh-bg-white);
+  margin-bottom: 16px;
+}
+
+.table {
+  width: 100%;
+  margin-bottom: 0;
+  color: var(--dh-text-main);
+  border-collapse: collapse;
+}
+
+.table thead th {
+  background-color: var(--dh-bg-table-header) !important;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--dh-border-color) !important;
+  border-top: none;
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 9px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--dh-border-subtle);
+  font-size: 13px;
+}
+
+/* Hiệu ứng dòng xen kẽ (Zebra striping) hệt như ảnh mẫu PTIT */
+.table tbody tr:nth-child(even) {
+  background-color: var(--dh-bg-white);
+}
+
+.table tbody tr:nth-child(odd) {
+  background-color: var(--dh-bg-table-stripe);
+}
+
+.table tbody tr:hover {
+  background-color: var(--dh-bg-table-hover) !important;
+}
+
+/* Form inputs */
+.form-control,
+.form-select {
+  font-size: 13.5px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px !important;
+  padding: 6px 10px;
+  color: var(--dh-text-main);
+  box-shadow: none !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--dh-primary);
+}
+
+.form-control-sm,
+.form-select-sm {
+  height: 30px;
+  font-size: 12.5px;
+  padding: 3px 8px;
+}
+
+/* Badges */
+.badge {
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+/* In ấn */
 @media print {
   .sidebar,
-  header,
+  .header-bar,
   .no-print {
     display: none !important;
   }
 
-  body {
+  body, .app-shell, .main-panel, .main-content {
     background: #ffffff !important;
-  }
-
-  .main-panel {
-    width: 100% !important;
+    padding: 0 !important;
     margin: 0 !important;
-    padding: 0 !important;
+    width: 100% !important;
   }
 
-  main {
-    padding: 0 !important;
-  }
-
-  .card,
   .table-responsive {
     border: none !important;
     overflow: visible !important;

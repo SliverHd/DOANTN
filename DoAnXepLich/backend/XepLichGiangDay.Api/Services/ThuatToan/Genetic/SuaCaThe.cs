@@ -1,4 +1,4 @@
-namespace XepLichGiangDay.Api.Services.ThuatToan.Genetic;
+﻿namespace XepLichGiangDay.Api.Services.ThuatToan.Genetic;
 
 public class ThoiGianLop
 {
@@ -53,7 +53,7 @@ public class SuaCaThe
         Dictionary<int, List<int>> ungVienTheoLop,
         HashSet<int>? cacLopCoDinh = null,
         Dictionary<int, List<ThoiGianBan>>? lichBanTheoGv = null,
-        int maxPasses = 3)
+        int maxPasses = 5)
     {
         if (caThe == null || caThe.DanhSachGen.Count == 0) return caThe!;
 
@@ -190,6 +190,28 @@ public class SuaCaThe
                                 }
                             }
 
+                            // Bổ sung Toán tử Hoán đổi (Swap Repair): Khi chuyển 1 chiều thất bại,
+                            // thử hoán đổi 2 lớp giữa 2 giảng viên phù hợp chuyên môn
+                            if (!daSuaCapNay)
+                            {
+                                foreach (var lopDoi in danhSachLopThuDoi)
+                                {
+                                    if (ungVienTheoLop.TryGetValue(lopDoi, out var dsUngVien) &&
+                                        thoiGianTheoLop.TryGetValue(lopDoi, out var tgLopDoi))
+                                    {
+                                        if (ThuHoanDoiHaiGiangVien(
+                                            gvId, lopDoi, tgLopDoi, dsUngVien,
+                                            genTheoLop, lopTheoGv, thoiGianTheoLop, ungVienTheoLop,
+                                            cacLopCoDinh, lichBanTheoGv))
+                                        {
+                                            coThayDoi = true;
+                                            daSuaCapNay = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
                             if (daSuaCapNay) break;
                         }
                     }
@@ -255,6 +277,113 @@ public class SuaCaThe
         }
 
         return ungVienTot;
+    }
+
+    /// <summary>
+    /// Toán tử hoán đổi (Swap Repair): Khi giảng viên gvA bị kẹt lịch ở lớp lopA,
+    /// tìm giảng viên gvB và lớp lopB của gvB sao cho:
+    /// 1. gvB có chuyên môn dạy lopA và không bị trùng lịch/vướng bận khi nhận lopA (sau khi nhả lopB).
+    /// 2. gvA có chuyên môn dạy lopB và không bị trùng lịch/vướng bận khi nhận lopB (sau khi nhả lopA).
+    /// 3. Cả 2 lớp đều không bị khóa ghim.
+    /// </summary>
+    private bool ThuHoanDoiHaiGiangVien(
+        int gvA,
+        int lopA,
+        List<ThoiGianLop> tgLopA,
+        List<int> dsUngVienCuaLopA,
+        Dictionary<int, Gen> genTheoLop,
+        Dictionary<int, List<int>> lopTheoGv,
+        Dictionary<int, List<ThoiGianLop>> thoiGianTheoLop,
+        Dictionary<int, List<int>> ungVienTheoLop,
+        HashSet<int>? cacLopCoDinh,
+        Dictionary<int, List<ThoiGianBan>>? lichBanTheoGv)
+    {
+        // Shuffle danh sách ứng viên của lopA để đảm bảo đa dạng nghiệm
+        var danhSachUngVien = dsUngVienCuaLopA.Where(x => x != gvA).OrderBy(_ => _random.Next()).ToList();
+
+        foreach (var gvB in danhSachUngVien)
+        {
+            if (!lopTheoGv.TryGetValue(gvB, out var dsLopCuaB) || dsLopCuaB.Count == 0) continue;
+
+            var dsLopBThucTe = dsLopCuaB.OrderBy(_ => _random.Next()).ToList();
+
+            foreach (var lopB in dsLopBThucTe)
+            {
+                // Không hoán đổi lớp đã bị khóa ghim
+                if (cacLopCoDinh != null && cacLopCoDinh.Contains(lopB)) continue;
+
+                // Điều kiện 1: gvA phải có chuyên môn dạy lopB
+                if (!ungVienTheoLop.TryGetValue(lopB, out var dsUvCuaLopB) || !dsUvCuaLopB.Contains(gvA))
+                {
+                    continue;
+                }
+
+                if (!thoiGianTheoLop.TryGetValue(lopB, out var tgLopB)) continue;
+
+                // Điều kiện 2: gvB nhận lopA (sau khi nhả lopB) có hợp lệ không?
+                if (CoVuongLichBan(gvB, tgLopA, lichBanTheoGv)) continue;
+                if (CoTrungLopConLai(gvB, tgLopA, lopB, lopTheoGv, thoiGianTheoLop)) continue;
+
+                // Điều kiện 3: gvA nhận lopB (sau khi nhả lopA) có hợp lệ không?
+                if (CoVuongLichBan(gvA, tgLopB, lichBanTheoGv)) continue;
+                if (CoTrungLopConLai(gvA, tgLopB, lopA, lopTheoGv, thoiGianTheoLop)) continue;
+
+                // THỎA MÃN TOÀN DIỆN! TIẾN HÀNH HOÁN ĐỔI 2 CHIỀU:
+                if (genTheoLop.TryGetValue(lopA, out var genA) && genTheoLop.TryGetValue(lopB, out var genB))
+                {
+                    genA.MaGiangVien = gvB;
+                    genB.MaGiangVien = gvA;
+
+                    // Cập nhật cấu trúc tra cứu lopTheoGv
+                    if (lopTheoGv.TryGetValue(gvA, out var dsA))
+                    {
+                        dsA.Remove(lopA);
+                        dsA.Add(lopB);
+                    }
+                    if (lopTheoGv.TryGetValue(gvB, out var dsB))
+                    {
+                        dsB.Remove(lopB);
+                        dsB.Add(lopA);
+                    }
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool CoVuongLichBan(int gvId, List<ThoiGianLop> tgLop, Dictionary<int, List<ThoiGianBan>>? lichBanTheoGv)
+    {
+        if (lichBanTheoGv != null && lichBanTheoGv.TryGetValue(gvId, out var dsBan))
+        {
+            return tgLop.Any(tLop => dsBan.Any(tBan => tBan.TrungGioVoi(tLop)));
+        }
+        return false;
+    }
+
+    private static bool CoTrungLopConLai(
+        int gvId,
+        List<ThoiGianLop> tgLopMoi,
+        int lopBoQua,
+        Dictionary<int, List<int>> lopTheoGv,
+        Dictionary<int, List<ThoiGianLop>> thoiGianTheoLop)
+    {
+        if (!lopTheoGv.TryGetValue(gvId, out var dsLop)) return false;
+
+        foreach (var maLop in dsLop)
+        {
+            if (maLop == lopBoQua) continue;
+            if (thoiGianTheoLop.TryGetValue(maLop, out var tgHienCo))
+            {
+                if (tgLopMoi.Any(tMoi => tgHienCo.Any(tHc => tMoi.TrungGioVoi(tHc))))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 

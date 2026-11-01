@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+﻿import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { hocKyApi } from '../../api/hocKyApi'
 import { xepLichApi } from '../../api/xepLichApi'
@@ -10,10 +10,10 @@ function ChayXepLich() {
   const [form, setForm] = useState<YeuCauXepLich>({
     maHocKy: 0,
     thuatToan: 'GA',
-    kichThuocQuanThe: 50,
-    soTheHe: 100,
-    tyLeLaiGhep: 0.8,
-    tyLeDotBien: 0.05,
+    kichThuocQuanThe: 80,
+    soTheHe: 350,
+    tyLeLaiGhep: 0.85,
+    tyLeDotBien: 0.08,
     thoiGianChayToiDa: 30,
     soLuongWorker: 1,
   })
@@ -140,7 +140,6 @@ function ChayXepLich() {
                   value={form.kichThuocQuanThe ?? ''}
                   onChange={(event) => capNhatSo('kichThuocQuanThe', event.target.value)}
                 />
-                <small className="text-muted" style={{ fontSize: '0.75rem' }}>Mặc định: 50 cá thể</small>
               </div>
 
               <div className="col-md-3">
@@ -156,7 +155,6 @@ function ChayXepLich() {
                   value={form.soTheHe ?? ''}
                   onChange={(event) => capNhatSo('soTheHe', event.target.value)}
                 />
-                <small className="text-muted" style={{ fontSize: '0.75rem' }}>Mặc định: 100 thế hệ</small>
               </div>
 
               <div className="col-md-3">
@@ -173,7 +171,6 @@ function ChayXepLich() {
                   value={form.tyLeLaiGhep ?? ''}
                   onChange={(event) => capNhatSo('tyLeLaiGhep', event.target.value)}
                 />
-                <small className="text-muted" style={{ fontSize: '0.75rem' }}>Mặc định: 0.8 (80%)</small>
               </div>
 
               <div className="col-md-3">
@@ -190,7 +187,6 @@ function ChayXepLich() {
                   value={form.tyLeDotBien ?? ''}
                   onChange={(event) => capNhatSo('tyLeDotBien', event.target.value)}
                 />
-                <small className="text-muted" style={{ fontSize: '0.75rem' }}>Mặc định: 0.05 (5%)</small>
               </div>
             </>
           )}
@@ -210,7 +206,6 @@ function ChayXepLich() {
                   value={form.thoiGianChayToiDa ?? 30}
                   onChange={(event) => capNhatSo('thoiGianChayToiDa', event.target.value)}
                 />
-                <small className="text-muted" style={{ fontSize: '0.75rem' }}>Mặc định: 30 giây</small>
               </div>
 
               <div className="col-md-6">
@@ -226,7 +221,6 @@ function ChayXepLich() {
                   value={form.soLuongWorker ?? 1}
                   onChange={(event) => capNhatSo('soLuongWorker', event.target.value)}
                 />
-                <small className="text-muted" style={{ fontSize: '0.75rem' }}>Mặc định: 1 worker</small>
               </div>
             </>
           )}

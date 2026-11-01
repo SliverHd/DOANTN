@@ -1,4 +1,4 @@
-using XepLichGiangDay.Api.Models.Entities;
+﻿using XepLichGiangDay.Api.Models.Entities;
 
 namespace XepLichGiangDay.Api.Services.RangBuoc;
 
@@ -143,13 +143,20 @@ public class BoKiemTraRangBuoc
                         ct1.Thu, ct1.TietBatDau, ct1.TietKetThuc, ct1.TuTuan, ct1.DenTuan,
                         ct2.Thu, ct2.TietBatDau, ct2.TietKetThuc, ct2.TuTuan, ct2.DenTuan))
                     {
-                        ketQua.SoViPhamTrungLich++;
                         var lop1 = dsLop.FirstOrDefault(x => x.MaLopHocPhan == ct1.MaLopHocPhan);
                         var lop2 = dsLop.FirstOrDefault(x => x.MaLopHocPhan == ct2.MaLopHocPhan);
-                        string maLop1 = lop1 != null ? lop1.MaLopHocPhanTruong : $"Lop #{ct1.MaLopHocPhan}";
-                        string maLop2 = lop2 != null ? lop2.MaLopHocPhanTruong : $"Lop #{ct2.MaLopHocPhan}";
 
-                        ketQua.DanhSachViPham.Add($"{tenGv} bi trung lich day giua lop [{maLop1}] va [{maLop2}] vao Thu {ct1.Thu}, tiet {Math.Max(ct1.TietBatDau, ct2.TietBatDau)}-{Math.Min(ct1.TietKetThuc, ct2.TietKetThuc)}.");
+                        // Miá»…n trá»« náº¿u lĂ  lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n vĂ  cĂ¹ng ca/phĂ²ng
+                        bool laLopGhep = lop1 != null && lop2 != null && lop1.MaHocPhan == lop2.MaHocPhan &&
+                            ct1.Thu == ct2.Thu && ct1.TietBatDau == ct2.TietBatDau && ct1.TietKetThuc == ct2.TietKetThuc;
+
+                        if (!laLopGhep)
+                        {
+                            ketQua.SoViPhamTrungLich++;
+                            string maLop1 = lop1 != null ? lop1.MaLopHocPhanTruong : $"Lop #{ct1.MaLopHocPhan}";
+                            string maLop2 = lop2 != null ? lop2.MaLopHocPhanTruong : $"Lop #{ct2.MaLopHocPhan}";
+                            ketQua.DanhSachViPham.Add($"{tenGv} bi trung lich day giua lop [{maLop1}] va [{maLop2}] vao Thu {ct1.Thu}, tiet {Math.Max(ct1.TietBatDau, ct2.TietBatDau)}-{Math.Min(ct1.TietKetThuc, ct2.TietKetThuc)}.");
+                        }
                     }
                 }
 

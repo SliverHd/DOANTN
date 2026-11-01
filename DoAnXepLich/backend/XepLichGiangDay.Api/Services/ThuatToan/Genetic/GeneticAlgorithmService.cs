@@ -43,7 +43,67 @@ public class GeneticAlgorithmService(
             .ToDictionary(g => g.Key, g => g.First().MaGiangVien);
         var cacLopCoDinh = phanCongKhoa.Keys.ToHashSet();
 
-        // 3. Tạo danh sách ứng viên chuyên môn cho từng lớp học phần
+        // 3. XỬ LÝ GỘP CỤM LỚP GHÉP (Class Clustering / Joint Sessions Pre-processing)
+        // Gom các lớp học phần học chung cùng môn, cùng thứ, tiết, tuần, phòng thành 1 ca dạy duy nhất
+        string TaoChuKyCacBuoiHoc(int maLop, int maHocPhan)
+        {
+            if (!boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt) || dsCt.Count == 0)
+            {
+                return $"HP_{maHocPhan}_LOP_{maLop}";
+            }
+            var chuoiBuoi = string.Join("|", dsCt
+                .OrderBy(c => c.Thu)
+                .ThenBy(c => c.TietBatDau)
+                .ThenBy(c => c.TuTuan)
+                .Select(c => $"{c.Thu}_{c.TietBatDau}_{c.TietKetThuc}_{c.TuTuan}_{c.DenTuan}_{c.PhongHoc?.Trim().ToUpperInvariant()}"));
+            return $"HP_{maHocPhan}:{chuoiBuoi}";
+        }
+
+        var nhomLopGhep = boiCanh.DanhSachLop
+            .GroupBy(lop => TaoChuKyCacBuoiHoc(lop.MaLopHocPhan, lop.MaHocPhan))
+            .ToList();
+
+        // Ánh xạ lớp đại diện -> Danh sách các lớp thành viên
+        var mapLopGhep = new Dictionary<int, List<LopHocPhan>>();
+        var dsLopDaiDien = new List<LopHocPhan>();
+        var phanCongKhoaDaiDien = new Dictionary<int, int>();
+        var cacLopCoDinhDaiDien = new HashSet<int>();
+
+        foreach (var nhom in nhomLopGhep)
+        {
+            var dsThanhVien = nhom.ToList();
+            // Ưu tiên chọn lớp nào đã bị khóa ghim làm đại diện
+            var lopDaiDien = dsThanhVien.FirstOrDefault(l => cacLopCoDinh.Contains(l.MaLopHocPhan)) ?? dsThanhVien.First();
+
+            mapLopGhep[lopDaiDien.MaLopHocPhan] = dsThanhVien;
+            dsLopDaiDien.Add(lopDaiDien);
+
+            // Đồng bộ khóa ghim: nếu bất kỳ lớp nào trong cụm bị khóa ghim, lớp đại diện cũng bị khóa theo GV đó
+            var lopBiKhoa = dsThanhVien.FirstOrDefault(l => cacLopCoDinh.Contains(l.MaLopHocPhan));
+            if (lopBiKhoa != null)
+            {
+                int gvKhoa = phanCongKhoa[lopBiKhoa.MaLopHocPhan];
+                phanCongKhoaDaiDien[lopDaiDien.MaLopHocPhan] = gvKhoa;
+                cacLopCoDinhDaiDien.Add(lopDaiDien.MaLopHocPhan);
+            }
+        }
+
+        // Tạo bối cảnh rút gọn chỉ chứa các lớp đại diện phục vụ đường ống tiến hóa GA
+        var boiCanhRutGon = new BoiCanhDanhGia
+        {
+            MaHocKy = boiCanh.MaHocKy,
+            DanhSachLop = dsLopDaiDien,
+            LopTheoMa = dsLopDaiDien.ToDictionary(l => l.MaLopHocPhan),
+            ChiTietTheoLop = boiCanh.ChiTietTheoLop,
+            GiangVienTheoMa = boiCanh.GiangVienTheoMa,
+            NangLucTheoGv = boiCanh.NangLucTheoGv,
+            LichBanTheoGv = boiCanh.LichBanTheoGv,
+            NguyenVongTheoGv = boiCanh.NguyenVongTheoGv,
+            DinhMucTheoGv = boiCanh.DinhMucTheoGv,
+            TrongSoRangBuoc = boiCanh.TrongSoRangBuoc
+        };
+
+        // 4. Tạo danh sách ứng viên chuyên môn cho từng lớp học phần
         var dsNangLuc = await context.NangLucGiangDay
             .Where(x => string.IsNullOrEmpty(x.TrangThai) || x.TrangThai == "DangApDung")
             .ToListAsync(cancellationToken);
@@ -55,12 +115,12 @@ public class GeneticAlgorithmService(
             boiCanh.LichBanTheoGv.Values.SelectMany(x => x).ToList(),
             boiCanh.GiangVienTheoMa.Values.ToList());
 
-        // 4. TIỀN KIỂM TRA TẬP ỨNG VIÊN (Domain Feasibility Check)
-        // Nếu có bất kỳ lớp nào chưa khóa mà không có ứng viên hợp lệ -> dừng ngay và báo lỗi rõ ràng
+        // 5. TIỀN KIỂM TRA TẬP ỨNG VIÊN (Domain Feasibility Check)
+        // Kiểm tra trên danh sách các lớp đại diện
         var cacLopKhongCoUngVien = new List<string>();
-        foreach (var lop in boiCanh.DanhSachLop)
+        foreach (var lop in dsLopDaiDien)
         {
-            if (cacLopCoDinh.Contains(lop.MaLopHocPhan)) continue;
+            if (cacLopCoDinhDaiDien.Contains(lop.MaLopHocPhan)) continue;
 
             if (!ungVienTheoLop.TryGetValue(lop.MaLopHocPhan, out var dsUv) || dsUv.Count == 0)
             {
@@ -84,7 +144,7 @@ public class GeneticAlgorithmService(
             };
         }
 
-        // 5. Chuẩn bị bảng thời gian các lớp và lịch bận giảng viên phục vụ toán tử sửa lỗi & Heuristic Seeding
+        // 6. Chuẩn bị bảng thời gian các lớp và lịch bận giảng viên phục vụ toán tử sửa lỗi & Heuristic Seeding
         var thoiGianTheoLop = boiCanh.ChiTietTheoLop.ToDictionary(
             kv => kv.Key,
             kv => kv.Value.Select(ct => new ThoiGianLop
@@ -108,15 +168,15 @@ public class GeneticAlgorithmService(
             }).ToList()
         );
 
-        // 6. Cấu hình tham số tiến hóa GA chuẩn hóa
+        // 7. Cấu hình tham số tiến hóa GA chuẩn hóa
         var cauHinh = new CauHinhGa
         {
-            KichThuocQuanThe = duLieu.KichThuocQuanThe.GetValueOrDefault(50),
-            SoTheHe = duLieu.SoTheHe.GetValueOrDefault(100),
-            TyLeLaiGhep = duLieu.TyLeLaiGhep.GetValueOrDefault(0.8),
-            TyLeDotBien = duLieu.TyLeDotBien.GetValueOrDefault(0.05),
-            KichThuocGiaiDau = duLieu.KichThuocGiaiDau.GetValueOrDefault(3),
-            SoCaTheUuTu = duLieu.SoCaTheUuTu.GetValueOrDefault(2),
+            KichThuocQuanThe = duLieu.KichThuocQuanThe.GetValueOrDefault(80),
+            SoTheHe = duLieu.SoTheHe.GetValueOrDefault(350),
+            TyLeLaiGhep = duLieu.TyLeLaiGhep.GetValueOrDefault(0.85),
+            TyLeDotBien = duLieu.TyLeDotBien.GetValueOrDefault(0.08),
+            KichThuocGiaiDau = duLieu.KichThuocGiaiDau.GetValueOrDefault(4),
+            SoCaTheUuTu = duLieu.SoCaTheUuTu.GetValueOrDefault(3),
             RandomSeed = duLieu.RandomSeed,
             ThoiGianChayToiDaGiay = duLieu.ThoiGianChayToiDa.GetValueOrDefault(30.0)
         };
@@ -131,14 +191,14 @@ public class GeneticAlgorithmService(
         var dotBien = new DotBien(random);
         var suaCaThe = new SuaCaThe(random);
 
-        var danhSachMaLop = boiCanh.DanhSachLop.Select(x => x.MaLopHocPhan).ToList();
+        var danhSachMaLopDaiDien = dsLopDaiDien.Select(x => x.MaLopHocPhan).ToList();
 
-        // 7. Khởi tạo quần thể ban đầu kết hợp Heuristic Seeding & Random
+        // 8. Khởi tạo quần thể ban đầu kết hợp Heuristic Seeding & Random trên tập lớp đại diện
         var quanThe = khoiTao.TaoQuanTheBanDau(
             cauHinh.KichThuocQuanThe,
-            danhSachMaLop,
+            danhSachMaLopDaiDien,
             ungVienTheoLop,
-            phanCongKhoa,
+            phanCongKhoaDaiDien,
             thoiGianTheoLop,
             lichBanTheoGv);
 
@@ -147,7 +207,7 @@ public class GeneticAlgorithmService(
             foreach (var ct in danhSach)
             {
                 var dictPhanCong = ct.DanhSachGen.ToDictionary(g => g.MaLopHocPhan, g => (int?)g.MaGiangVien);
-                var kq = boDanhGia.DanhGia(dictPhanCong, boiCanh);
+                var kq = boDanhGia.DanhGia(dictPhanCong, boiCanhRutGon);
                 ct.KetQuaDanhGia = kq;
                 ct.DiemPhat = kq.TongDiemPhat;
                 ct.SoViPhamCung = kq.SoViPhamCung;
@@ -165,9 +225,9 @@ public class GeneticAlgorithmService(
 
         int theHeThucTe = 0;
         int soTheHeKhongCaiThien = 0;
-        const int NguongTriTre = 25;
+        const int NguongTriTre = 75;
 
-        // 8. Vòng lặp tiến hóa qua các thế hệ
+        // 9. Vòng lặp tiến hóa qua các thế hệ
         for (int gen = 1; gen <= cauHinh.SoTheHe; gen++)
         {
             theHeThucTe = gen;
@@ -207,9 +267,9 @@ public class GeneticAlgorithmService(
                 var cha = chonLoc.ChonCaTheChaMe(quanThe, cauHinh.KichThuocGiaiDau);
                 var me = chonLoc.ChonCaTheChaMe(quanThe, cauHinh.KichThuocGiaiDau);
 
-                var con = laiGhep.TaoCon(cha, me, cauHinh.TyLeLaiGhep, cacLopCoDinh);
-                con = dotBien.ThucHien(con, tyLeDotBienHienTai, ungVienTheoLop, cacLopCoDinh);
-                con = suaCaThe.SuaNeuViPham(con, thoiGianTheoLop, ungVienTheoLop, cacLopCoDinh, lichBanTheoGv);
+                var con = laiGhep.TaoCon(cha, me, cauHinh.TyLeLaiGhep, cacLopCoDinhDaiDien);
+                con = dotBien.ThucHien(con, tyLeDotBienHienTai, ungVienTheoLop, cacLopCoDinhDaiDien);
+                con = suaCaThe.SuaNeuViPham(con, thoiGianTheoLop, ungVienTheoLop, cacLopCoDinhDaiDien, lichBanTheoGv);
 
                 theHeMoi.Add(con);
             }
@@ -241,12 +301,40 @@ public class GeneticAlgorithmService(
 
         sw.Stop();
 
-        // 9. Kiểm tra độc lập nghiệm tốt nhất trước khi kết luận
-        var dictNghiemCuoi = bestOverall.DanhSachGen.ToDictionary(g => g.MaLopHocPhan, g => (int?)g.MaGiangVien);
-        var finalCheck = boDanhGia.DanhGia(dictNghiemCuoi, boiCanh);
+        // 10. HẬU XỬ LÝ (Post-processing Expansion): Bung nghiệm từ các lớp đại diện ra toàn bộ các lớp thành viên
+        var danhSachGenDayDu = new List<Gen>();
+        foreach (var genDd in bestOverall.DanhSachGen)
+        {
+            if (mapLopGhep.TryGetValue(genDd.MaLopHocPhan, out var dsThanhVien))
+            {
+                foreach (var lopTv in dsThanhVien)
+                {
+                    danhSachGenDayDu.Add(new Gen
+                    {
+                        MaLopHocPhan = lopTv.MaLopHocPhan,
+                        MaGiangVien = genDd.MaGiangVien
+                    });
+                }
+            }
+            else
+            {
+                danhSachGenDayDu.Add(new Gen
+                {
+                    MaLopHocPhan = genDd.MaLopHocPhan,
+                    MaGiangVien = genDd.MaGiangVien
+                });
+            }
+        }
+        bestOverall.DanhSachGen = danhSachGenDayDu;
+
+        // Đánh giá kiểm tra độc lập toàn bộ phương án đã bung trên bối cảnh học kỳ gốc đầy đủ
+        var dictNghiemCuoiDayDu = bestOverall.DanhSachGen.ToDictionary(g => g.MaLopHocPhan, g => (int?)g.MaGiangVien);
+        var finalCheck = boDanhGia.DanhGia(dictNghiemCuoiDayDu, boiCanh);
         bestOverall.KetQuaDanhGia = finalCheck;
+        bestOverall.DiemPhat = finalCheck.TongDiemPhat;
         bestOverall.SoViPhamCung = finalCheck.SoViPhamCung;
         bestOverall.TongDiemPhatMem = finalCheck.TongDiemPhatMem;
+        bestOverall.DoThichNghi = finalCheck.DoThichNghi;
 
         var dsPhanCongDto = new List<PhanCongDto>();
         foreach (var gen in bestOverall.DanhSachGen)
@@ -311,6 +399,48 @@ public class GeneticAlgorithmService(
             ThoiGianChayGiay = Math.Round(sw.Elapsed.TotalSeconds, 2),
             TrangThai = trangThaiKetQua,
             ThongDiep = thongDiepKetQua,
+                LichSuDiemPhatTheoTheHe = lichSuDiemPhat,
+                DanhSachViPham = finalCheck.DanhSachViPham,
+                ChiTietViPham = finalCheck.DanhSachCanhBaoMem,
+                DanhSachPhanCong = dsPhanCongDto
+            };
+        }
+
+        // KHI NGHIỆM THỎA MÃN 100% RÀNG BUỘC CỨNG: Cập nhật CSDL an toàn qua LuuKetQuaXepLichService
+        var dictPhanCongCuoi = bestOverall.DanhSachGen.ToDictionary(g => g.MaLopHocPhan, g => (int?)g.MaGiangVien);
+        var ketQuaLuu = await luuKetQuaService.LuuPhanCongAsync(
+            duLieu.MaHocKy,
+            TenThuatToan,
+            dictPhanCongCuoi,
+            boiCanh,
+            cancellationToken);
+
+        string thongBaoKhoa = ketQuaLuu.SoLopGiuKhoa > 0
+            ? $" ({ketQuaLuu.SoLopGiuKhoa} lớp đã khóa được giữ nguyên phân công)."
+            : "";
+
+        string trangThaiKetQua = finalCheck.TongDiemPhatMem <= 0.0001
+            ? "ToiUuTuyetDoi"
+            : "ThoaManRangBuocCung";
+
+        return new KetQuaXepLichDto
+        {
+            ThuatToan = TenThuatToan,
+            TongDiemPhat = finalCheck.TongDiemPhat,
+            DoThichNghi = finalCheck.DoThichNghi,
+            DiemPhatRangBuocCung = finalCheck.DiemPhatRangBuocCung,
+            DiemPhatNguyenVong = finalCheck.DiemPhatNguyenVong,
+            DiemPhatCanBangTai = finalCheck.DiemPhatCanBangTai,
+            DiemPhatGomLich = finalCheck.DiemPhatGomLich,
+            SoViPhamCung = 0,
+            SoLopChuaPhanCong = finalCheck.SoLopChuaPhanCong,
+            SoTheHeThucTe = theHeThucTe,
+            ThoiGianChayMiligiay = sw.ElapsedMilliseconds,
+            ThoiGianChayGiay = Math.Round(sw.Elapsed.TotalSeconds, 2),
+            TrangThai = trangThaiKetQua,
+            ThongDiep = (trangThaiKetQua == "ToiUuTuyetDoi"
+                ? $"GA tìm thấy phương án tối ưu tuyệt đối (điểm phạt = 0) tại thế hệ {theHeThucTe}."
+                : $"GA tìm thấy phương án thỏa mãn 100% ràng buộc cứng sau {theHeThucTe} thế hệ (Tổng điểm phạt mềm: {Math.Round(finalCheck.TongDiemPhatMem, 1)}).") + thongBaoKhoa,
             LichSuDiemPhatTheoTheHe = lichSuDiemPhat,
             DanhSachViPham = finalCheck.DanhSachViPham,
             ChiTietViPham = finalCheck.DanhSachCanhBaoMem,

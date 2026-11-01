@@ -219,7 +219,12 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
                 int tuTuan = 1, denTuan = 16;
                 if (colTuanHoc > 0)
                 {
-                    var tuanStr = row.Cell(colTuanHoc).GetString();
+                    var cellTuan = row.Cell(colTuanHoc);
+                    string tuanStr = cellTuan.GetText();
+                    if (string.IsNullOrEmpty(tuanStr))
+                    {
+                        tuanStr = cellTuan.GetString();
+                    }
                     if (!string.IsNullOrWhiteSpace(tuanStr))
                     {
                         int firstWeek = -1;
