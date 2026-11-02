@@ -29,3 +29,8 @@ yarn-error.log*
 AGENTS.md
 PROJECT_OVERVIEW.md
 
+
+# Deploy & Publish artifacts
+publish_site/
+deploy.zip
+**/wwwroot/
