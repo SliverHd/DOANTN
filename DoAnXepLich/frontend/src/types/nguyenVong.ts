@@ -52,6 +52,8 @@ export interface ThemNguyenVongRequest {
   thu?: number
   tietBatDau?: number
   tietKetThuc?: number
+  tuTuan?: number
+  denTuan?: number
   trongSoPhat: number
   lyDo?: string
 }

@@ -158,7 +158,7 @@ function Sidebar({ thuGon }: SidebarProps) {
       {/* Khung Logo ở đầu Sidebar theo phong cách mẫu ảnh */}
       <div className="sidebar-logo-box">
         <div className="sidebar-logo-badge" title="Trường Đại học Xây dựng Hà Nội">
-          <img src={logoXayDung} alt="Đại học Xây dựng" />
+          <img src={logoXayDung} alt="Đại học Xây dựng" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         {!thuGon && (
           <div className="ms-2 sidebar-header-title">

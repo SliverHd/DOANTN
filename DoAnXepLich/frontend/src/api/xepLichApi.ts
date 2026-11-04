@@ -32,6 +32,11 @@ export const xepLichApi = {
       `/xep-lich/huy-phan-cong/${maLopHocPhan}`
     ),
 
+  datLaiPhanCong: (maHocKy: number) =>
+    axiosClient.post<{ thanhCong: boolean; soLopXoa: number; thongBao: string }>(
+      `/xep-lich/dat-lai-phan-cong/${maHocKy}`
+    ),
+
   layThongKeTai: (maHocKy: number) =>
     axiosClient.get<ThongKeTaiGv[]>(`/xep-lich/thong-ke-tai/${maHocKy}`),
 

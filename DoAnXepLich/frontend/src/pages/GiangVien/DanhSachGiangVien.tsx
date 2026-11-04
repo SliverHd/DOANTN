@@ -362,10 +362,18 @@ function DanhSachGiangVien() {
                     <input
                       type="text"
                       className="form-control"
+                      list="dsChucDanhGoiY"
                       value={formData.chucDanh}
                       onChange={(e) => setFormData({ ...formData, chucDanh: e.target.value })}
-                      placeholder="VD: Giảng viên, Phó giáo sư, Trưởng bộ môn..."
+                      placeholder="VD: Giảng viên, Trợ giảng, Thỉnh giảng, Phó giáo sư..."
                     />
+                    <datalist id="dsChucDanhGoiY">
+                      <option value="Giảng viên" />
+                      <option value="Trợ giảng" />
+                      <option value="Thỉnh giảng" />
+                      <option value="Trưởng bộ môn" />
+                      <option value="Phó trưởng bộ môn" />
+                    </datalist>
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Bộ môn trực thuộc</label>

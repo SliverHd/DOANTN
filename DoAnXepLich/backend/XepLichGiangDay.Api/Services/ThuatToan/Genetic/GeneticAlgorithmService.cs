@@ -353,14 +353,18 @@ public class GeneticAlgorithmService(
             }
         }
 
-        // 10. GHI ĐÈ KẾT QUẢ VÀO CSDL (Đảm bảo đồ án luôn lưu và hiển thị kết quả của thuật toán vừa chạy)
+        // 10. GHI ĐÈ KẾT QUẢ VÀO CSDL (nếu duLieu.LuuKetQua == true)
         var dictPhanCongCuoi = bestOverall.DanhSachGen.ToDictionary(g => g.MaLopHocPhan, g => (int?)g.MaGiangVien);
-        var ketQuaLuu = await luuKetQuaService.LuuPhanCongAsync(
-            duLieu.MaHocKy,
-            TenThuatToan,
-            dictPhanCongCuoi,
-            boiCanh,
-            cancellationToken);
+        KetQuaLuuPhanCong ketQuaLuu = new();
+        if (duLieu.LuuKetQua)
+        {
+            ketQuaLuu = await luuKetQuaService.LuuPhanCongAsync(
+                duLieu.MaHocKy,
+                TenThuatToan,
+                dictPhanCongCuoi,
+                boiCanh,
+                cancellationToken);
+        }
 
         string thongBaoKhoa = ketQuaLuu.SoLopGiuKhoa > 0
             ? $" ({ketQuaLuu.SoLopGiuKhoa} lớp đã khóa được giữ nguyên phân công)."
@@ -372,17 +376,17 @@ public class GeneticAlgorithmService(
         if (finalCheck.SoViPhamCung > 0)
         {
             trangThaiKetQua = "ConViPham";
-            thongDiepKetQua = $"Thuật toán GA đã chạy qua {theHeThucTe} thế hệ và đã lưu kết quả vào CSDL (Nguồn: GA). CẢNH BÁO: Còn {finalCheck.SoViPhamCung} vi phạm ràng buộc cứng (Tổng điểm phạt: {Math.Round(finalCheck.TongDiemPhat, 1)})." + thongBaoKhoa;
+            thongDiepKetQua = $"Thuật toán GA đã chạy qua {theHeThucTe} thế hệ{(duLieu.LuuKetQua ? " và đã lưu kết quả vào CSDL (Nguồn: GA)" : " (Chế độ thử nghiệm)")}. CẢNH BÁO: Còn {finalCheck.SoViPhamCung} vi phạm ràng buộc cứng (Tổng điểm phạt: {Math.Round(finalCheck.TongDiemPhat, 1)})." + thongBaoKhoa;
         }
         else if (finalCheck.TongDiemPhatMem <= 0.0001)
         {
             trangThaiKetQua = "ToiUuTuyetDoi";
-            thongDiepKetQua = $"GA tìm thấy phương án tối ưu tuyệt đối (điểm phạt = 0) tại thế hệ {theHeThucTe}." + thongBaoKhoa;
+            thongDiepKetQua = $"GA tìm thấy phương án tối ưu tuyệt đối (điểm phạt = 0) tại thế hệ {theHeThucTe}{(duLieu.LuuKetQua ? "" : " (Chế độ thử nghiệm)")}." + thongBaoKhoa;
         }
         else
         {
             trangThaiKetQua = "ThoaManRangBuocCung";
-            thongDiepKetQua = $"GA tìm thấy phương án thỏa mãn 100% ràng buộc cứng sau {theHeThucTe} thế hệ (Tổng điểm phạt mềm: {Math.Round(finalCheck.TongDiemPhatMem, 1)})." + thongBaoKhoa;
+            thongDiepKetQua = $"GA tìm thấy phương án thỏa mãn 100% ràng buộc cứng sau {theHeThucTe} thế hệ{(duLieu.LuuKetQua ? " và đã lưu vào CSDL" : " (Chế độ thử nghiệm)")} (Tổng điểm phạt mềm: {Math.Round(finalCheck.TongDiemPhatMem, 1)})." + thongBaoKhoa;
         }
 
         return new KetQuaXepLichDto

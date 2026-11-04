@@ -83,6 +83,9 @@ export interface DongPhanCongLop {
   trangThai: string
   daKhoa: boolean
   diemPhat: number
+  coLichTamNghi?: boolean
+  tuanTamNghi?: string
+  ghiChuTamNghi?: string
   danhSachUngVien: UngVienLop[]
 }
 

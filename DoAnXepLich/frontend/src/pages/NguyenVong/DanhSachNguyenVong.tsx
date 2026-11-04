@@ -51,6 +51,8 @@ function DanhSachNguyenVong() {
     thu: 2,
     tietBatDau: 1,
     tietKetThuc: 5,
+    tuTuan: 1,
+    denTuan: 20,
     trongSoPhat: DANH_MUC_RANG_BUOC_MEM[0].diemPhatMacDinh,
     lyDo: '',
   })
@@ -505,13 +507,46 @@ function DanhSachNguyenVong() {
                 </select>
               </div>
 
+              {/* Khoảng Tuần áp dụng */}
+              <div className="col-md-2">
+                <label className="form-label small fw-semibold">Từ tuần</label>
+                <select
+                  className="form-select form-select-sm"
+                  value={form.tuTuan ?? 1}
+                  onChange={(e) => {
+                    const w = Number(e.target.value)
+                    setForm({
+                      ...form,
+                      tuTuan: w,
+                      denTuan: (form.denTuan ?? 20) < w ? w : form.denTuan,
+                    })
+                  }}
+                >
+                  {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
+                    <option key={w} value={w}>Tuần {w}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-2">
+                <label className="form-label small fw-semibold">Đến tuần</label>
+                <select
+                  className="form-select form-select-sm"
+                  value={form.denTuan ?? 20}
+                  onChange={(e) => setForm({ ...form, denTuan: Number(e.target.value) })}
+                >
+                  {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
+                    <option key={w} value={w}>Tuần {w}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Lí do */}
               <div className="col-md-4">
                 <label className="form-label small fw-semibold">Lí do / Ghi chú của GV</label>
                 <input
                   type="text"
                   className="form-control form-control-sm"
-                  placeholder="VD: Bận nghiên cứu, con nhỏ, đi công tác, xin nghỉ..."
+                  placeholder="VD: Đi công tác, việc cá nhân, tập huấn..."
                   value={form.lyDo ?? ''}
                   onChange={(e) => setForm({ ...form, lyDo: e.target.value })}
                 />

@@ -50,6 +50,8 @@ public class ThemNguyenVongDto
     public int? Thu { get; set; }
     public int? TietBatDau { get; set; }
     public int? TietKetThuc { get; set; }
+    public int? TuTuan { get; set; } = 1;
+    public int? DenTuan { get; set; } = 20;
     public double TrongSoPhat { get; set; } = 10.0;
     public string? LyDo { get; set; }
 }

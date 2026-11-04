@@ -110,6 +110,16 @@ public class XepLichController(
     }
 
     /// <summary>
+    /// Đặt lại phân công của học kỳ: Xóa toàn bộ phân công dự kiến (chưa khóa) để đưa về trống, bảo toàn các lớp đã khóa.
+    /// </summary>
+    [HttpPost("dat-lai-phan-cong/{maHocKy:int}")]
+    public async Task<IActionResult> DatLaiPhanCong(int maHocKy, CancellationToken cancellationToken)
+    {
+        var soLopXoa = await xepLichService.DatLaiPhanCongAsync(maHocKy, cancellationToken);
+        return Ok(new { thanhCong = true, soLopXoa, thongBao = $"Đã đặt lại bảng phân công. Đã xóa {soLopXoa} lớp dự kiến; các lớp đã khóa (nếu có) được giữ nguyên." });
+    }
+
+    /// <summary>
     /// Thống kê khối lượng giảng dạy của toàn bộ giảng viên trong kỳ và so sánh định mức.
     /// </summary>
     [HttpGet("thong-ke-tai/{maHocKy:int}")]
@@ -159,17 +169,18 @@ public class XepLichController(
         {
             var tongQuan = await xepLichService.LayThongTinTongQuanHocKyAsync(request.MaHocKy, cancellationToken);
 
-            // 1. Chạy CP-SAT
+            // 1. Chạy CP-SAT (Chế độ so sánh: LuuKetQua = false để không ghi đè CSDL)
             var duLieuCpSat = new DuLieuXepLichDto
             {
                 MaHocKy = request.MaHocKy,
                 ThuatToan = "CP_SAT",
                 ThoiGianChayToiDa = request.ThoiGianChayToiDa > 0 ? request.ThoiGianChayToiDa : 15,
-                SoLuongWorker = 1
+                SoLuongWorker = 1,
+                LuuKetQua = false
             };
             var kqCpSat = await cpSatAlgo.ChayAsync(duLieuCpSat, cancellationToken);
 
-            // 2. Chạy GA
+            // 2. Chạy GA (Chế độ so sánh: LuuKetQua = false để không ghi đè CSDL)
             var duLieuGa = new DuLieuXepLichDto
             {
                 MaHocKy = request.MaHocKy,
@@ -177,7 +188,8 @@ public class XepLichController(
                 KichThuocQuanThe = request.KichThuocQuanThe > 0 ? request.KichThuocQuanThe : 50,
                 SoTheHe = request.SoTheHe > 0 ? request.SoTheHe : 100,
                 TyLeLaiGhep = request.TyLeLaiGhep > 0 ? request.TyLeLaiGhep : 0.8,
-                TyLeDotBien = request.TyLeDotBien > 0 ? request.TyLeDotBien : 0.15
+                TyLeDotBien = request.TyLeDotBien > 0 ? request.TyLeDotBien : 0.15,
+                LuuKetQua = false
             };
             var kqGa = await gaAlgo.ChayAsync(duLieuGa, cancellationToken);
 

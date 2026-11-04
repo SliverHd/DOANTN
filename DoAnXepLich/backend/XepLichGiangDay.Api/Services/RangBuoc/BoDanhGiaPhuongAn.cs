@@ -339,14 +339,41 @@ public class BoDanhGiaPhuongAn
             }
         }
 
-        // Ưu tiên GV cơ hữu đủ giờ trước khi dùng GV thỉnh giảng
+        // Ưu tiên GV cơ hữu đủ giờ trước khi dùng Trợ giảng / Thỉnh giảng
         if (boiCanh.GiangVienTheoMa.TryGetValue(maGiangVien, out var giangVien))
         {
             bool isThinhGiang = (giangVien.ChucDanh != null && giangVien.ChucDanh.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase)) ||
                                 giangVien.HoTen.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase);
+            bool isTroGiang = (giangVien.ChucDanh != null && giangVien.ChucDanh.Contains("trợ giảng", StringComparison.OrdinalIgnoreCase)) ||
+                              giangVien.HoTen.Contains("Trợ giảng", StringComparison.OrdinalIgnoreCase);
+
             if (isThinhGiang)
             {
                 diemPhat += 1.0 * boiCanh.TrongSoCoHuu;
+            }
+            else if (isTroGiang)
+            {
+                // Trợ giảng: Ưu tiên phân công nếu lớp là thực hành/phòng máy/bài tập
+                bool isLopThucHanh = false;
+                if (boiCanh.ChiTietTheoLop.TryGetValue(maLopHocPhan, out var dsCtLop))
+                {
+                    isLopThucHanh = dsCtLop.Any(ct =>
+                        !string.IsNullOrEmpty(ct.PhongHoc) &&
+                        (ct.PhongHoc.Contains("MAY", StringComparison.OrdinalIgnoreCase) ||
+                         ct.PhongHoc.Contains("LAB", StringComparison.OrdinalIgnoreCase) ||
+                         ct.PhongHoc.Contains("TH", StringComparison.OrdinalIgnoreCase)));
+                }
+
+                if (isLopThucHanh)
+                {
+                    // Lớp thực hành/phòng máy: Trợ giảng rất thích hợp -> thưởng nhẹ điểm
+                    diemPhat -= 0.5 * boiCanh.TrongSoCoHuu;
+                }
+                else
+                {
+                    // Lớp lý thuyết thuần: Ưu tiên nhẹ cho GV cơ hữu trước (phạt rất nhẹ để trợ giảng vẫn có thể dạy nếu cần)
+                    diemPhat += 0.2 * boiCanh.TrongSoCoHuu;
+                }
             }
         }
 
@@ -460,18 +487,23 @@ public class BoDanhGiaPhuongAn
             ((gv.ChucDanh != null && gv.ChucDanh.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase)) ||
              gv.HoTen.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase));
 
-        int minTiet = isThinhGiang ? 3 : 6;
-        int maxTiet = isThinhGiang ? 16 : 25;
+        bool isTroGiang = boiCanh.GiangVienTheoMa.TryGetValue(maGiangVien, out var gvTg) &&
+            ((gvTg.ChucDanh != null && gvTg.ChucDanh.Contains("trợ giảng", StringComparison.OrdinalIgnoreCase)) ||
+             gvTg.HoTen.Contains("Trợ giảng", StringComparison.OrdinalIgnoreCase));
+
+        int minTiet = isTroGiang ? 0 : (isThinhGiang ? 3 : 6);
+        int maxTiet = isTroGiang ? 12 : (isThinhGiang ? 16 : 25);
 
         if (boiCanh.DinhMucTheoGv.TryGetValue(maGiangVien, out var dm))
         {
-            if (dm.SoTietToiThieu > 0)
+            if (dm.SoTietToiThieu >= 0 && (!isTroGiang || dm.SoTietToiThieu > 0))
             {
                 minTiet = dm.SoTietToiThieu > 30 ? (int)Math.Ceiling(dm.SoTietToiThieu / 15.0) : dm.SoTietToiThieu;
             }
             if (dm.SoTietToiDa > 0)
             {
-                maxTiet = (dm.SoTietToiDa > 0 && dm.SoTietToiDa <= (isThinhGiang ? 16 : 25)) ? dm.SoTietToiDa : (isThinhGiang ? 16 : 25);
+                int maxGioiHan = isTroGiang ? 12 : (isThinhGiang ? 16 : 25);
+                maxTiet = (dm.SoTietToiDa > 0 && dm.SoTietToiDa <= maxGioiHan) ? dm.SoTietToiDa : maxGioiHan;
             }
         }
 
