@@ -161,4 +161,13 @@ export const DANH_MUC_RANG_BUOC_MEM: RangBuocMemItem[] = [
     tietKtMacDinh: 12,
     moTa: 'Gom các buổi dạy lại, tránh đi dạy rải rác',
   },
+  {
+    maRb: 'SC08',
+    tenRb: 'Xin nghỉ đột xuất / Tạm hoãn giảng dạy (theo tuần)',
+    diemPhatMacDinh: 50.0,
+    thuMacDinh: 2,
+    tietBdMacDinh: 1,
+    tietKtMacDinh: 12,
+    moTa: 'Giảng viên xin nghỉ đột xuất theo tuần/buổi cụ thể (công tác, việc riêng). Khi đơn được duyệt, lớp học phần trong tuần này sẽ hiển thị trạng thái Tạm hoãn.',
+  },
 ]

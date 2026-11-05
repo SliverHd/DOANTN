@@ -317,6 +317,20 @@ public class BoDanhGiaPhuongAn
                             canhBao = $"{tenGv} ưu tiên dạy ca chiều nhưng lớp [{maLopTruong}] học ca sáng (tiết {ct.TietBatDau}-{ct.TietKetThuc}).";
                         }
                     }
+                    // SC08: Xin nghỉ đột xuất / Tạm hoãn giảng dạy theo tuần
+                    else if (maRb == "SC08" || maRb == "NGHI_DOT_XUAT" || maRb == "XINNGHIDOTXUAT")
+                    {
+                        if (nv.Thu.HasValue && nv.Thu.Value == ct.Thu)
+                        {
+                            int nvTbd = nv.TietBatDau ?? 1;
+                            int nvTkt = nv.TietKetThuc ?? 12;
+                            if (Math.Max(nvTbd, ct.TietBatDau) <= Math.Min(nvTkt, ct.TietKetThuc))
+                            {
+                                diemPhat += trongSoNv * 3.0; // Phạt nặng để thuật toán né ca xin nghỉ đột xuất
+                                canhBao = $"{tenGv} có đơn xin nghỉ đột xuất vào Thứ {ct.Thu}, tiết {ct.TietBatDau}-{ct.TietKetThuc} ở lớp [{maLopTruong}].";
+                            }
+                        }
+                    }
                     // ThichDay theo khung giờ cụ thể
                     else if (maRb == "THICHDAY" && nv.Thu.HasValue)
                     {

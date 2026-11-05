@@ -1190,7 +1190,10 @@ function KetQuaXepLich() {
                       }}
                     >
                       <option value={-1}>-- Xem gộp tất cả các tuần --</option>
-                      {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => {
+                      {Array.from(
+                        { length: Math.max(35, ...(bangPhanCong?.danhSachLop?.map((l) => l.denTuan || 0) || [20])) },
+                        (_, i) => i + 1
+                      ).map((w) => {
                         const info = tinhNgayTrongTuan(hocKyHienTai?.ngayBatDau, w)
                         return (
                           <option key={w} value={w}>

@@ -53,7 +53,7 @@ function DanhSachNguyenVong() {
     tietBatDau: 1,
     tietKetThuc: 5,
     tuTuan: 1,
-    denTuan: 20,
+    denTuan: 52,
     trongSoPhat: DANH_MUC_RANG_BUOC_MEM[1].diemPhatMacDinh,
     lyDo: '',
   })
@@ -603,11 +603,11 @@ function DanhSachNguyenVong() {
                     setForm({
                       ...form,
                       tuTuan: w,
-                      denTuan: (form.denTuan ?? 20) < w ? w : form.denTuan,
+                      denTuan: (form.denTuan ?? 52) < w ? w : form.denTuan,
                     })
                   }}
                 >
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
                     <option key={w} value={w}>Tuần {w}</option>
                   ))}
                 </select>
@@ -616,10 +616,10 @@ function DanhSachNguyenVong() {
                 <label className="form-label small fw-semibold">Đến tuần</label>
                 <select
                   className="form-select form-select-sm"
-                  value={form.denTuan ?? 20}
+                  value={form.denTuan ?? 52}
                   onChange={(e) => setForm({ ...form, denTuan: Number(e.target.value) })}
                 >
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
                     <option key={w} value={w}>Tuần {w}</option>
                   ))}
                 </select>
