@@ -789,17 +789,20 @@ public class GeneticAlgorithmTests
     {
         var db = TaoInMemoryDbContext(nameof(Test_26_GaService_KhongDatNghiemHopLe_KhongGhiDePhanCong));
 
-        // 2 lớp trùng giờ nhau hoàn toàn (Thứ 2 tiết 1-3), nhưng chỉ có duy nhất 1 GV có chuyên môn
+        // 2 lớp khác môn nhưng trùng giờ nhau hoàn toàn (Thứ 2 tiết 1-3), và chỉ có duy nhất 1 GV có chuyên môn
         db.LopHocPhan.AddRange(
             new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L01" },
-            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L02" }
+            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 102, MaLopHocPhanTruong = "L02" }
         );
         db.ChiTietThoiKhoaBieu.AddRange(
             new ChiTietThoiKhoaBieu { MaLopHocPhan = 1, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10 },
             new ChiTietThoiKhoaBieu { MaLopHocPhan = 2, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10 }
         );
         db.GiangVien.Add(new GiangVien { MaGiangVien = 10, HoTen = "GV Nguyễn Văn A", TrangThai = "DangLamViec" });
-        db.NangLucGiangDay.Add(new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 101, TrangThai = "DangApDung" });
+        db.NangLucGiangDay.AddRange(
+            new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 101, TrangThai = "DangApDung" },
+            new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 102, TrangThai = "DangApDung" }
+        );
 
         // Phân công ban đầu đã có
         db.PhanCongGiangDay.Add(new PhanCongGiangDay

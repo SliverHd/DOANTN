@@ -44,11 +44,10 @@ public class GeneticAlgorithmService(
         var cacLopCoDinh = phanCongKhoa.Keys.ToHashSet();
 
         // 3. XỬ LÝ GỘP CỤM LỚP GHÉP (Class Clustering / Joint Sessions Pre-processing)
-        // Gom các lớp học phần học chung cùng môn, cùng thứ, tiết, tuần, phòng thành 1 ca dạy duy nhất
+        // Gom các lớp học phần học chung cùng môn, cùng thứ, tiết, tuần thành 1 ca dạy duy nhất
         string TaoChuKyCacBuoiHoc(int maLop, int maHocPhan)
         {
-            if (!boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt) || dsCt.Count == 0 ||
-                dsCt.Any(c => string.IsNullOrWhiteSpace(c.PhongHoc)))
+            if (!boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt) || dsCt.Count == 0)
             {
                 return $"HP_{maHocPhan}_LOP_{maLop}";
             }
@@ -56,7 +55,7 @@ public class GeneticAlgorithmService(
                 .OrderBy(c => c.Thu)
                 .ThenBy(c => c.TietBatDau)
                 .ThenBy(c => c.TuTuan)
-                .Select(c => $"{c.Thu}_{c.TietBatDau}_{c.TietKetThuc}_{c.TuTuan}_{c.DenTuan}_{c.PhongHoc?.Trim().ToUpperInvariant()}"));
+                .Select(c => $"{c.Thu}_{c.TietBatDau}_{c.TietKetThuc}_{c.TuTuan}_{c.DenTuan}"));
             return $"HP_{maHocPhan}:{chuoiBuoi}";
         }
 

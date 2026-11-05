@@ -406,4 +406,91 @@ public class CpSatAlgorithmTests
         Assert.Single(result.DanhSachPhanCong);
         Assert.Equal(maGv, result.DanhSachPhanCong[0].MaGiangVien);
     }
+
+    [Fact]
+    public async Task Test_CpSat_LopGhep_TrungMonTrungCa_XepCungMotGiangVien_KhongViPhamTrungLich()
+    {
+        var dbName = "CpSat_LopGhep_" + Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: dbName)
+            .Options;
+
+        using var context = new AppDbContext(options);
+        var boKiemTra = new BoKiemTraRangBuoc();
+        var boDanhGia = new BoDanhGiaPhuongAn(context, boKiemTra);
+        var luuKetQuaService = new LuuKetQuaXepLichService(context, boDanhGia);
+        var cpSatService = new CpSatAlgorithmService(context, boDanhGia, boKiemTra, luuKetQuaService);
+
+        int maHocKy = 1;
+        int maHp = 101;
+        int maGv = 10;
+
+        context.GiangVien.Add(new GiangVien
+        {
+            MaGiangVien = maGv,
+            HoTen = "GV Nguyễn Văn A"
+        });
+        context.NangLucGiangDay.Add(new NangLucGiangDay
+        {
+            MaGiangVien = maGv,
+            MaHocPhan = maHp,
+            TrangThai = "DangApDung"
+        });
+
+        // 2 lớp ghép cùng môn 101, cùng ca dạy Thứ 2 tiết 1-3 tuần 1-10
+        context.LopHocPhan.Add(new LopHocPhan
+        {
+            MaLopHocPhan = 1,
+            MaHocKy = maHocKy,
+            MaHocPhan = maHp,
+            MaLopHocPhanTruong = "LHP01_GHEP1",
+            TenLop = "Lớp ghép 1"
+        });
+        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu
+        {
+            MaChiTiet = 1,
+            MaLopHocPhan = 1,
+            Thu = 2,
+            TietBatDau = 1,
+            TietKetThuc = 3,
+            TuTuan = 1,
+            DenTuan = 10,
+            PhongHoc = "P.101"
+        });
+
+        context.LopHocPhan.Add(new LopHocPhan
+        {
+            MaLopHocPhan = 2,
+            MaHocKy = maHocKy,
+            MaHocPhan = maHp,
+            MaLopHocPhanTruong = "LHP02_GHEP2",
+            TenLop = "Lớp ghép 2"
+        });
+        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu
+        {
+            MaChiTiet = 2,
+            MaLopHocPhan = 2,
+            Thu = 2,
+            TietBatDau = 1,
+            TietKetThuc = 3,
+            TuTuan = 1,
+            DenTuan = 10,
+            PhongHoc = "P.102" // Khác tên phòng học vẫn là lớp ghép
+        });
+
+        await context.SaveChangesAsync();
+
+        var result = await cpSatService.ChayAsync(new DuLieuXepLichDto
+        {
+            MaHocKy = maHocKy,
+            ThoiGianChayToiDa = 5.0
+        });
+
+        // Cả 2 lớp phải được xếp cho cùng 1 GV 10, không vi phạm trùng lịch và không bỏ qua lớp nào
+        Assert.True(result.TrangThai == "ToiUuToanCuc" || result.TrangThai == "KhaThi");
+        Assert.Equal(0, result.SoViPhamCung);
+        Assert.Equal(0, result.SoLopChuaPhanCong);
+        Assert.Equal(2, result.DanhSachPhanCong.Count);
+        Assert.All(result.DanhSachPhanCong, pc => Assert.Equal(maGv, pc.MaGiangVien));
+    }
 }
