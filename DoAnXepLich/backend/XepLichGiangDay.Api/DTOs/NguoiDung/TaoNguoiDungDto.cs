@@ -8,4 +8,5 @@ public class TaoNguoiDungDto
     public string? Email { get; set; }
     public string VaiTro { get; set; } = "GiangVien"; // Admin, TruongBoMon, GiangVien
     public int? MaGiangVien { get; set; }
+    public int? MaBoMon { get; set; }
 }

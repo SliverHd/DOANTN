@@ -7,9 +7,14 @@ namespace XepLichGiangDay.Api.Services;
 
 public class GiangVienService(AppDbContext context)
 {
-    public async Task<List<GiangVienDto>> GetAllAsync()
+    public async Task<List<GiangVienDto>> GetAllAsync(int? maBoMon = null)
     {
-        var dsGiangVien = await context.GiangVien.ToListAsync();
+        var query = context.GiangVien.AsQueryable();
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            query = query.Where(x => x.MaBoMon == maBoMon.Value);
+        }
+        var dsGiangVien = await query.ToListAsync();
         var dsBoMon = await context.BoMon.ToDictionaryAsync(b => b.MaBoMon, b => b.TenBoMon);
         
         var dsNangLuc = await (from nl in context.NangLucGiangDay

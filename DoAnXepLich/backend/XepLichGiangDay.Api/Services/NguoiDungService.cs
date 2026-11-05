@@ -10,18 +10,28 @@ public class NguoiDungService(AppDbContext context)
     public async Task<List<NguoiDungDto>> GetAllAsync()
     {
         var users = await context.NguoiDung.ToListAsync();
-        var giangViens = await context.GiangVien.ToDictionaryAsync(x => x.MaGiangVien, x => x.HoTen);
+        var giangViens = await context.GiangVien.ToDictionaryAsync(x => x.MaGiangVien);
+        var boMons = await context.BoMon.ToDictionaryAsync(b => b.MaBoMon, b => b.TenBoMon);
 
-        return users.Select(u => new NguoiDungDto
+        return users.Select(u =>
         {
-            MaNguoiDung = u.MaNguoiDung,
-            TenDangNhap = u.TenDangNhap,
-            HoTen = u.HoTen,
-            Email = u.Email,
-            VaiTro = u.VaiTro,
-            MaGiangVien = u.MaGiangVien,
-            TenGiangVien = u.MaGiangVien.HasValue && giangViens.TryGetValue(u.MaGiangVien.Value, out var gv) ? gv : null,
-            TrangThai = u.TrangThai
+            var gv = u.MaGiangVien.HasValue && giangViens.TryGetValue(u.MaGiangVien.Value, out var gvVal) ? gvVal : null;
+            var maBm = u.MaBoMon ?? gv?.MaBoMon;
+            var tenBm = maBm.HasValue && boMons.TryGetValue(maBm.Value, out var bmTen) ? bmTen : null;
+
+            return new NguoiDungDto
+            {
+                MaNguoiDung = u.MaNguoiDung,
+                TenDangNhap = u.TenDangNhap,
+                HoTen = u.HoTen,
+                Email = u.Email,
+                VaiTro = u.VaiTro,
+                MaGiangVien = u.MaGiangVien,
+                TenGiangVien = gv?.HoTen,
+                MaBoMon = maBm,
+                TenBoMon = tenBm,
+                TrangThai = u.TrangThai
+            };
         }).ToList();
     }
 
@@ -31,10 +41,19 @@ public class NguoiDungService(AppDbContext context)
         if (u is null) return null;
 
         string? tenGv = null;
+        int? maBm = u.MaBoMon;
         if (u.MaGiangVien.HasValue)
         {
             var gv = await context.GiangVien.FindAsync(u.MaGiangVien.Value);
             tenGv = gv?.HoTen;
+            maBm ??= gv?.MaBoMon;
+        }
+
+        string? tenBm = null;
+        if (maBm.HasValue)
+        {
+            var bm = await context.BoMon.FindAsync(maBm.Value);
+            tenBm = bm?.TenBoMon;
         }
 
         return new NguoiDungDto
@@ -46,6 +65,8 @@ public class NguoiDungService(AppDbContext context)
             VaiTro = u.VaiTro,
             MaGiangVien = u.MaGiangVien,
             TenGiangVien = tenGv,
+            MaBoMon = maBm,
+            TenBoMon = tenBm,
             TrangThai = u.TrangThai
         };
     }
@@ -61,6 +82,13 @@ public class NguoiDungService(AppDbContext context)
         var exist = await context.NguoiDung.AnyAsync(x => x.TenDangNhap == tenDangNhap);
         if (exist) return null;
 
+        int? maBm = dto.MaBoMon;
+        if (!maBm.HasValue && dto.MaGiangVien.HasValue)
+        {
+            var gv = await context.GiangVien.FindAsync(dto.MaGiangVien.Value);
+            maBm = gv?.MaBoMon;
+        }
+
         var user = new NguoiDung
         {
             TenDangNhap = tenDangNhap,
@@ -69,6 +97,7 @@ public class NguoiDungService(AppDbContext context)
             Email = dto.Email?.Trim(),
             VaiTro = dto.VaiTro,
             MaGiangVien = dto.MaGiangVien,
+            MaBoMon = maBm,
             TrangThai = "KichHoat"
         };
 
@@ -92,10 +121,18 @@ public class NguoiDungService(AppDbContext context)
             }
         }
 
+        int? maBm = dto.MaBoMon;
+        if (!maBm.HasValue && dto.MaGiangVien.HasValue)
+        {
+            var gv = await context.GiangVien.FindAsync(dto.MaGiangVien.Value);
+            maBm = gv?.MaBoMon;
+        }
+
         u.HoTen = dto.HoTen.Trim();
         u.Email = dto.Email?.Trim();
         u.VaiTro = dto.VaiTro;
         u.MaGiangVien = dto.MaGiangVien;
+        u.MaBoMon = maBm;
         u.TrangThai = dto.TrangThai;
 
         await context.SaveChangesAsync();

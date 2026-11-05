@@ -10,6 +10,8 @@ export interface ThongTinNguoiDung {
   email?: string
   vaiTro: 'Admin' | 'TruongBoMon' | 'GiangVien' | string
   maGiangVien?: number
+  maBoMon?: number
+  tenBoMon?: string
   token: string
 }
 

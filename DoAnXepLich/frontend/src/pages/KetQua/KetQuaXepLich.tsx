@@ -106,7 +106,9 @@ function kiemTraTuanTamHoan(lop: DongPhanCongLop, tuanDangXem: number, xemTatCa:
 
 function KetQuaXepLich() {
   const { user } = useAuth()
+  const laAdmin = user?.vaiTro === 'Admin'
   const laTruongBoMon = user?.vaiTro !== 'GiangVien'
+  const maBmLoc = !laAdmin && user?.maBoMon ? user.maBoMon : undefined
 
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
   const [maHocKy, setMaHocKy] = useState<number>(0)
@@ -148,7 +150,7 @@ function KetQuaXepLich() {
     try {
       setDangTai(true)
       const [resBang, resTai] = await Promise.all([
-        xepLichApi.layBangPhanCong(hkId),
+        xepLichApi.layBangPhanCong(hkId, maBmLoc),
         xepLichApi.layThongKeTai(hkId),
       ])
       setBangPhanCong(resBang.data)
@@ -289,7 +291,7 @@ function KetQuaXepLich() {
     if (!maHocKy) return
     try {
       setDangXuatExcel(true)
-      const res = await xepLichApi.xuatExcel(maHocKy)
+      const res = await xepLichApi.xuatExcel(maHocKy, maBmLoc)
       const blob = new Blob([res.data], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       })

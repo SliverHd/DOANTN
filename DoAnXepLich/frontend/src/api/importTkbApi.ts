@@ -11,9 +11,10 @@ export const importTkbApi = {
     })
   },
 
-  xacNhan: (maHocKy: number, tenFile: string, danhSachDong: DongThoiKhoaBieuImport[]) => {
+  xacNhan: (maHocKy: number, tenFile: string, danhSachDong: DongThoiKhoaBieuImport[], maBoMon?: number) => {
     return axiosClient.post<{ soDongThanhCong: number }>('/import-thoi-khoa-bieu/xac-nhan', {
       maHocKy,
+      maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined,
       tenFile,
       danhSachDong,
     })
@@ -21,6 +22,10 @@ export const importTkbApi = {
 
   getLichSu: (maHocKy: number) => {
     return axiosClient.get<LichSuImport[]>(`/import-thoi-khoa-bieu/lich-su/${maHocKy}`)
+  },
+
+  xoaLichSu: (id: number) => {
+    return axiosClient.delete(`/import-thoi-khoa-bieu/lich-su/${id}`)
   },
 
   downloadFileMauUrl: '/api/import-thoi-khoa-bieu/file-mau',

@@ -516,6 +516,10 @@ namespace XepLichGiangDay.Api.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("ho_ten");
 
+                    b.Property<int?>("MaBoMon")
+                        .HasColumnType("int")
+                        .HasColumnName("ma_bo_mon");
+
                     b.Property<int?>("MaGiangVien")
                         .HasColumnType("int")
                         .HasColumnName("ma_giang_vien");
@@ -541,6 +545,8 @@ namespace XepLichGiangDay.Api.Migrations
                         .HasColumnName("vai_tro");
 
                     b.HasKey("MaNguoiDung");
+
+                    b.HasIndex("MaBoMon");
 
                     b.HasIndex("MaGiangVien");
 
@@ -833,6 +839,11 @@ namespace XepLichGiangDay.Api.Migrations
 
             modelBuilder.Entity("XepLichGiangDay.Api.Models.Entities.NguoiDung", b =>
                 {
+                    b.HasOne("XepLichGiangDay.Api.Models.Entities.BoMon", null)
+                        .WithMany()
+                        .HasForeignKey("MaBoMon")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("XepLichGiangDay.Api.Models.Entities.GiangVien", null)
                         .WithMany()
                         .HasForeignKey("MaGiangVien")

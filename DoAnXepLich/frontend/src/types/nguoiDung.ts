@@ -6,6 +6,8 @@ export interface NguoiDung {
   vaiTro: string // Admin, TruongBoMon, GiangVien
   maGiangVien?: number
   tenGiangVien?: string
+  maBoMon?: number
+  tenBoMon?: string
   trangThai: string // KichHoat, Khoa
 }
 
@@ -16,6 +18,7 @@ export interface TaoNguoiDungRequest {
   email?: string
   vaiTro: string
   maGiangVien?: number
+  maBoMon?: number
 }
 
 export interface CapNhatNguoiDungRequest {
@@ -23,5 +26,6 @@ export interface CapNhatNguoiDungRequest {
   email?: string
   vaiTro: string
   maGiangVien?: number
+  maBoMon?: number
   trangThai: string
 }

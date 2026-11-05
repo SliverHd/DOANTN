@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.XepLich;
 using XepLichGiangDay.Api.Services;
 using XepLichGiangDay.Api.Services.ThuatToan;
@@ -39,6 +39,7 @@ public class XepLichController(
             var duLieu = new DuLieuXepLichDto
             {
                 MaHocKy = request.MaHocKy,
+                MaBoMon = request.MaBoMon,
                 ThuatToan = thuatToan,
                 KichThuocQuanThe = request.KichThuocQuanThe,
                 SoTheHe = request.SoTheHe,
@@ -65,9 +66,9 @@ public class XepLichController(
     /// Lấy bảng phân công giảng dạy chi tiết theo học kỳ.
     /// </summary>
     [HttpGet("bang-phan-cong/{maHocKy:int}")]
-    public async Task<ActionResult<BangPhanCongHocKyDto>> LayBangPhanCong(int maHocKy, CancellationToken cancellationToken)
+    public async Task<ActionResult<BangPhanCongHocKyDto>> LayBangPhanCong(int maHocKy, [FromQuery] int? maBoMon, CancellationToken cancellationToken)
     {
-        var ketQua = await xepLichService.LayBangPhanCongAsync(maHocKy, cancellationToken);
+        var ketQua = await xepLichService.LayBangPhanCongAsync(maHocKy, maBoMon, cancellationToken);
         return Ok(ketQua);
     }
 
@@ -133,9 +134,9 @@ public class XepLichController(
     /// Xuất toàn bộ bảng phân công thời khóa biểu và thống kê tải ra file Excel (.xlsx).
     /// </summary>
     [HttpGet("xuat-excel/{maHocKy:int}")]
-    public async Task<IActionResult> XuatExcel(int maHocKy, CancellationToken cancellationToken)
+    public async Task<IActionResult> XuatExcel(int maHocKy, [FromQuery] int? maBoMon, CancellationToken cancellationToken)
     {
-        var bytes = await xepLichService.XuatExcelBangPhanCongAsync(maHocKy, cancellationToken);
+        var bytes = await xepLichService.XuatExcelBangPhanCongAsync(maHocKy, maBoMon, cancellationToken);
         var tenFile = $"ThoiKhoaBieu_PhanCong_HocKy_{maHocKy}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", tenFile);
     }
@@ -173,6 +174,7 @@ public class XepLichController(
             var duLieuCpSat = new DuLieuXepLichDto
             {
                 MaHocKy = request.MaHocKy,
+                MaBoMon = request.MaBoMon,
                 ThuatToan = "CP_SAT",
                 ThoiGianChayToiDa = request.ThoiGianChayToiDa > 0 ? request.ThoiGianChayToiDa : 15,
                 SoLuongWorker = 1,
@@ -184,6 +186,7 @@ public class XepLichController(
             var duLieuGa = new DuLieuXepLichDto
             {
                 MaHocKy = request.MaHocKy,
+                MaBoMon = request.MaBoMon,
                 ThuatToan = "GA",
                 KichThuocQuanThe = request.KichThuocQuanThe > 0 ? request.KichThuocQuanThe : 50,
                 SoTheHe = request.SoTheHe > 0 ? request.SoTheHe : 100,

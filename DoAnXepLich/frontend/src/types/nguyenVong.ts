@@ -47,9 +47,11 @@ export interface KetQuaDuyetNguyenVong {
 export interface ThemNguyenVongRequest {
   maHocKy: number
   maGiangVien: number
+  danhSachMaGiangVien?: number[]
   maRangBuocMem: string
   tenRangBuocMem?: string
   thu?: number
+  denThu?: number
   tietBatDau?: number
   tietKetThuc?: number
   tuTuan?: number
@@ -87,6 +89,15 @@ export interface RangBuocMemItem {
 }
 
 export const DANH_MUC_RANG_BUOC_MEM: RangBuocMemItem[] = [
+  {
+    maRb: 'SEMINAR',
+    tenRb: '🔴 Seminar / Sinh hoạt chuyên môn Bộ môn (Bắt buộc cố định)',
+    diemPhatMacDinh: 999999.0,
+    thuMacDinh: 5,
+    tietBdMacDinh: 7,
+    tietKtMacDinh: 9,
+    moTa: 'Lịch họp/hội thảo chung toàn bộ môn. Áp dụng cho nhiều hoặc tất cả GV, hệ số tuyệt đối.',
+  },
   {
     maRb: 'SC01',
     tenRb: 'Tránh khung giờ / tiết bận cụ thể',

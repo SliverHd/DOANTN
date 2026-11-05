@@ -1,5 +1,6 @@
 export interface YeuCauXepLich {
   maHocKy: number
+  maBoMon?: number
   thuatToan: 'GA' | 'CP_SAT'
   kichThuocQuanThe?: number
   soTheHe?: number

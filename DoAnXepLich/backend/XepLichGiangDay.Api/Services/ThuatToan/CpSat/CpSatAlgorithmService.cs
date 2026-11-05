@@ -19,7 +19,7 @@ public class CpSatAlgorithmService(
     public async Task<KetQuaXepLichDto> ChayAsync(DuLieuXepLichDto duLieu, CancellationToken cancellationToken = default)
     {
         // 1. Nạp ngữ cảnh dữ liệu học kỳ
-        var boiCanh = await boDanhGia.TaoBoiCanhAsync(duLieu.MaHocKy, cancellationToken);
+        var boiCanh = await boDanhGia.TaoBoiCanhAsync(duLieu.MaHocKy, duLieu.MaBoMon, cancellationToken);
         if (boiCanh.DanhSachLop.Count == 0)
         {
             return new KetQuaXepLichDto

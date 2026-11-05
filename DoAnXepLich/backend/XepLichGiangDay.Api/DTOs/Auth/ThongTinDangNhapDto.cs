@@ -8,5 +8,7 @@ public class ThongTinDangNhapDto
     public string? Email { get; set; }
     public string VaiTro { get; set; } = string.Empty; // Admin, TruongBoMon, GiangVien
     public int? MaGiangVien { get; set; }
+    public int? MaBoMon { get; set; }
+    public string? TenBoMon { get; set; }
     public string Token { get; set; } = string.Empty;
 }

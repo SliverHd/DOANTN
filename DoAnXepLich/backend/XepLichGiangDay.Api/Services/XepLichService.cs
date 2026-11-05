@@ -12,16 +12,24 @@ public class XepLichService(
     BoKiemTraRangBuoc boKiemTra)
 {
     /// <summary>
-    /// Lấy bảng dữ liệu phân công giảng dạy tổng hợp cho toàn bộ học kỳ.
+    /// Lấy bảng dữ liệu phân công giảng dạy tổng hợp cho toàn bộ học kỳ (có thể lọc theo bộ môn).
     /// </summary>
-    public async Task<BangPhanCongHocKyDto> LayBangPhanCongAsync(int maHocKy, CancellationToken cancellationToken = default)
+    public async Task<BangPhanCongHocKyDto> LayBangPhanCongAsync(int maHocKy, int? maBoMon = null, CancellationToken cancellationToken = default)
     {
         var hocKy = await context.HocKy.FirstOrDefaultAsync(x => x.MaHocKy == maHocKy, cancellationToken);
         var tenHocKy = hocKy != null ? hocKy.TenHocKy : $"Học kỳ {maHocKy}";
 
         // 1. Lấy danh sách lớp học phần trong kỳ
-        var dsLop = await context.LopHocPhan
-            .Where(x => x.MaHocKy == maHocKy)
+        var queryLop = context.LopHocPhan.Where(x => x.MaHocKy == maHocKy);
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            queryLop = from lop in queryLop
+                       join hp in context.HocPhan on lop.MaHocPhan equals hp.MaHocPhan
+                       where hp.MaBoMon == maBoMon.Value
+                       select lop;
+        }
+
+        var dsLop = await queryLop
             .OrderBy(x => x.MaLopHocPhanTruong)
             .ToListAsync(cancellationToken);
 
@@ -40,14 +48,17 @@ public class XepLichService(
 
         // 3. Lấy phân công hiện tại
         var dsPhanCong = await context.PhanCongGiangDay
-            .Where(x => x.MaHocKy == maHocKy)
+            .Where(x => x.MaHocKy == maHocKy && dsMaLop.Contains(x.MaLopHocPhan))
             .ToListAsync(cancellationToken);
         var phanCongTheoLop = dsPhanCong.GroupBy(x => x.MaLopHocPhan).ToDictionary(g => g.Key, g => g.First());
 
         // 4. Lấy giảng viên, năng lực giảng dạy, lịch bận
-        var dsGiangVien = await context.GiangVien
-            .Where(x => x.TrangThai != "NghiViec")
-            .ToListAsync(cancellationToken);
+        var queryGv = context.GiangVien.Where(x => x.TrangThai != "NghiViec");
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            queryGv = queryGv.Where(x => x.MaBoMon == maBoMon.Value);
+        }
+        var dsGiangVien = await queryGv.ToListAsync(cancellationToken);
         var dictGiangVien = dsGiangVien.ToDictionary(x => x.MaGiangVien);
 
         var dsNangLuc = await context.NangLucGiangDay.ToListAsync(cancellationToken);
@@ -560,9 +571,9 @@ public class XepLichService(
         };
     }
 
-    public async Task<byte[]> XuatExcelBangPhanCongAsync(int maHocKy, CancellationToken cancellationToken = default)
+    public async Task<byte[]> XuatExcelBangPhanCongAsync(int maHocKy, int? maBoMon = null, CancellationToken cancellationToken = default)
     {
-        var bangPhanCong = await LayBangPhanCongAsync(maHocKy, cancellationToken);
+        var bangPhanCong = await LayBangPhanCongAsync(maHocKy, maBoMon, cancellationToken);
         var thongKeTai = await LayThongKeTaiAsync(maHocKy, cancellationToken);
 
         using var workbook = new XLWorkbook();
