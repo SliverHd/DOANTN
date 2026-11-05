@@ -29,6 +29,7 @@ public class KetQuaPreviewImportDto
 public class XacNhanImportRequest
 {
     public int MaHocKy { get; set; }
+    public int? MaBoMon { get; set; }
     public string TenFile { get; set; } = string.Empty;
     public List<DongThoiKhoaBieuImportDto> DanhSachDong { get; set; } = new();
 }

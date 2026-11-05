@@ -1,12 +1,17 @@
-﻿import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { hocKyApi } from '../../api/hocKyApi'
 import { xepLichApi } from '../../api/xepLichApi'
+import { useAuth } from '../../contexts/AuthContext'
 import type { HocKy } from '../../types/hocKy'
 import type { KetQuaXepLich, YeuCauXepLich } from '../../types/xepLich'
 import DoThiTienHoaGA from '../../components/DoThiTienHoaGA'
 
 function ChayXepLich() {
+  const { user } = useAuth()
+  const laAdmin = user?.vaiTro === 'Admin'
+  const maBoMonUser = user?.maBoMon
+
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
   const [form, setForm] = useState<YeuCauXepLich>({
     maHocKy: 0,
@@ -49,15 +54,20 @@ function ChayXepLich() {
     setLoi('')
     setKetQua(null)
 
-    const payload =
+    const maBm = !laAdmin && maBoMonUser ? maBoMonUser : undefined
+    const payload: YeuCauXepLich =
       form.thuatToan === 'CP_SAT'
         ? {
           maHocKy: form.maHocKy,
+          maBoMon: maBm,
           thuatToan: form.thuatToan,
           thoiGianChayToiDa: form.thoiGianChayToiDa ?? 30,
           soLuongWorker: form.soLuongWorker ?? 1,
         }
-        : form
+        : {
+          ...form,
+          maBoMon: maBm,
+        }
 
     try {
       const response = await xepLichApi.chayXepLich(payload)

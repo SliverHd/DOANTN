@@ -9,9 +9,9 @@ namespace XepLichGiangDay.Api.Controllers;
 public class GiangVienController(GiangVienService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<GiangVienDto>>> GetAll()
+    public async Task<ActionResult<List<GiangVienDto>>> GetAll([FromQuery] int? maBoMon)
     {
-        return Ok(await service.GetAllAsync());
+        return Ok(await service.GetAllAsync(maBoMon));
     }
 
     [HttpGet("{id:int}")]

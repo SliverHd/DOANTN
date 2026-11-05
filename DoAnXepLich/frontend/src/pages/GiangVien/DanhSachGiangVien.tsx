@@ -3,18 +3,23 @@ import { giangVienApi } from '../../api/giangVienApi'
 import { boMonApi } from '../../api/boMonApi'
 import { hocPhanApi } from '../../api/hocPhanApi'
 import Loading from '../../components/Loading'
+import { useAuth } from '../../contexts/AuthContext'
 import type { GiangVien, TaoGiangVienDto } from '../../types/giangVien'
 import type { BoMon } from '../../types/boMon'
 import type { HocPhan } from '../../types/hocPhan'
 
 function DanhSachGiangVien() {
+  const { user } = useAuth()
+  const laAdmin = user?.vaiTro === 'Admin'
+  const maBoMonUser = user?.maBoMon
+
   const [danhSach, setDanhSach] = useState<GiangVien[]>([])
   const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
   const [danhSachHocPhan, setDanhSachHocPhan] = useState<HocPhan[]>([])
   const [dangTai, setDangTai] = useState(true)
   const [loi, setLoi] = useState('')
   const [tuKhoa, setTuKhoa] = useState('')
-  const [locBoMon, setLocBoMon] = useState<number | ''>('')
+  const [locBoMon, setLocBoMon] = useState<number | ''>(!laAdmin && maBoMonUser ? maBoMonUser : '')
 
   // Modal Thêm / Sửa GV
   const [hienModal, setHienModal] = useState(false)
@@ -39,10 +44,11 @@ function DanhSachGiangVien() {
   const taiDuLieu = async () => {
     try {
       setDangTai(true)
+      const maBmLoc = !laAdmin && maBoMonUser ? maBoMonUser : undefined
       const [resGV, resBM, resHP] = await Promise.all([
-        giangVienApi.getAll(),
+        giangVienApi.getAll(maBmLoc),
         boMonApi.getAll().catch(() => ({ data: [] as BoMon[] })),
-        hocPhanApi.getAll().catch(() => ({ data: [] as HocPhan[] })),
+        hocPhanApi.getAll(maBmLoc).catch(() => ({ data: [] as HocPhan[] })),
       ])
       setDanhSach(resGV.data)
       setDanhSachBoMon(resBM.data)
@@ -66,7 +72,7 @@ function DanhSachGiangVien() {
       email: '',
       soDienThoai: '',
       chucDanh: 'Giảng viên',
-      maBoMon: danhSachBoMon.length > 0 ? danhSachBoMon[0].maBoMon : undefined,
+      maBoMon: !laAdmin && maBoMonUser ? maBoMonUser : (danhSachBoMon.length > 0 ? danhSachBoMon[0].maBoMon : undefined),
       trangThai: 'DangLamViec',
     })
     setHienModal(true)
@@ -182,18 +188,24 @@ function DanhSachGiangVien() {
           />
         </div>
         <div className="col-md-4">
-          <select
-            className="form-select"
-            value={locBoMon}
-            onChange={(e) => setLocBoMon(e.target.value ? Number(e.target.value) : '')}
-          >
-            <option value="">-- Tất cả Bộ môn --</option>
-            {danhSachBoMon.map((bm) => (
-              <option key={bm.maBoMon} value={bm.maBoMon}>
-                {bm.tenBoMon}
-              </option>
-            ))}
-          </select>
+          {laAdmin ? (
+            <select
+              className="form-select"
+              value={locBoMon}
+              onChange={(e) => setLocBoMon(e.target.value ? Number(e.target.value) : '')}
+            >
+              <option value="">-- Tất cả Bộ môn --</option>
+              {danhSachBoMon.map((bm) => (
+                <option key={bm.maBoMon} value={bm.maBoMon}>
+                  {bm.tenBoMon}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="alert alert-info py-2 px-3 mb-0 small d-flex align-items-center">
+              <span>Bộ môn phụ trách: <strong>{user?.tenBoMon || 'Chưa gán bộ môn'}</strong></span>
+            </div>
+          )}
         </div>
       </div>
 

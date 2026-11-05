@@ -8,9 +8,9 @@ namespace XepLichGiangDay.Api.Controllers;
 public class ThoiKhoaBieuController(ThoiKhoaBieuService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? maHocKy)
+    public async Task<IActionResult> GetAll([FromQuery] int? maHocKy, [FromQuery] int? maBoMon)
     {
-        var list = await service.LayDanhSachLopHocPhanAsync(maHocKy);
+        var list = await service.LayDanhSachLopHocPhanAsync(maHocKy, maBoMon);
         return Ok(list);
     }
 

@@ -20,7 +20,7 @@ public class GeneticAlgorithmService(
         var sw = Stopwatch.StartNew();
 
         // 1. Nạp ngữ cảnh dữ liệu học kỳ vào bộ nhớ đệm
-        var boiCanh = await boDanhGia.TaoBoiCanhAsync(duLieu.MaHocKy, cancellationToken);
+        var boiCanh = await boDanhGia.TaoBoiCanhAsync(duLieu.MaHocKy, duLieu.MaBoMon, cancellationToken);
         if (boiCanh.DanhSachLop.Count == 0)
         {
             return new KetQuaXepLichDto

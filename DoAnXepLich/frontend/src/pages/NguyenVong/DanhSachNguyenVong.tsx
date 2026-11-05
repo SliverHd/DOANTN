@@ -47,15 +47,17 @@ function DanhSachNguyenVong() {
     maHocKy: 0,
     maGiangVien: user?.maGiangVien ?? 0,
     maRangBuocMem: 'SC01',
-    tenRangBuocMem: DANH_MUC_RANG_BUOC_MEM[0].tenRb,
+    tenRangBuocMem: DANH_MUC_RANG_BUOC_MEM[1].tenRb,
     thu: 2,
+    denThu: 2,
     tietBatDau: 1,
     tietKetThuc: 5,
     tuTuan: 1,
     denTuan: 20,
-    trongSoPhat: DANH_MUC_RANG_BUOC_MEM[0].diemPhatMacDinh,
+    trongSoPhat: DANH_MUC_RANG_BUOC_MEM[1].diemPhatMacDinh,
     lyDo: '',
   })
+  const [dsGvSeminar, setDsGvSeminar] = useState<number[]>([])
 
   const [dangTai, setDangTai] = useState(false)
   const [dangLuu, setDangLuu] = useState(false)
@@ -143,10 +145,22 @@ function DanhSachNguyenVong() {
     setLoi('')
     setKetQuaDuyet(null)
 
-    const gvId = laGiangVien && user?.maGiangVien ? user.maGiangVien : form.maGiangVien
-    if (!gvId || gvId <= 0) {
-      setLoi('Vui lòng chọn giảng viên.')
-      return
+    const laSeminar = form.maRangBuocMem === 'SEMINAR'
+    let danhSachGvApDung: number[] = []
+
+    if (laSeminar) {
+      if (dsGvSeminar.length === 0) {
+        setLoi('Vui lòng chọn ít nhất 1 giảng viên tham gia Seminar.')
+        return
+      }
+      danhSachGvApDung = dsGvSeminar
+    } else {
+      const gvId = laGiangVien && user?.maGiangVien ? user.maGiangVien : form.maGiangVien
+      if (!gvId || gvId <= 0) {
+        setLoi('Vui lòng chọn giảng viên.')
+        return
+      }
+      danhSachGvApDung = [gvId]
     }
 
     if (!form.tietBatDau || !form.tietKetThuc || form.tietBatDau > form.tietKetThuc) {
@@ -158,7 +172,9 @@ function DanhSachNguyenVong() {
       setDangLuu(true)
       await nguyenVongApi.themNguyenVong({
         ...form,
-        maGiangVien: gvId,
+        maGiangVien: danhSachGvApDung[0],
+        danhSachMaGiangVien: danhSachGvApDung,
+        denThu: form.denThu ?? form.thu,
         maHocKy,
       })
 
@@ -397,12 +413,58 @@ function DanhSachNguyenVong() {
 
           <form onSubmit={handleThemNguyenVong}>
             <div className="row g-2 mb-2">
-              {/* Giảng viên */}
+              {/* Giảng viên (Hỗ trợ chọn nhiều GV khi là SEMINAR) */}
               <div className="col-md-4">
-                <label className="form-label small fw-semibold">
-                  Giảng viên <span className="text-danger">*</span>
-                </label>
-                {laGiangVien ? (
+                <div className="d-flex justify-content-between align-items-center">
+                  <label className="form-label small fw-semibold mb-1">
+                    {form.maRangBuocMem === 'SEMINAR' ? 'Giảng viên tham gia Seminar' : 'Giảng viên'} <span className="text-danger">*</span>
+                  </label>
+                  {form.maRangBuocMem === 'SEMINAR' && (
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm p-0 text-decoration-none small"
+                      onClick={() => {
+                        if (dsGvSeminar.length === danhSachGiangVien.length) {
+                          setDsGvSeminar([])
+                        } else {
+                          setDsGvSeminar(danhSachGiangVien.map((g) => g.maGiangVien))
+                        }
+                      }}
+                    >
+                      {dsGvSeminar.length === danhSachGiangVien.length ? 'Bỏ chọn hết' : 'Chọn tất cả GV'}
+                    </button>
+                  )}
+                </div>
+
+                {form.maRangBuocMem === 'SEMINAR' ? (
+                  <div className="border rounded p-2 bg-light" style={{ maxHeight: '110px', overflowY: 'auto' }}>
+                    <div className="d-flex flex-wrap gap-2">
+                      {danhSachGiangVien.map((gv) => {
+                        const checked = dsGvSeminar.includes(gv.maGiangVien)
+                        return (
+                          <div key={gv.maGiangVien} className="form-check form-check-inline small mb-0">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id={`gv-seminar-${gv.maGiangVien}`}
+                              checked={checked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDsGvSeminar([...dsGvSeminar, gv.maGiangVien])
+                                } else {
+                                  setDsGvSeminar(dsGvSeminar.filter((id) => id !== gv.maGiangVien))
+                                }
+                              }}
+                            />
+                            <label className="form-check-label" htmlFor={`gv-seminar-${gv.maGiangVien}`}>
+                              {gv.hoTen}
+                            </label>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : laGiangVien ? (
                   <input
                     type="text"
                     className="form-control form-control-sm bg-light"
@@ -459,15 +521,38 @@ function DanhSachNguyenVong() {
             </div>
 
             <div className="row g-2 mb-3">
-              {/* Thứ */}
+              {/* Từ Thứ */}
               <div className="col-md-2">
-                <label className="form-label small fw-semibold">Thứ</label>
+                <label className="form-label small fw-semibold">Từ Thứ</label>
                 <select
                   className="form-select form-select-sm"
                   value={form.thu ?? 2}
-                  onChange={(e) => setForm({ ...form, thu: Number(e.target.value) })}
+                  onChange={(e) => {
+                    const t = Number(e.target.value)
+                    setForm({
+                      ...form,
+                      thu: t,
+                      denThu: (form.denThu ?? t) < t ? t : form.denThu,
+                    })
+                  }}
                 >
                   {CAC_THU.map((thu) => (
+                    <option key={thu.id} value={thu.id}>
+                      {thu.ten}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Đến Thứ */}
+              <div className="col-md-2">
+                <label className="form-label small fw-semibold">Đến Thứ</label>
+                <select
+                  className="form-select form-select-sm"
+                  value={form.denThu ?? form.thu ?? 2}
+                  onChange={(e) => setForm({ ...form, denThu: Number(e.target.value) })}
+                >
+                  {CAC_THU.filter((t) => t.id >= (form.thu ?? 2)).map((thu) => (
                     <option key={thu.id} value={thu.id}>
                       {thu.ten}
                     </option>

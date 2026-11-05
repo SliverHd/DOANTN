@@ -7,17 +7,33 @@ namespace XepLichGiangDay.Api.Services;
 
 public class HocPhanService(AppDbContext context)
 {
-    public async Task<List<HocPhanDto>> GetAllAsync()
+    public async Task<List<HocPhanDto>> GetAllAsync(int? maBoMon = null, int? maHocKy = null)
     {
-        return await context.HocPhan
-            .Select(x => new HocPhanDto
-            {
-                MaHocPhan = x.MaHocPhan,
-                TenHocPhan = x.TenHocPhan,
-                SoTinChi = x.SoTinChi,
-                TrangThai = x.TrangThai
-            })
-            .ToListAsync();
+        var query = context.HocPhan.AsQueryable();
+
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            query = query.Where(x => x.MaBoMon == maBoMon.Value);
+        }
+
+        if (maHocKy.HasValue && maHocKy.Value > 0)
+        {
+            // Chỉ lấy các học phần có lớp học phần mở trong học kỳ này
+            query = query.Where(hp => context.LopHocPhan.Any(l => l.MaHocKy == maHocKy.Value && l.MaHocPhan == hp.MaHocPhan));
+        }
+
+        return await (from hp in query
+                      join bm in context.BoMon on hp.MaBoMon equals bm.MaBoMon into bmGroup
+                      from bm in bmGroup.DefaultIfEmpty()
+                      select new HocPhanDto
+                      {
+                          MaHocPhan = hp.MaHocPhan,
+                          TenHocPhan = hp.TenHocPhan,
+                          SoTinChi = hp.SoTinChi,
+                          MaBoMon = hp.MaBoMon,
+                          TenBoMon = bm != null ? bm.TenBoMon : null,
+                          TrangThai = hp.TrangThai
+                      }).ToListAsync();
     }
 
     public async Task<HocPhanDto?> GetByIdAsync(int id)
@@ -40,6 +56,7 @@ public class HocPhanService(AppDbContext context)
         {
             TenHocPhan = dto.TenHocPhan,
             SoTinChi = dto.SoTinChi,
+            MaBoMon = dto.MaBoMon,
             TrangThai = dto.TrangThai
         };
 
@@ -62,6 +79,7 @@ public class HocPhanService(AppDbContext context)
 
         item.TenHocPhan = dto.TenHocPhan;
         item.SoTinChi = dto.SoTinChi;
+        if (dto.MaBoMon.HasValue) item.MaBoMon = dto.MaBoMon;
         item.TrangThai = dto.TrangThai;
 
         await context.SaveChangesAsync();

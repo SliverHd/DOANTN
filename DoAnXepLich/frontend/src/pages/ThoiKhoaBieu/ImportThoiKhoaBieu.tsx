@@ -1,17 +1,26 @@
 import { useState, useEffect, type ChangeEvent } from 'react'
 import { hocKyApi } from '../../api/hocKyApi'
+import { boMonApi } from '../../api/boMonApi'
 import { importTkbApi } from '../../api/importTkbApi'
+import { useAuth } from '../../contexts/AuthContext'
 import type { HocKy } from '../../types/hocKy'
+import type { BoMon } from '../../types/boMon'
 import type { KetQuaPreviewImport, LichSuImport } from '../../types/importTkb'
 
 interface Props {
   maHocKyChon?: number
+  maBoMonChon?: number
   onImportThanhCong?: () => void
 }
 
-function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
+function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Props) {
+  const { user } = useAuth()
+  const boMonKhoiTao = maBoMonChon || user?.maBoMon || 0
+
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
   const [maHocKy, setMaHocKy] = useState<number>(maHocKyChon || 0)
+  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
+  const [maBoMon, setMaBoMon] = useState<number>(boMonKhoiTao)
   const [file, setFile] = useState<File | null>(null)
 
   const [dangPreview, setDangPreview] = useState(false)
@@ -28,7 +37,19 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
         setMaHocKy(res.data[0].maHocKy)
       }
     })
+    boMonApi.getAll().then((res) => {
+      setDanhSachBoMon(res.data)
+      if (!boMonKhoiTao && user?.maBoMon) {
+        setMaBoMon(user.maBoMon)
+      }
+    })
   }, [])
+
+  useEffect(() => {
+    if (maBoMonChon && maBoMonChon > 0) {
+      setMaBoMon(maBoMonChon)
+    }
+  }, [maBoMonChon])
 
   useEffect(() => {
     if (maHocKy) {
@@ -45,6 +66,18 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
     }
   }
 
+  const handleXoaLichSu = async (id: number) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa bản ghi lịch sử import này?')) return
+    try {
+      await importTkbApi.xoaLichSu(id)
+      if (maHocKy) {
+        taiLichSu(maHocKy)
+      }
+    } catch {
+      alert('Không thể xóa bản ghi lịch sử này.')
+    }
+  }
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0])
@@ -57,6 +90,10 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
   const handlePreview = async () => {
     if (!maHocKy) {
       alert('Vui lòng chọn học kỳ.')
+      return
+    }
+    if (!maBoMon) {
+      alert('Vui lòng chọn bộ môn.')
       return
     }
     if (!file) {
@@ -86,6 +123,11 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
   }
 
   const handleXacNhanImport = async () => {
+    if (!maBoMon || maBoMon <= 0) {
+      alert('Vui lòng chọn Bộ môn phụ trách để import đúng dữ liệu.')
+      return
+    }
+
     if (!ketQuaPreview || ketQuaPreview.soDongHopLe === 0) {
       alert('Không có dòng nào hợp lệ để import.')
       return
@@ -97,9 +139,10 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
       const res = await importTkbApi.xacNhan(
         maHocKy,
         file ? file.name : 'thoi_khoa_bieu.xlsx',
-        ketQuaPreview.chiTiet
+        ketQuaPreview.chiTiet,
+        maBoMon > 0 ? maBoMon : undefined
       )
-      setThongBao(`Import thành công ${res.data.soDongThanhCong} dòng thời khóa biểu vào hệ thống!`)
+      setThongBao(`Import thành công ${res.data.soDongThanhCong} dòng thời khóa biểu cho bộ môn vào hệ thống!`)
       setKetQuaPreview(null)
       setFile(null)
       taiLichSu(maHocKy)
@@ -136,7 +179,7 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
       {thongBao && <div className="alert alert-success py-2 small">{thongBao}</div>}
 
       <div className="row g-2 align-items-end mb-3">
-        <div className="col-md-4">
+        <div className="col-md-3">
           <label className="form-label small fw-semibold">Học kỳ áp dụng</label>
           <select
             className="form-select form-select-sm"
@@ -152,7 +195,23 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
           </select>
         </div>
 
-        <div className="col-md-5">
+        <div className="col-md-3">
+          <label className="form-label small fw-semibold">Bộ môn phụ trách</label>
+          <select
+            className="form-select form-select-sm"
+            value={maBoMon}
+            onChange={(e) => setMaBoMon(Number(e.target.value))}
+          >
+            <option value={0}>-- Chọn bộ môn --</option>
+            {danhSachBoMon.map((bm) => (
+              <option key={bm.maBoMon} value={bm.maBoMon}>
+                {bm.tenBoMon}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="col-md-4">
           <label className="form-label small fw-semibold">File Excel (.xlsx)</label>
           <input
             type="file"
@@ -165,13 +224,13 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
           </small>
         </div>
 
-        <div className="col-md-3 d-flex gap-2">
+        <div className="col-md-2 d-flex gap-2">
           <button
             className="btn btn-primary btn-sm flex-grow-1"
             onClick={handlePreview}
             disabled={dangPreview || !file}
           >
-            {dangPreview ? 'Đang đọc file...' : 'Xem trước & Kiểm tra'}
+            {dangPreview ? 'Đang đọc file...' : 'Xem trước'}
           </button>
         </div>
       </div>
@@ -260,6 +319,7 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
                   <th>Thành công</th>
                   <th>Lỗi</th>
                   <th>Trạng thái</th>
+                  <th style={{ width: '80px' }} className="text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -284,6 +344,15 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
                       >
                         {ls.trangThai === 'ThanhCong' ? 'Thành công' : ls.trangThai === 'MotPhan' ? 'Một phần' : 'Thất bại'}
                       </span>
+                    </td>
+                    <td className="text-center">
+                      <button
+                        className="btn btn-outline-danger btn-sm py-0 px-2"
+                        title="Xóa lịch sử"
+                        onClick={() => handleXoaLichSu(ls.maLichSu)}
+                      >
+                        Xóa
+                      </button>
                     </td>
                   </tr>
                 ))}

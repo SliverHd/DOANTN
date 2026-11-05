@@ -89,7 +89,7 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
             }
 
             // 2. Xác định vị trí cột
-            int colMaHp = 2, colTenMon = 3, colMaLop = 4, colTenLop = 5, colThu = 6, colTiet = 7, colTietKetThuc = 8, colPhong = 8, colSoLuongSv = -1, colTuanHoc = 13, colTuTuan = -1, colDenTuan = -1;
+            int colMaHp = 2, colTenMon = 3, colMaLop = 4, colTenLop = 5, colThu = 6, colTiet = 7, colTietKetThuc = 8, colPhong = 8, colSoLuongSv = -1, colTuanHoc = -1, colTuTuan = -1, colDenTuan = -1;
             bool singleTietCol = true;
 
             if (colMap.Count > 0)
@@ -401,11 +401,17 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
                     {
                         TenHocPhan = tenHpMoi,
                         SoTinChi = 3,
+                        MaBoMon = request.MaBoMon,
                         TrangThai = "DangApDung"
                     };
                     context.HocPhan.Add(hp);
                     await context.SaveChangesAsync(cancellationToken);
                     dsHocPhan.Add(hp);
+                }
+                else if (request.MaBoMon.HasValue && request.MaBoMon.Value > 0)
+                {
+                    hp.MaBoMon = request.MaBoMon.Value;
+                    await context.SaveChangesAsync(cancellationToken);
                 }
 
                 int maHocPhan = hp.MaHocPhan;
@@ -511,6 +517,15 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
                 GhiChu = x.GhiChu
             })
             .ToListAsync();
+    }
+
+    public async Task<bool> XoaLichSuImportAsync(int maLichSu)
+    {
+        var item = await context.LichSuImport.FindAsync(maLichSu);
+        if (item == null) return false;
+        context.LichSuImport.Remove(item);
+        await context.SaveChangesAsync();
+        return true;
     }
 
     public byte[] TaoFileMauExcel()

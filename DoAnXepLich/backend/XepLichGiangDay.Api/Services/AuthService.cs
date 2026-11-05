@@ -22,6 +22,20 @@ public class AuthService(AppDbContext context)
             return null;
         }
 
+        int? maBoMon = user.MaBoMon;
+        if (!maBoMon.HasValue && user.MaGiangVien.HasValue)
+        {
+            var gv = await context.GiangVien.FindAsync(user.MaGiangVien.Value);
+            maBoMon = gv?.MaBoMon;
+        }
+
+        string? tenBoMon = null;
+        if (maBoMon.HasValue)
+        {
+            var bm = await context.BoMon.FindAsync(maBoMon.Value);
+            tenBoMon = bm?.TenBoMon;
+        }
+
         return new ThongTinDangNhapDto
         {
             MaNguoiDung = user.MaNguoiDung,
@@ -30,6 +44,8 @@ public class AuthService(AppDbContext context)
             Email = user.Email,
             VaiTro = user.VaiTro,
             MaGiangVien = user.MaGiangVien,
+            MaBoMon = maBoMon,
+            TenBoMon = tenBoMon,
             Token = Guid.NewGuid().ToString("N")
         };
     }

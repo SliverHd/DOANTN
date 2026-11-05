@@ -210,6 +210,10 @@ public class AppDbContext : DbContext
              .WithMany()
              .HasForeignKey(x => x.MaGiangVien)
              .OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<BoMon>()
+             .WithMany()
+             .HasForeignKey(x => x.MaBoMon)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         // 15. LichSuImport

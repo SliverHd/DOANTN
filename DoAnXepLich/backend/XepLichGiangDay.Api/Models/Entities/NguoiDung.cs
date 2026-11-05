@@ -9,5 +9,6 @@ public class NguoiDung
     public string? Email { get; set; }
     public string VaiTro { get; set; } = "GiangVien"; // Admin, TruongBoMon, GiangVien
     public int? MaGiangVien { get; set; }
+    public int? MaBoMon { get; set; }
     public string TrangThai { get; set; } = "KichHoat"; // KichHoat, Khoa
 }

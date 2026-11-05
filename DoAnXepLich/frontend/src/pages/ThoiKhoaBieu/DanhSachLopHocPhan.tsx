@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
 import { hocKyApi } from '../../api/hocKyApi'
+import { boMonApi } from '../../api/boMonApi'
 import { thoiKhoaBieuApi } from '../../api/thoiKhoaBieuApi'
 import { useAuth } from '../../contexts/AuthContext'
 import type { HocKy } from '../../types/hocKy'
+import type { BoMon } from '../../types/boMon'
 import type { LopHocPhan } from '../../types/lopHocPhan'
 import ImportThoiKhoaBieu from './ImportThoiKhoaBieu'
 
 function DanhSachLopHocPhan() {
   const { user } = useAuth()
   const isAdmin = user?.vaiTro === 'Admin'
+  const maBoMonUser = user?.maBoMon
 
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
+  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
   const [maHocKy, setMaHocKy] = useState<number>(0)
+  const [maBoMon, setMaBoMon] = useState<number>(!isAdmin && maBoMonUser ? maBoMonUser : 0)
   const [danhSachLop, setDanhSachLop] = useState<LopHocPhan[]>([])
   const [tuKhoa, setTuKhoa] = useState<string>('')
   const [dangTai, setDangTai] = useState(false)
@@ -29,18 +34,24 @@ function DanhSachLopHocPhan() {
   })
 
   useEffect(() => {
-    hocKyApi.getAll().then((res) => {
-      setDanhSachHocKy(res.data)
-      if (res.data.length > 0) {
-        setMaHocKy(res.data[0].maHocKy)
+    Promise.all([
+      hocKyApi.getAll(),
+      isAdmin ? boMonApi.getAll().catch(() => ({ data: [] as BoMon[] })) : Promise.resolve({ data: [] as BoMon[] }),
+    ]).then(([resHk, resBm]) => {
+      setDanhSachHocKy(resHk.data)
+      if (resHk.data.length > 0) {
+        setMaHocKy(resHk.data[0].maHocKy)
+      }
+      if (resBm.data) {
+        setDanhSachBoMon(resBm.data)
       }
     })
-  }, [])
+  }, [isAdmin])
 
-  const taiDanhSachLop = async (hkId: number) => {
+  const taiDanhSachLop = async (hkId: number, bmId?: number) => {
     try {
       setDangTai(true)
-      const res = await thoiKhoaBieuApi.getAll(hkId)
+      const res = await thoiKhoaBieuApi.getAll(hkId, bmId && bmId > 0 ? bmId : undefined)
       setDanhSachLop(res.data)
     } catch {
       // ignore
@@ -51,15 +62,17 @@ function DanhSachLopHocPhan() {
 
   useEffect(() => {
     if (maHocKy) {
-      taiDanhSachLop(maHocKy)
+      const bmLoc = !isAdmin && maBoMonUser ? maBoMonUser : (maBoMon > 0 ? maBoMon : undefined)
+      taiDanhSachLop(maHocKy, bmLoc)
     }
-  }, [maHocKy])
+  }, [maHocKy, maBoMon, isAdmin, maBoMonUser])
 
   const handleXoa = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa lớp học phần này?')) return
     try {
       await thoiKhoaBieuApi.delete(id)
-      taiDanhSachLop(maHocKy)
+      const bmLoc = !isAdmin && maBoMonUser ? maBoMonUser : (maBoMon > 0 ? maBoMon : undefined)
+      taiDanhSachLop(maHocKy, bmLoc)
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: unknown } }
       const data = errorObj.response?.data
@@ -81,7 +94,30 @@ function DanhSachLopHocPhan() {
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          <label className="form-label small fw-semibold mb-0">Học kỳ:</label>
+          {isAdmin ? (
+            <>
+              <label className="form-label small fw-semibold mb-0">Bộ môn:</label>
+              <select
+                className="form-select form-select-sm"
+                style={{ width: '170px' }}
+                value={maBoMon}
+                onChange={(e) => setMaBoMon(Number(e.target.value))}
+              >
+                <option value={0}>-- Tất cả Bộ môn --</option>
+                {danhSachBoMon.map((bm) => (
+                  <option key={bm.maBoMon} value={bm.maBoMon}>
+                    {bm.tenBoMon}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <span className="badge bg-light text-primary border py-2 px-2" style={{ fontSize: '12px' }}>
+              Bộ môn: <strong>{user?.tenBoMon || 'Chưa gán'}</strong>
+            </span>
+          )}
+
+          <label className="form-label small fw-semibold mb-0 ms-2">Học kỳ:</label>
           <select
             className="form-select form-select-sm"
             style={{ width: '180px' }}
@@ -198,7 +234,8 @@ function DanhSachLopHocPhan() {
       ) : (
         <ImportThoiKhoaBieu
           maHocKyChon={maHocKy}
-          onImportThanhCong={() => taiDanhSachLop(maHocKy)}
+          maBoMonChon={maBoMon > 0 ? maBoMon : (user?.maBoMon || 0)}
+          onImportThanhCong={() => taiDanhSachLop(maHocKy, maBoMon > 0 ? maBoMon : user?.maBoMon)}
         />
       )}
     </section>

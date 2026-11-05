@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using XepLichGiangDay.Api.Data;
 using XepLichGiangDay.Api.Models.Entities;
 
@@ -271,8 +271,8 @@ public class BoDanhGiaPhuongAn
                     var maRb = nv.LoaiNguyenVong?.Trim().ToUpperInvariant() ?? "";
                     double trongSoNv = nv.TrongSoPhat > 0 ? nv.TrongSoPhat : boiCanh.TrongSoNguyenVong;
 
-                    // SC01 hoặc TranhDay theo khung giờ cụ thể
-                    if (maRb == "SC01" || maRb == "TRANHDAY")
+                    // SEMINAR (hệ số tuyệt đối) hoặc SC01 / TranhDay theo khung giờ cụ thể
+                    if (maRb == "SEMINAR" || maRb == "SC01" || maRb == "TRANHDAY")
                     {
                         if (nv.Thu.HasValue && nv.Thu.Value == ct.Thu)
                         {
@@ -699,18 +699,35 @@ public class BoDanhGiaPhuongAn
     /// <summary>
     /// Nạp và đóng gói toàn bộ dữ liệu của học kỳ từ CSDL thành BoiCanhDanhGia để phục vụ xếp lịch.
     /// </summary>
-    public async Task<BoiCanhDanhGia> TaoBoiCanhAsync(int maHocKy, CancellationToken cancellationToken = default)
+    public async Task<BoiCanhDanhGia> TaoBoiCanhAsync(int maHocKy, int? maBoMon = null, CancellationToken cancellationToken = default)
     {
         if (_context == null) throw new InvalidOperationException("AppDbContext chua duoc khoi tao.");
 
-        var dsLop = await _context.LopHocPhan.Where(x => x.MaHocKy == maHocKy).ToListAsync(cancellationToken);
+        var queryLop = _context.LopHocPhan.Where(x => x.MaHocKy == maHocKy);
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            queryLop = from lop in queryLop
+                       join hp in _context.HocPhan on lop.MaHocPhan equals hp.MaHocPhan
+                       where hp.MaBoMon == maBoMon.Value
+                       select lop;
+        }
+
+        var dsLop = await queryLop.ToListAsync(cancellationToken);
         var dsMaLop = dsLop.Select(x => x.MaLopHocPhan).ToList();
         var dsChiTiet = await _context.ChiTietThoiKhoaBieu.Where(x => dsMaLop.Contains(x.MaLopHocPhan)).ToListAsync(cancellationToken);
-        var dsGiangVien = await _context.GiangVien.Where(x => x.TrangThai != "NghiViec").ToListAsync(cancellationToken);
-        var dsNangLuc = await _context.NangLucGiangDay.Where(x => string.IsNullOrEmpty(x.TrangThai) || x.TrangThai == "DangApDung").ToListAsync(cancellationToken);
-        var dsLichBan = await _context.LichBanGiangVien.Where(x => x.MaHocKy == maHocKy).ToListAsync(cancellationToken);
-        var dsNguyenVong = await _context.NguyenVongGiangVien.Where(x => x.MaHocKy == maHocKy).ToListAsync(cancellationToken);
-        var dsDinhMuc = await _context.DinhMucGiangVien.Where(x => x.MaHocKy == maHocKy).ToListAsync(cancellationToken);
+
+        var queryGv = _context.GiangVien.Where(x => x.TrangThai != "NghiViec");
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            queryGv = queryGv.Where(x => x.MaBoMon == maBoMon.Value);
+        }
+        var dsGiangVien = await queryGv.ToListAsync(cancellationToken);
+        var dsMaGv = dsGiangVien.Select(x => x.MaGiangVien).ToList();
+
+        var dsNangLuc = await _context.NangLucGiangDay.Where(x => (string.IsNullOrEmpty(x.TrangThai) || x.TrangThai == "DangApDung") && dsMaGv.Contains(x.MaGiangVien)).ToListAsync(cancellationToken);
+        var dsLichBan = await _context.LichBanGiangVien.Where(x => x.MaHocKy == maHocKy && dsMaGv.Contains(x.MaGiangVien)).ToListAsync(cancellationToken);
+        var dsNguyenVong = await _context.NguyenVongGiangVien.Where(x => x.MaHocKy == maHocKy && dsMaGv.Contains(x.MaGiangVien)).ToListAsync(cancellationToken);
+        var dsDinhMuc = await _context.DinhMucGiangVien.Where(x => x.MaHocKy == maHocKy && dsMaGv.Contains(x.MaGiangVien)).ToListAsync(cancellationToken);
         var dsRangBuoc = await _context.RangBuocHocKy.Where(x => x.MaHocKy == maHocKy).ToListAsync(cancellationToken);
 
         var boiCanh = new BoiCanhDanhGia

@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { giangVienApi } from '../../api/giangVienApi'
+import { boMonApi } from '../../api/boMonApi'
 import { nguoiDungApi } from '../../api/nguoiDungApi'
 import Loading from '../../components/Loading'
 import { useAuth } from '../../contexts/AuthContext'
 import type { GiangVien } from '../../types/giangVien'
+import type { BoMon } from '../../types/boMon'
 import type { NguoiDung } from '../../types/nguoiDung'
 
 function DanhSachNguoiDung() {
@@ -11,6 +13,7 @@ function DanhSachNguoiDung() {
 
   const [danhSach, setDanhSach] = useState<NguoiDung[]>([])
   const [danhSachGv, setDanhSachGv] = useState<GiangVien[]>([])
+  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
   const [dangTai, setDangTai] = useState(true)
   const [loi, setLoi] = useState('')
   const [thongBao, setThongBao] = useState('')
@@ -24,6 +27,7 @@ function DanhSachNguoiDung() {
   const [formEmail, setFormEmail] = useState('')
   const [formVaiTro, setFormVaiTro] = useState('GiangVien')
   const [formMaGiangVien, setFormMaGiangVien] = useState<number | undefined>(undefined)
+  const [formMaBoMon, setFormMaBoMon] = useState<number | undefined>(undefined)
   const [formTrangThai, setFormTrangThai] = useState('KichHoat')
 
   // State Modal Reset Mật khẩu
@@ -34,12 +38,14 @@ function DanhSachNguoiDung() {
   const taiDuLieu = async () => {
     try {
       setDangTai(true)
-      const [resUsers, resGv] = await Promise.all([
+      const [resUsers, resGv, resBm] = await Promise.all([
         nguoiDungApi.getAll(),
         giangVienApi.getAll(),
+        boMonApi.getAll(),
       ])
       setDanhSach(resUsers.data)
       setDanhSachGv(resGv.data)
+      setDanhSachBoMon(resBm.data)
     } catch {
       setLoi('Không tải được danh sách người dùng.')
     } finally {
@@ -59,6 +65,7 @@ function DanhSachNguoiDung() {
     setFormEmail('')
     setFormVaiTro('GiangVien')
     setFormMaGiangVien(undefined)
+    setFormMaBoMon(undefined)
     setFormTrangThai('KichHoat')
     setHienModal(true)
   }
@@ -71,6 +78,7 @@ function DanhSachNguoiDung() {
     setFormEmail(u.email || '')
     setFormVaiTro(u.vaiTro)
     setFormMaGiangVien(u.maGiangVien)
+    setFormMaBoMon(u.maBoMon)
     setFormTrangThai(u.trangThai)
     setHienModal(true)
   }
@@ -83,9 +91,12 @@ function DanhSachNguoiDung() {
     const gvId = Number(gvIdStr)
     setFormMaGiangVien(gvId)
     const gv = danhSachGv.find((x) => x.maGiangVien === gvId)
-    if (gv && !dangSuaId) {
-      if (!formHoTen) setFormHoTen(gv.hoTen)
-      if (!formEmail && gv.email) setFormEmail(gv.email)
+    if (gv) {
+      if (gv.maBoMon) setFormMaBoMon(gv.maBoMon)
+      if (!dangSuaId) {
+        if (!formHoTen) setFormHoTen(gv.hoTen)
+        if (!formEmail && gv.email) setFormEmail(gv.email)
+      }
     }
   }
 
@@ -106,6 +117,7 @@ function DanhSachNguoiDung() {
           email: formEmail.trim() || undefined,
           vaiTro: formVaiTro,
           maGiangVien: formMaGiangVien,
+          maBoMon: formMaBoMon,
           trangThai: formTrangThai,
         })
         setThongBao('Cập nhật người dùng thành công.')
@@ -121,6 +133,7 @@ function DanhSachNguoiDung() {
           email: formEmail.trim() || undefined,
           vaiTro: formVaiTro,
           maGiangVien: formMaGiangVien,
+          maBoMon: formMaBoMon,
         })
         setThongBao('Tạo mới người dùng thành công.')
       }
@@ -236,6 +249,7 @@ function DanhSachNguoiDung() {
                 <th>Họ tên</th>
                 <th>Email</th>
                 <th>Vai trò</th>
+                <th>Bộ môn</th>
                 <th>Giảng viên liên kết</th>
                 <th>Trạng thái</th>
                 <th style={{ width: '220px' }}>Thao tác</th>
@@ -244,7 +258,7 @@ function DanhSachNguoiDung() {
             <tbody>
               {danhSach.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center text-muted py-3">
+                  <td colSpan={9} className="text-center text-muted py-3">
                     Chưa có tài khoản nào.
                   </td>
                 </tr>
@@ -256,6 +270,13 @@ function DanhSachNguoiDung() {
                     <td>{u.hoTen}</td>
                     <td>{u.email || '-'}</td>
                     <td>{getVaiTroBadge(u.vaiTro)}</td>
+                    <td>
+                      {u.tenBoMon ? (
+                        <span className="badge bg-light text-primary border">{u.tenBoMon}</span>
+                      ) : (
+                        <span className="text-muted small">-</span>
+                      )}
+                    </td>
                     <td>{u.tenGiangVien || <span className="text-muted small">Không liên kết</span>}</td>
                     <td>
                       {u.trangThai === 'KichHoat' ? (
@@ -413,6 +434,27 @@ function DanhSachNguoiDung() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="mb-2">
+                    <label className="form-label small fw-semibold">
+                      Bộ môn công tác / phụ trách
+                    </label>
+                    <select
+                      className="form-select form-select-sm"
+                      value={formMaBoMon || ''}
+                      onChange={(e) => setFormMaBoMon(e.target.value ? Number(e.target.value) : undefined)}
+                    >
+                      <option value="">-- Chọn bộ môn --</option>
+                      {danhSachBoMon.map((bm) => (
+                        <option key={bm.maBoMon} value={bm.maBoMon}>
+                          {bm.tenBoMon}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="text-muted d-block mt-1" style={{ fontSize: '0.75rem' }}>
+                      * Trưởng bộ môn hoặc Giảng viên sẽ chỉ xem và quản lý dữ liệu liên quan đến bộ môn này.
+                    </small>
                   </div>
 
                   {dangSuaId && (

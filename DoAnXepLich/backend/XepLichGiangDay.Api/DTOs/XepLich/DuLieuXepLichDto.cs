@@ -5,6 +5,7 @@ namespace XepLichGiangDay.Api.DTOs.XepLich;
 public class DuLieuXepLichDto
 {
     public int MaHocKy { get; set; }
+    public int? MaBoMon { get; set; }
     public string ThuatToan { get; set; } = string.Empty;
 
     [Range(4, 500)]

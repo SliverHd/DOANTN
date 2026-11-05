@@ -7,6 +7,8 @@ public class YeuCauXepLichDto
     [Required]
     public int MaHocKy { get; set; }
 
+    public int? MaBoMon { get; set; }
+
     public string ThuatToan { get; set; } = "GA";
 
     [Range(4, 500, ErrorMessage = "Kích thước quần thể phải từ 4 đến 500.")]
