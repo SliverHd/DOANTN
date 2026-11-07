@@ -23,12 +23,15 @@ public class KetQuaPreviewImportDto
     public int TongSoDong { get; set; }
     public int SoDongHopLe { get; set; }
     public int SoDongLoi { get; set; }
+    public int? MaBoMon { get; set; }
+    public string? TenBoMon { get; set; }
     public List<DongThoiKhoaBieuImportDto> ChiTiet { get; set; } = new();
 }
 
 public class XacNhanImportRequest
 {
     public int MaHocKy { get; set; }
+    public int? MaBoMon { get; set; }
     public string TenFile { get; set; } = string.Empty;
     public List<DongThoiKhoaBieuImportDto> DanhSachDong { get; set; } = new();
 }

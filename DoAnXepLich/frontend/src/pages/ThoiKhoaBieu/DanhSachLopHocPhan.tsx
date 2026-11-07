@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { hocKyApi } from '../../api/hocKyApi'
+import { boMonApi } from '../../api/boMonApi'
 import { thoiKhoaBieuApi } from '../../api/thoiKhoaBieuApi'
 import { useAuth } from '../../contexts/AuthContext'
 import type { HocKy } from '../../types/hocKy'
+import type { BoMon } from '../../types/boMon'
 import type { LopHocPhan } from '../../types/lopHocPhan'
 import ImportThoiKhoaBieu from './ImportThoiKhoaBieu'
 
@@ -11,7 +13,9 @@ function DanhSachLopHocPhan() {
   const isAdmin = user?.vaiTro === 'Admin'
 
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
+  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
   const [maHocKy, setMaHocKy] = useState<number>(0)
+  const [maBoMon, setMaBoMon] = useState<number>(user?.maBoMon || 0)
   const [danhSachLop, setDanhSachLop] = useState<LopHocPhan[]>([])
   const [tuKhoa, setTuKhoa] = useState<string>('')
   const [dangTai, setDangTai] = useState(false)
@@ -24,6 +28,7 @@ function DanhSachLopHocPhan() {
       lop.maLopHocPhanTruong.toLowerCase().includes(kw) ||
       lop.tenLop.toLowerCase().includes(kw) ||
       lop.tenHocPhan.toLowerCase().includes(kw) ||
+      (lop.tenBoMon || '').toLowerCase().includes(kw) ||
       (lop.phongHoc || '').toLowerCase().includes(kw)
     )
   })
@@ -35,12 +40,16 @@ function DanhSachLopHocPhan() {
         setMaHocKy(res.data[0].maHocKy)
       }
     })
+
+    boMonApi.getAll().then((res) => {
+      setDanhSachBoMon(res.data)
+    })
   }, [])
 
-  const taiDanhSachLop = async (hkId: number) => {
+  const taiDanhSachLop = async (hkId: number, bmId?: number) => {
     try {
       setDangTai(true)
-      const res = await thoiKhoaBieuApi.getAll(hkId)
+      const res = await thoiKhoaBieuApi.getAll(hkId, bmId)
       setDanhSachLop(res.data)
     } catch {
       // ignore
@@ -51,15 +60,15 @@ function DanhSachLopHocPhan() {
 
   useEffect(() => {
     if (maHocKy) {
-      taiDanhSachLop(maHocKy)
+      taiDanhSachLop(maHocKy, maBoMon)
     }
-  }, [maHocKy])
+  }, [maHocKy, maBoMon])
 
   const handleXoa = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa lớp học phần này?')) return
     try {
       await thoiKhoaBieuApi.delete(id)
-      taiDanhSachLop(maHocKy)
+      taiDanhSachLop(maHocKy, maBoMon)
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: unknown } }
       const data = errorObj.response?.data
@@ -70,21 +79,36 @@ function DanhSachLopHocPhan() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h2 className="h5 mb-1">Thời khóa biểu lớp học phần</h2>
           <p className="text-muted small mb-0">
             {isAdmin
-              ? 'Quản lý các lớp học phần và lịch học cố định theo từng học kỳ'
+              ? 'Quản lý các lớp học phần và lịch học cố định theo từng bộ môn và học kỳ'
               : 'Xem lịch học của các lớp học phần theo từng học kỳ'}
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
-          <label className="form-label small fw-semibold mb-0">Học kỳ:</label>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <label className="form-label small fw-semibold mb-0">Bộ môn:</label>
           <select
             className="form-select form-select-sm"
-            style={{ width: '180px' }}
+            style={{ width: '190px' }}
+            value={maBoMon}
+            onChange={(e) => setMaBoMon(Number(e.target.value))}
+          >
+            <option value={0}>-- Tất cả bộ môn --</option>
+            {danhSachBoMon.map((bm) => (
+              <option key={bm.maBoMon} value={bm.maBoMon}>
+                {bm.tenBoMon}
+              </option>
+            ))}
+          </select>
+
+          <label className="form-label small fw-semibold mb-0 ms-2">Học kỳ:</label>
+          <select
+            className="form-select form-select-sm"
+            style={{ width: '160px' }}
             value={maHocKy}
             onChange={(e) => setMaHocKy(Number(e.target.value))}
           >
@@ -112,7 +136,7 @@ function DanhSachLopHocPhan() {
               className={`nav-link ${tabHienTai === 'import' ? 'active fw-semibold' : ''}`}
               onClick={() => setTabHienTai('import')}
             >
-              Import từ Excel
+              Import từ Excel theo Bộ môn
             </button>
           </li>
         </ul>
@@ -128,13 +152,13 @@ function DanhSachLopHocPhan() {
               type="text"
               className="form-control form-control-sm"
               style={{ maxWidth: '280px' }}
-              placeholder="Tìm theo mã lớp, môn học, phòng..."
+              placeholder="Tìm theo mã lớp, môn học, bộ môn, phòng..."
               value={tuKhoa}
               onChange={(e) => setTuKhoa(e.target.value)}
             />
           </div>
 
-          <div className="table-responsive border bg-white">
+          <div className="table-responsive border bg-white shadow-sm">
             <table className="table table-hover table-sm mb-0" style={{ fontSize: '0.9rem' }}>
               <thead className="table-light">
                 <tr>
@@ -142,6 +166,7 @@ function DanhSachLopHocPhan() {
                   <th>Mã lớp HP</th>
                   <th>Tên lớp</th>
                   <th>Môn học</th>
+                  <th>Bộ môn</th>
                   <th>Số TC</th>
                   <th>Sĩ số</th>
                   <th>Thứ</th>
@@ -154,51 +179,55 @@ function DanhSachLopHocPhan() {
               <tbody>
                 {dangTai ? (
                   <tr>
-                    <td colSpan={isAdmin ? 11 : 10} className="text-center py-3 text-muted">
+                    <td colSpan={isAdmin ? 12 : 11} className="text-center py-3 text-muted">
                       Đang tải dữ liệu...
                     </td>
                   </tr>
                 ) : dsLopHienThi.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 11 : 10} className="text-center py-3 text-muted">
-                      {tuKhoa ? 'Không tìm thấy lớp học phần phù hợp với từ khóa.' : 'Học kỳ này chưa có lớp học phần nào. ' + (isAdmin ? 'Vui lòng qua tab "Import từ Excel" để nạp dữ liệu.' : '')}
+                    <td colSpan={isAdmin ? 12 : 11} className="text-center py-3 text-muted">
+                      {tuKhoa ? 'Không tìm thấy lớp học phần phù hợp với từ khóa.' : 'Chưa có lớp học phần nào. ' + (isAdmin ? 'Vui lòng qua tab "Import từ Excel theo Bộ môn" để nạp dữ liệu.' : '')}
                     </td>
                   </tr>
                 ) : (
                   dsLopHienThi.map((lop, idx) => (
-                  <tr key={`${lop.maLopHocPhan}_${lop.thu}_${lop.tietBatDau}_${idx}`}>
-                    <td>{idx + 1}</td>
-
-                    <td className="fw-semibold">{lop.maLopHocPhanTruong}</td>
-                    <td>{lop.tenLop}</td>
-                    <td>{lop.tenHocPhan}</td>
-                    <td>{lop.soTinChi}</td>
-                    <td>{lop.soLuongSinhVien}</td>
-                    <td>Thứ {lop.thu === 8 ? 'CN' : lop.thu}</td>
-                    <td>{lop.tietBatDau} - {lop.tietKetThuc}</td>
-                    <td>{lop.phongHoc || '-'}</td>
-                    <td>{lop.tuTuan} - {lop.denTuan}</td>
-                    {isAdmin && (
-                      <td className="text-end no-print">
-                        <button
-                          className="btn btn-outline-danger btn-sm py-0 px-2"
-                          onClick={() => handleXoa(lop.maLopHocPhan)}
-                        >
-                          Xóa
-                        </button>
+                    <tr key={`${lop.maLopHocPhan}_${lop.thu}_${lop.tietBatDau}_${idx}`}>
+                      <td>{idx + 1}</td>
+                      <td className="fw-semibold">{lop.maLopHocPhanTruong}</td>
+                      <td>{lop.tenLop}</td>
+                      <td>{lop.tenHocPhan}</td>
+                      <td>
+                        <span className="badge bg-light text-primary border">
+                          {lop.tenBoMon || 'Chưa gán'}
+                        </span>
                       </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      <td>{lop.soTinChi}</td>
+                      <td>{lop.soLuongSinhVien}</td>
+                      <td>Thứ {lop.thu === 8 ? 'CN' : lop.thu}</td>
+                      <td>{lop.tietBatDau} - {lop.tietKetThuc}</td>
+                      <td>{lop.phongHoc || '-'}</td>
+                      <td>{lop.tuTuan} - {lop.denTuan}</td>
+                      {isAdmin && (
+                        <td className="text-end no-print">
+                          <button
+                            className="btn btn-outline-danger btn-sm py-0 px-2"
+                            onClick={() => handleXoa(lop.maLopHocPhan)}
+                          >
+                            Xóa
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </>
       ) : (
         <ImportThoiKhoaBieu
           maHocKyChon={maHocKy}
-          onImportThanhCong={() => taiDanhSachLop(maHocKy)}
+          onImportThanhCong={() => taiDanhSachLop(maHocKy, maBoMon)}
         />
       )}
     </section>

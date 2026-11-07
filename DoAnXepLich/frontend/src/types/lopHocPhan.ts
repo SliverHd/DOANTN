@@ -3,6 +3,8 @@ export interface LopHocPhan {
   maLopHocPhanTruong: string
   tenLop: string
   maHocKy: number
+  maBoMon?: number
+  tenBoMon?: string
   tenHocPhan: string
   soTinChi: number
   soLuongSinhVien: number

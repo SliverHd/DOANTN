@@ -16,8 +16,10 @@ export const xepLichApi = {
   soSanhThuatToan: (data: Partial<YeuCauXepLich>) =>
     axiosClient.post<SoSanhThuatToan>('/xep-lich/so-sanh-thuat-toan', data),
 
-  layBangPhanCong: (maHocKy: number) =>
-    axiosClient.get<BangPhanCongHocKy>(`/xep-lich/bang-phan-cong/${maHocKy}`),
+  layBangPhanCong: (maHocKy: number, maBoMon?: number) =>
+    axiosClient.get<BangPhanCongHocKy>(`/xep-lich/bang-phan-cong/${maHocKy}`, {
+      params: { maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined },
+    }),
 
   phanCongThuCong: (data: YeuCauPhanCongThuCong) =>
     axiosClient.post<KetQuaPhanCongThuCong>('/xep-lich/phan-cong-thu-cong', data),
@@ -37,11 +39,14 @@ export const xepLichApi = {
       `/xep-lich/dat-lai-phan-cong/${maHocKy}`
     ),
 
-  layThongKeTai: (maHocKy: number) =>
-    axiosClient.get<ThongKeTaiGv[]>(`/xep-lich/thong-ke-tai/${maHocKy}`),
+  layThongKeTai: (maHocKy: number, maBoMon?: number) =>
+    axiosClient.get<ThongKeTaiGv[]>(`/xep-lich/thong-ke-tai/${maHocKy}`, {
+      params: { maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined },
+    }),
 
-  xuatExcel: (maHocKy: number) =>
+  xuatExcel: (maHocKy: number, maBoMon?: number) =>
     axiosClient.get(`/xep-lich/xuat-excel/${maHocKy}`, {
+      params: { maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined },
       responseType: 'blob',
     }),
 }

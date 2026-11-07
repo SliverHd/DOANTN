@@ -19,6 +19,8 @@ export interface KetQuaPreviewImport {
   tongSoDong: number
   soDongHopLe: number
   soDongLoi: number
+  maBoMon?: number
+  tenBoMon?: string
   chiTiet: DongThoiKhoaBieuImport[]
 }
 

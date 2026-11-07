@@ -22,6 +22,13 @@ public class AuthService(AppDbContext context)
             return null;
         }
 
+        int? maBoMon = null;
+        if (user.MaGiangVien.HasValue)
+        {
+            var gv = await context.GiangVien.FindAsync(user.MaGiangVien.Value);
+            maBoMon = gv?.MaBoMon;
+        }
+
         return new ThongTinDangNhapDto
         {
             MaNguoiDung = user.MaNguoiDung,
@@ -30,6 +37,7 @@ public class AuthService(AppDbContext context)
             Email = user.Email,
             VaiTro = user.VaiTro,
             MaGiangVien = user.MaGiangVien,
+            MaBoMon = maBoMon,
             Token = Guid.NewGuid().ToString("N")
         };
     }

@@ -5,6 +5,7 @@ namespace XepLichGiangDay.Api.DTOs.XepLich;
 public class DuLieuXepLichDto
 {
     public int MaHocKy { get; set; }
+    public int? MaBoMon { get; set; }
     public string ThuatToan { get; set; } = string.Empty;
 
     [Range(4, 500)]
@@ -40,4 +41,3 @@ public class DuLieuXepLichDto
     /// <summary>Có lưu kết quả phân công vào CSDL hay chỉ chạy thử nghiệm/so sánh</summary>
     public bool LuuKetQua { get; set; } = true;
 }
-

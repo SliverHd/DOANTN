@@ -7,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 public class ImportThoiKhoaBieuRequest
 {
     public int MaHocKy { get; set; }
+    public int? MaBoMon { get; set; }
     public IFormFile File { get; set; } = null!;
 }
 
@@ -30,7 +31,7 @@ public class ImportThoiKhoaBieuController(ImportThoiKhoaBieuService importServic
 
         try
         {
-            var ketQua = await importService.PreviewAsync(request.File, request.MaHocKy, cancellationToken);
+            var ketQua = await importService.PreviewAsync(request.File, request.MaHocKy, request.MaBoMon, cancellationToken);
             return Ok(ketQua);
         }
         catch (ArgumentException ex)

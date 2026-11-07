@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { hocPhanApi } from '../../api/hocPhanApi'
+import { boMonApi } from '../../api/boMonApi'
 import Loading from '../../components/Loading'
 import type { HocPhan, TaoHocPhanDto } from '../../types/hocPhan'
+import type { BoMon } from '../../types/boMon'
 
 function DanhSachHocPhan() {
   const [danhSach, setDanhSach] = useState<HocPhan[]>([])
+  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
   const [dangTai, setDangTai] = useState(true)
   const [loi, setLoi] = useState('')
   const [tuKhoa, setTuKhoa] = useState('')
+  const [boMonLoc, setBoMonLoc] = useState<number>(0)
 
   // State Modal Thêm / Sửa
   const [hienModal, setHienModal] = useState(false)
@@ -15,6 +19,7 @@ function DanhSachHocPhan() {
   const [formData, setFormData] = useState<TaoHocPhanDto>({
     tenHocPhan: '',
     soTinChi: 3,
+    maBoMon: undefined,
     trangThai: 'DangApDung',
   })
   const [dangLuu, setDangLuu] = useState(false)
@@ -22,8 +27,12 @@ function DanhSachHocPhan() {
   const taiDuLieu = async () => {
     try {
       setDangTai(true)
-      const res = await hocPhanApi.getAll()
-      setDanhSach(res.data)
+      const [resHp, resBm] = await Promise.all([
+        hocPhanApi.getAll(),
+        boMonApi.getAll(),
+      ])
+      setDanhSach(resHp.data)
+      setDanhSachBoMon(resBm.data)
       setLoi('')
     } catch {
       setLoi('Không thể tải danh sách học phần.')
@@ -41,6 +50,7 @@ function DanhSachHocPhan() {
     setFormData({
       tenHocPhan: '',
       soTinChi: 3,
+      maBoMon: boMonLoc > 0 ? boMonLoc : (danhSachBoMon[0]?.maBoMon),
       trangThai: 'DangApDung',
     })
     setHienModal(true)
@@ -51,6 +61,7 @@ function DanhSachHocPhan() {
     setFormData({
       tenHocPhan: hp.tenHocPhan,
       soTinChi: hp.soTinChi,
+      maBoMon: hp.maBoMon,
       trangThai: hp.trangThai || 'DangApDung',
     })
     setHienModal(true)
@@ -89,17 +100,19 @@ function DanhSachHocPhan() {
     }
   }
 
-  const danhSachLoc = danhSach.filter((hp) =>
-    hp.tenHocPhan.toLowerCase().includes(tuKhoa.toLowerCase())
-  )
+  const danhSachLoc = danhSach.filter((hp) => {
+    const matchKw = hp.tenHocPhan.toLowerCase().includes(tuKhoa.toLowerCase())
+    const matchBm = boMonLoc === 0 || hp.maBoMon === boMonLoc
+    return matchKw && matchBm
+  })
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h2 className="h4 mb-1">Danh mục Học phần (Môn học)</h2>
           <p className="text-muted small mb-0">
-            Quản lý danh sách các học phần/môn học phục vụ phân công chuyên môn và thời khóa biểu
+            Quản lý danh sách các học phần theo từng Bộ môn phục vụ phân công chuyên môn và thời khóa biểu
           </p>
         </div>
         <button className="btn btn-primary" onClick={handleMoModalThem}>
@@ -108,14 +121,28 @@ function DanhSachHocPhan() {
       </div>
 
       <div className="row g-2 mb-3">
-        <div className="col-md-6">
+        <div className="col-md-5">
           <input
             type="text"
-            className="form-control"
+            className="form-control form-control-sm"
             placeholder="Tìm theo tên học phần..."
             value={tuKhoa}
             onChange={(e) => setTuKhoa(e.target.value)}
           />
+        </div>
+        <div className="col-md-4">
+          <select
+            className="form-select form-select-sm"
+            value={boMonLoc}
+            onChange={(e) => setBoMonLoc(Number(e.target.value))}
+          >
+            <option value={0}>-- Tất cả bộ môn --</option>
+            {danhSachBoMon.map((bm) => (
+              <option key={bm.maBoMon} value={bm.maBoMon}>
+                {bm.tenBoMon}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -130,8 +157,9 @@ function DanhSachHocPhan() {
                 <tr>
                   <th style={{ width: '60px' }}>Mã HP</th>
                   <th>Tên học phần</th>
-                  <th style={{ width: '120px' }}>Số tín chỉ</th>
-                  <th style={{ width: '140px' }}>Trạng thái</th>
+                  <th style={{ width: '180px' }}>Bộ môn phụ trách</th>
+                  <th style={{ width: '100px' }}>Số tín chỉ</th>
+                  <th style={{ width: '130px' }}>Trạng thái</th>
                   <th style={{ width: '130px' }} className="text-center">Thao tác</th>
                 </tr>
               </thead>
@@ -143,6 +171,11 @@ function DanhSachHocPhan() {
                     </td>
                     <td>
                       <strong>{hp.tenHocPhan}</strong>
+                    </td>
+                    <td>
+                      <span className="badge bg-light text-primary border">
+                        {hp.tenBoMon || 'Chưa gán'}
+                      </span>
                     </td>
                     <td>
                       <span className="badge bg-info text-dark">{hp.soTinChi} TC</span>
@@ -176,7 +209,7 @@ function DanhSachHocPhan() {
                 ))}
                 {danhSachLoc.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="text-center text-secondary py-4">
+                    <td colSpan={6} className="text-center text-secondary py-4">
                       Chưa có học phần nào.
                     </td>
                   </tr>
@@ -214,8 +247,23 @@ function DanhSachHocPhan() {
                       required
                       value={formData.tenHocPhan}
                       onChange={(e) => setFormData({ ...formData, tenHocPhan: e.target.value })}
-                      placeholder="VD: Cơ sở dữ liệu, Lập trình Web..."
+                      placeholder="VD: Giải tích 1, Đại số tuyến tính, Xác suất thống kê..."
                     />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Bộ môn phụ trách</label>
+                    <select
+                      className="form-select"
+                      value={formData.maBoMon || 0}
+                      onChange={(e) => setFormData({ ...formData, maBoMon: Number(e.target.value) || undefined })}
+                    >
+                      <option value={0}>-- Chọn bộ môn --</option>
+                      {danhSachBoMon.map((bm) => (
+                        <option key={bm.maBoMon} value={bm.maBoMon}>
+                          {bm.tenBoMon}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Số tín chỉ</label>

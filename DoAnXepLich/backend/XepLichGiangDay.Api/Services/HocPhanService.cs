@@ -9,29 +9,36 @@ public class HocPhanService(AppDbContext context)
 {
     public async Task<List<HocPhanDto>> GetAllAsync()
     {
-        return await context.HocPhan
-            .Select(x => new HocPhanDto
-            {
-                MaHocPhan = x.MaHocPhan,
-                TenHocPhan = x.TenHocPhan,
-                SoTinChi = x.SoTinChi,
-                TrangThai = x.TrangThai
-            })
-            .ToListAsync();
+        return await (from hp in context.HocPhan
+                      join bm in context.BoMon on hp.MaBoMon equals bm.MaBoMon into bmGroup
+                      from bm in bmGroup.DefaultIfEmpty()
+                      select new HocPhanDto
+                      {
+                          MaHocPhan = hp.MaHocPhan,
+                          TenHocPhan = hp.TenHocPhan,
+                          SoTinChi = hp.SoTinChi,
+                          MaBoMon = hp.MaBoMon,
+                          TenBoMon = bm != null ? bm.TenBoMon : null,
+                          TrangThai = hp.TrangThai
+                      }).ToListAsync();
     }
 
     public async Task<HocPhanDto?> GetByIdAsync(int id)
     {
-        var item = await context.HocPhan.FindAsync(id);
-        if (item is null) return null;
-
-        return new HocPhanDto
-        {
-            MaHocPhan = item.MaHocPhan,
-            TenHocPhan = item.TenHocPhan,
-            SoTinChi = item.SoTinChi,
-            TrangThai = item.TrangThai
-        };
+        var item = await (from hp in context.HocPhan
+                          where hp.MaHocPhan == id
+                          join bm in context.BoMon on hp.MaBoMon equals bm.MaBoMon into bmGroup
+                          from bm in bmGroup.DefaultIfEmpty()
+                          select new HocPhanDto
+                          {
+                              MaHocPhan = hp.MaHocPhan,
+                              TenHocPhan = hp.TenHocPhan,
+                              SoTinChi = hp.SoTinChi,
+                              MaBoMon = hp.MaBoMon,
+                              TenBoMon = bm != null ? bm.TenBoMon : null,
+                              TrangThai = hp.TrangThai
+                          }).FirstOrDefaultAsync();
+        return item;
     }
 
     public async Task<HocPhanDto> CreateAsync(TaoHocPhanDto dto)
@@ -40,17 +47,27 @@ public class HocPhanService(AppDbContext context)
         {
             TenHocPhan = dto.TenHocPhan,
             SoTinChi = dto.SoTinChi,
+            MaBoMon = dto.MaBoMon,
             TrangThai = dto.TrangThai
         };
 
         context.HocPhan.Add(item);
         await context.SaveChangesAsync();
 
+        string? tenBoMon = null;
+        if (item.MaBoMon.HasValue)
+        {
+            var bm = await context.BoMon.FindAsync(item.MaBoMon.Value);
+            tenBoMon = bm?.TenBoMon;
+        }
+
         return new HocPhanDto
         {
             MaHocPhan = item.MaHocPhan,
             TenHocPhan = item.TenHocPhan,
             SoTinChi = item.SoTinChi,
+            MaBoMon = item.MaBoMon,
+            TenBoMon = tenBoMon,
             TrangThai = item.TrangThai
         };
     }
@@ -62,6 +79,7 @@ public class HocPhanService(AppDbContext context)
 
         item.TenHocPhan = dto.TenHocPhan;
         item.SoTinChi = dto.SoTinChi;
+        item.MaBoMon = dto.MaBoMon;
         item.TrangThai = dto.TrangThai;
 
         await context.SaveChangesAsync();
@@ -83,5 +101,4 @@ public class HocPhanService(AppDbContext context)
         await context.SaveChangesAsync();
         return (true, null);
     }
-
 }
