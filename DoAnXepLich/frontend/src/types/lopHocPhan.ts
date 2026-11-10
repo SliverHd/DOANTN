@@ -14,4 +14,8 @@ export interface LopHocPhan {
   phongHoc: string
   tuTuan: number
   denTuan: number
+  maGiangVien?: number
+  tenGiangVien?: string
+  trangThaiPhanCong?: string
+  nguonPhanCong?: string
 }

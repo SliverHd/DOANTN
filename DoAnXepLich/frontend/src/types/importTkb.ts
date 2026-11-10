@@ -5,12 +5,16 @@ export interface DongThoiKhoaBieuImport {
   maHocPhanTruong: string
   tenHocPhan: string
   soLuongSinhVien: number
+  soTinChi?: number
   thu: number
   tietBatDau: number
   tietKetThuc: number
   phongHoc: string
   tuTuan: number
   denTuan: number
+  maGiangVien?: number
+  tenGiangVien?: string
+  daPhanCong?: boolean
   hopLe: boolean
   danhSachLoi: string[]
 }
@@ -19,6 +23,8 @@ export interface KetQuaPreviewImport {
   tongSoDong: number
   soDongHopLe: number
   soDongLoi: number
+  soDongDaPhanCong?: number
+  soLopDaPhanCong?: number
   maBoMon?: number
   tenBoMon?: string
   chiTiet: DongThoiKhoaBieuImport[]

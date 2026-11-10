@@ -29,7 +29,8 @@ function DanhSachLopHocPhan() {
       lop.tenLop.toLowerCase().includes(kw) ||
       lop.tenHocPhan.toLowerCase().includes(kw) ||
       (lop.tenBoMon || '').toLowerCase().includes(kw) ||
-      (lop.phongHoc || '').toLowerCase().includes(kw)
+      (lop.phongHoc || '').toLowerCase().includes(kw) ||
+      (lop.tenGiangVien || '').toLowerCase().includes(kw)
     )
   })
 
@@ -151,29 +152,29 @@ function DanhSachLopHocPhan() {
             <input
               type="text"
               className="form-control form-control-sm"
-              style={{ maxWidth: '280px' }}
-              placeholder="Tìm theo mã lớp, môn học, bộ môn, phòng..."
+              style={{ maxWidth: '300px' }}
+              placeholder="Tìm theo mã lớp, môn học, giảng viên, phòng..."
               value={tuKhoa}
               onChange={(e) => setTuKhoa(e.target.value)}
             />
           </div>
 
           <div className="table-responsive border bg-white shadow-sm">
-            <table className="table table-hover table-sm mb-0" style={{ fontSize: '0.9rem' }}>
+            <table className="table table-hover table-sm mb-0" style={{ fontSize: '0.88rem' }}>
               <thead className="table-light">
                 <tr>
-                  <th style={{ width: '50px' }}>STT</th>
+                  <th style={{ width: '45px' }}>STT</th>
                   <th>Mã lớp HP</th>
                   <th>Tên lớp</th>
                   <th>Môn học</th>
                   <th>Bộ môn</th>
                   <th>Số TC</th>
-                  <th>Sĩ số</th>
                   <th>Thứ</th>
                   <th>Tiết</th>
                   <th>Phòng</th>
                   <th>Tuần</th>
-                  {isAdmin && <th style={{ width: '80px' }} className="text-end no-print">Thao tác</th>}
+                  <th>Giảng viên</th>
+                  {isAdmin && <th style={{ width: '75px' }} className="text-end no-print">Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
@@ -191,7 +192,10 @@ function DanhSachLopHocPhan() {
                   </tr>
                 ) : (
                   dsLopHienThi.map((lop, idx) => (
-                    <tr key={`${lop.maLopHocPhan}_${lop.thu}_${lop.tietBatDau}_${idx}`}>
+                    <tr
+                      key={`${lop.maLopHocPhan}_${lop.thu}_${lop.tietBatDau}_${idx}`}
+                      className={lop.trangThaiPhanCong === 'DaKhoa' ? 'table-warning' : ''}
+                    >
                       <td>{idx + 1}</td>
                       <td className="fw-semibold">{lop.maLopHocPhanTruong}</td>
                       <td>{lop.tenLop}</td>
@@ -202,11 +206,25 @@ function DanhSachLopHocPhan() {
                         </span>
                       </td>
                       <td>{lop.soTinChi}</td>
-                      <td>{lop.soLuongSinhVien}</td>
                       <td>Thứ {lop.thu === 8 ? 'CN' : lop.thu}</td>
                       <td>{lop.tietBatDau} - {lop.tietKetThuc}</td>
                       <td>{lop.phongHoc || '-'}</td>
                       <td>{lop.tuTuan} - {lop.denTuan}</td>
+                      <td>
+                        {lop.tenGiangVien ? (
+                          lop.trangThaiPhanCong === 'DaKhoa' ? (
+                            <span className="badge bg-warning text-dark border border-dark-subtle">
+                              🔒 {lop.tenGiangVien} (Đã khóa)
+                            </span>
+                          ) : (
+                            <span className="badge bg-info text-dark">
+                              {lop.tenGiangVien}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-muted small">Chưa xếp</span>
+                        )}
+                      </td>
                       {isAdmin && (
                         <td className="text-end no-print">
                           <button

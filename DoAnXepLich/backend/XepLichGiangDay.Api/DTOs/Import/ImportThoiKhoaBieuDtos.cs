@@ -14,6 +14,10 @@ public class DongThoiKhoaBieuImportDto
     public string PhongHoc { get; set; } = string.Empty;
     public int TuTuan { get; set; }
     public int DenTuan { get; set; }
+    public int SoTinChi { get; set; } = 3;
+    public int? MaGiangVien { get; set; }
+    public string? TenGiangVien { get; set; }
+    public bool DaPhanCong { get; set; }
     public bool HopLe { get; set; } = true;
     public List<string> DanhSachLoi { get; set; } = new();
 }
@@ -23,6 +27,8 @@ public class KetQuaPreviewImportDto
     public int TongSoDong { get; set; }
     public int SoDongHopLe { get; set; }
     public int SoDongLoi { get; set; }
+    public int SoDongDaPhanCong { get; set; }
+    public int SoLopDaPhanCong { get; set; }
     public int? MaBoMon { get; set; }
     public string? TenBoMon { get; set; }
     public List<DongThoiKhoaBieuImportDto> ChiTiet { get; set; } = new();

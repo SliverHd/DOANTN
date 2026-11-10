@@ -28,6 +28,10 @@ public class ThoiKhoaBieuService(AppDbContext context)
         return await (from item in lopHpQuery
                       join ct in context.ChiTietThoiKhoaBieu on item.lop.MaLopHocPhan equals ct.MaLopHocPhan into ctGroup
                       from ct in ctGroup.DefaultIfEmpty()
+                      join pc in context.PhanCongGiangDay on item.lop.MaLopHocPhan equals pc.MaLopHocPhan into pcGroup
+                      from pc in pcGroup.DefaultIfEmpty()
+                      join gv in context.GiangVien on pc.MaGiangVien equals gv.MaGiangVien into gvGroup
+                      from gv in gvGroup.DefaultIfEmpty()
                       select new
                       {
                           item.lop.MaLopHocPhan,
@@ -44,7 +48,11 @@ public class ThoiKhoaBieuService(AppDbContext context)
                           TietKetThuc = ct != null ? ct.TietKetThuc : 0,
                           PhongHoc = ct != null ? ct.PhongHoc : "",
                           TuTuan = ct != null ? ct.TuTuan : 0,
-                          DenTuan = ct != null ? ct.DenTuan : 0
+                          DenTuan = ct != null ? ct.DenTuan : 0,
+                          MaGiangVien = pc != null ? (int?)pc.MaGiangVien : null,
+                          TenGiangVien = gv != null ? gv.HoTen : "",
+                          TrangThaiPhanCong = pc != null ? pc.TrangThai : "",
+                          NguonPhanCong = pc != null ? pc.NguonPhanCong : ""
                       }).ToListAsync<object>();
     }
 
