@@ -31,7 +31,57 @@ const CAC_THU_MA_TRAN = [
   { id: 8, ten: 'Chủ nhật' },
 ]
 
-const CAC_TIET_MA_TRAN = Array.from({ length: 12 }, (_, i) => i + 1)
+const CAC_TIET_MA_TRAN = Array.from({ length: 15 }, (_, i) => i + 1)
+
+interface BuoiHocHienThi {
+  lop: DongPhanCongLop
+  buoiIdx: number
+  tongSoBuoi: number
+  thu: number
+  tietBatDau: number
+  tietKetThuc: number
+  soTiet: number
+  phongHoc: string
+  tuTuan: number
+  denTuan: number
+}
+
+function dinhDangThu(thu: number): string {
+  if (thu <= 0) return '-'
+  return thu === 8 ? 'Chủ nhật' : `Thứ ${thu}`
+}
+
+function layDanhSachBuoiCuaLop(lop: DongPhanCongLop): BuoiHocHienThi[] {
+  const ds =
+    lop.danhSachBuoiHoc && lop.danhSachBuoiHoc.length > 0
+      ? lop.danhSachBuoiHoc
+      : [
+          {
+            thu: lop.thu,
+            tietBatDau: lop.tietBatDau,
+            tietKetThuc: lop.tietKetThuc,
+            phongHoc: lop.phongHoc,
+            tuTuan: lop.tuTuan,
+            denTuan: lop.denTuan,
+          },
+        ]
+
+  return ds.map((b, idx) => ({
+    lop,
+    buoiIdx: idx,
+    tongSoBuoi: ds.length,
+    thu: b.thu,
+    tietBatDau: b.tietBatDau,
+    tietKetThuc: b.tietKetThuc,
+    soTiet:
+      b.tietKetThuc >= b.tietBatDau && b.tietBatDau > 0
+        ? b.tietKetThuc - b.tietBatDau + 1
+        : 0,
+    phongHoc: b.phongHoc || '',
+    tuTuan: b.tuTuan,
+    denTuan: b.denTuan,
+  }))
+}
 
 const CAC_CA_HOC = [
   { id: 'sang', ten: 'Sáng', moTa: 'Tiết 1 - 6', tietMin: 1, tietMax: 6 },
@@ -125,6 +175,7 @@ function KetQuaXepLich() {
   const [xemTatCaTuan, setXemTatCaTuan] = useState<boolean>(false)
   const [boLocTrangThai, setBoLocTrangThai] = useState<string>('TatCa')
   const [tuKhoaTimKiem, setTuKhoaTimKiem] = useState<string>('')
+  const [tachTungBuoi, setTachTungBuoi] = useState<boolean>(false)
 
   // State cho Modal cảnh báo vi phạm
   const [modalCanhBao, setModalCanhBao] = useState<CanhBaoModalState>({
@@ -333,57 +384,74 @@ function KetQuaXepLich() {
       const matchMa = lop.maLopHocPhanTruong.toLowerCase().includes(kw)
       const matchTenHp = lop.tenHocPhan.toLowerCase().includes(kw)
       const matchTenGv = (lop.tenGiangVien || '').toLowerCase().includes(kw)
-      const matchPhong = (lop.phongHoc || '').toLowerCase().includes(kw)
+      const matchPhong =
+        (lop.phongHoc || '').toLowerCase().includes(kw) ||
+        (lop.danhSachBuoiHoc || []).some((b) =>
+          (b.phongHoc || '').toLowerCase().includes(kw)
+        )
       return matchMa || matchTenHp || matchTenGv || matchPhong
     }
 
     return true
   })
 
+  const tongSoBuoiTrongKy = (bangPhanCong?.danhSachLop || []).reduce(
+    (sum, lop) => sum + layDanhSachBuoiCuaLop(lop).length,
+    0
+  )
+  const dsBuoiHienThi = dsLopHienThi.flatMap(layDanhSachBuoiCuaLop)
+
   // Dữ liệu và hàm phục vụ ma trận thời khóa biểu
   const hocKyHienTai = danhSachHocKy.find((h) => h.maHocKy === maHocKy)
   const thongTinTuan = tinhNgayTrongTuan(hocKyHienTai?.ngayBatDau, tuanHienTai)
 
-  const dsLopCuaGv = (bangPhanCong?.danhSachLop || []).filter((lop) => {
-    // 1. Lọc theo giảng viên / tổng thể
+  const dsTatCaBuoi = (bangPhanCong?.danhSachLop || []).flatMap(layDanhSachBuoiCuaLop)
+  const maxTuanHoc = Math.max(
+    20,
+    ...dsTatCaBuoi.map((b) => b.denTuan || 0)
+  )
+
+  const dsLopPhuHopGv = (bangPhanCong?.danhSachLop || []).filter((lop) => {
     if (maGvMaTran === -1) {
-      if (lop.maGiangVien && lop.maGiangVien > 0) return false
-    } else if (maGvMaTran === -2) {
-      if (!lop.maGiangVien || lop.maGiangVien <= 0) return false
-    } else {
-      if (lop.maGiangVien !== maGvMaTran) return false
+      return !(lop.maGiangVien && lop.maGiangVien > 0)
     }
-
-    // 2. Lọc theo tuần học (nếu không xem gộp cả kỳ)
-    if (!xemTatCaTuan) {
-      if (lop.tuTuan > 0 && lop.denTuan > 0) {
-        if (tuanHienTai < lop.tuTuan || tuanHienTai > lop.denTuan) {
-          return false
-        }
-      }
+    if (maGvMaTran === -2) {
+      return Boolean(lop.maGiangVien && lop.maGiangVien > 0)
     }
-
-    return true
+    return lop.maGiangVien === maGvMaTran
   })
+
+  const dsBuoiCuaGv = dsLopPhuHopGv
+    .flatMap(layDanhSachBuoiCuaLop)
+    .filter((buoi) => {
+      if (xemTatCaTuan) return true
+      if (buoi.tuTuan > 0 && buoi.denTuan > 0) {
+        return tuanHienTai >= buoi.tuTuan && tuanHienTai <= buoi.denTuan
+      }
+      return true
+    })
+
+  const soLopCuaGv = new Set(dsBuoiCuaGv.map((b) => b.lop.maLopHocPhan)).size
+  const coTietBuoiToi = dsBuoiCuaGv.some((b) => b.tietKetThuc > 12)
 
   const thongTinGvChon = thongKeTai.find((g) => g.maGiangVien === maGvMaTran)
 
-  // Hàm render từng ô Ca học (Sáng / Chiều / Tối) theo chuẩn mẫu ảnh
+  // Hàm render từng ô Ca học (Sáng / Chiều / Tối) tách đầy đủ từng buổi học
   const renderCellCaHoc = (
     ca: (typeof CAC_CA_HOC)[0],
     thuItem: { thuId: number; tenThu: string; ngayStr: string }
   ) => {
-    const cacLopTrongCa = dsLopCuaGv
-      .filter((lop) => {
-        if (lop.thu !== thuItem.thuId) return false
+    const cacBuoiTrongCa = dsBuoiCuaGv
+      .filter((buoi) => {
+        if (buoi.thu !== thuItem.thuId) return false
         return (
-          (lop.tietBatDau >= ca.tietMin && lop.tietBatDau <= ca.tietMax) ||
-          (lop.tietKetThuc >= ca.tietMin && lop.tietKetThuc <= ca.tietMax)
+          (buoi.tietBatDau >= ca.tietMin && buoi.tietBatDau <= ca.tietMax) ||
+          (buoi.tietKetThuc >= ca.tietMin && buoi.tietKetThuc <= ca.tietMax)
         )
       })
-      .sort((a, b) => a.tietBatDau - b.tietBatDau)
+      .sort((a, b) => a.tietBatDau - b.tietBatDau || a.tuTuan - b.tuTuan)
 
-    if (cacLopTrongCa.length === 0) {
+    if (cacBuoiTrongCa.length === 0) {
       return (
         <td
           key={thuItem.thuId}
@@ -402,31 +470,34 @@ function KetQuaXepLich() {
         style={{ minWidth: '160px' }}
       >
         <div className="d-flex flex-column gap-2">
-          {cacLopTrongCa.map((lop) => {
-            const soTietLop =
-              lop.soTiet ||
-              (lop.tietKetThuc >= lop.tietBatDau
-                ? lop.tietKetThuc - lop.tietBatDau + 1
-                : 0)
+          {cacBuoiTrongCa.map((buoi) => {
+            const { lop } = buoi
             return (
               <div
-                key={lop.maLopHocPhan}
+                key={`${lop.maLopHocPhan}_${buoi.buoiIdx}_${buoi.thu}_${buoi.tietBatDau}_${buoi.tuTuan}`}
                 className={`card border shadow-sm p-2 ${
                   lop.daKhoa ? 'border-primary bg-primary-subtle' : 'border-success-subtle bg-light'
                 }`}
                 style={{ fontSize: '11px', borderRadius: '6px' }}
               >
                 {/* Dòng ca / tiết trọn vẹn */}
-                <div className="d-flex justify-content-between align-items-center mb-1">
+                <div className="d-flex justify-content-between align-items-center mb-1 gap-1">
                   <span className="badge bg-dark text-white fw-bold px-2 py-1" style={{ fontSize: '10px' }}>
-                    Tiết {lop.tietBatDau} - {lop.tietKetThuc} ({soTietLop} tiết)
+                    Tiết {buoi.tietBatDau} - {buoi.tietKetThuc} ({buoi.soTiet} tiết)
                   </span>
-                  <span
-                    className={`badge ${lop.daKhoa ? 'bg-primary' : 'bg-success'}`}
-                    style={{ fontSize: '9px' }}
-                  >
-                    {lop.daKhoa ? 'Đã khóa' : 'Dự kiến'}
-                  </span>
+                  <div className="d-flex gap-1 align-items-center">
+                    {buoi.tongSoBuoi > 1 && (
+                      <span className="badge bg-secondary" style={{ fontSize: '9px' }}>
+                        B{buoi.buoiIdx + 1}/{buoi.tongSoBuoi}
+                      </span>
+                    )}
+                    <span
+                      className={`badge ${lop.daKhoa ? 'bg-primary' : 'bg-success'}`}
+                      style={{ fontSize: '9px' }}
+                    >
+                      {lop.daKhoa ? 'Đã khóa' : 'Dự kiến'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Tên môn học */}
@@ -454,8 +525,8 @@ function KetQuaXepLich() {
 
                 {/* Phòng học & Tuần */}
                 <div className="text-secondary d-flex justify-content-between pt-1 border-top" style={{ fontSize: '10px' }}>
-                  <span><strong>Phòng:</strong> {lop.phongHoc || '-'}</span>
-                  <span>{lop.tuTuan > 0 ? `Tuần ${lop.tuTuan}-${lop.denTuan}` : ''}</span>
+                  <span><strong>Phòng:</strong> {buoi.phongHoc || '-'}</span>
+                  <span>{buoi.tuTuan > 0 ? `Tuần ${buoi.tuTuan}-${buoi.denTuan}` : ''}</span>
                 </div>
               </div>
             )
@@ -466,12 +537,12 @@ function KetQuaXepLich() {
   }
 
   const renderCellMaTran = (thu: number, tiet: number) => {
-    const cacLopThuNay = dsLopCuaGv.filter((lop) => lop.thu === thu)
+    const cacBuoiThuNay = dsBuoiCuaGv.filter((buoi) => buoi.thu === thu)
 
-    // Chế độ xem toàn bộ môn: Hiển thị phủ kín tất cả các lớp bắt đầu tại khung giờ này
+    // Chế độ xem toàn bộ môn: Hiển thị phủ kín tất cả các buổi học bắt đầu tại khung giờ này
     if (maGvMaTran === -2) {
-      const cacLopBatDau = cacLopThuNay.filter((lop) => lop.tietBatDau === tiet)
-      if (cacLopBatDau.length === 0) {
+      const cacBuoiBatDau = cacBuoiThuNay.filter((buoi) => buoi.tietBatDau === tiet)
+      if (cacBuoiBatDau.length === 0) {
         return (
           <td
             key={`${thu}_${tiet}`}
@@ -490,52 +561,74 @@ function KetQuaXepLich() {
           style={{ minWidth: '160px' }}
         >
           <div className="d-flex flex-column gap-1">
-            {cacLopBatDau.map((lop) => (
-              <div
-                key={lop.maLopHocPhan}
-                className={`border rounded p-1 shadow-sm small ${
-                  lop.daKhoa ? 'border-primary bg-primary-subtle' : 'border-success bg-light'
-                }`}
-                style={{ fontSize: '11px' }}
-              >
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="badge bg-secondary" style={{ fontSize: '9px' }}>
-                    T{lop.tietBatDau}-{lop.tietKetThuc}
-                  </span>
-                  <span
-                    className={`badge ${lop.daKhoa ? 'bg-primary' : 'bg-success'}`}
-                    style={{ fontSize: '9px' }}
-                  >
-                    {lop.daKhoa ? 'Đã khóa' : 'Dự kiến'}
-                  </span>
+            {cacBuoiBatDau.map((buoi) => {
+              const { lop } = buoi
+              return (
+                <div
+                  key={`${lop.maLopHocPhan}_${buoi.buoiIdx}_${buoi.thu}_${buoi.tietBatDau}_${buoi.tuTuan}`}
+                  className={`border rounded p-1 shadow-sm small ${
+                    lop.daKhoa ? 'border-primary bg-primary-subtle' : 'border-success bg-light'
+                  }`}
+                  style={{ fontSize: '11px' }}
+                >
+                  <div className="d-flex justify-content-between align-items-center mb-1 gap-1">
+                    <span className="badge bg-secondary" style={{ fontSize: '9px' }}>
+                      T{buoi.tietBatDau}-{buoi.tietKetThuc}
+                    </span>
+                    <div className="d-flex gap-1 align-items-center">
+                      {buoi.tongSoBuoi > 1 && (
+                        <span className="badge bg-dark" style={{ fontSize: '9px' }}>
+                          B{buoi.buoiIdx + 1}/{buoi.tongSoBuoi}
+                        </span>
+                      )}
+                      <span
+                        className={`badge ${lop.daKhoa ? 'bg-primary' : 'bg-success'}`}
+                        style={{ fontSize: '9px' }}
+                      >
+                        {lop.daKhoa ? 'Đã khóa' : 'Dự kiến'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="fw-bold text-dark lh-sm">{lop.tenHocPhan}</div>
+                  <div className="text-muted" style={{ fontSize: '10px' }}>
+                    {lop.maLopHocPhanTruong} {lop.tenLop ? `| ${lop.tenLop}` : ''}
+                  </div>
+                  <div className="text-primary fw-semibold mt-1" style={{ fontSize: '10px' }}>
+                    GV: {lop.tenGiangVien || 'Chưa rõ'}
+                  </div>
+                  <div className="text-muted d-flex justify-content-between" style={{ fontSize: '10px' }}>
+                    <span>P: {buoi.phongHoc || '-'}</span>
+                    {buoi.tuTuan > 0 && <span>T{buoi.tuTuan}-{buoi.denTuan}</span>}
+                  </div>
                 </div>
-                <div className="fw-bold text-dark lh-sm">{lop.tenHocPhan}</div>
-                <div className="text-muted" style={{ fontSize: '10px' }}>
-                  {lop.maLopHocPhanTruong} {lop.tenLop ? `| ${lop.tenLop}` : ''}
-                </div>
-                <div className="text-primary fw-semibold mt-1" style={{ fontSize: '10px' }}>
-                  GV: {lop.tenGiangVien || 'Chưa rõ'}
-                </div>
-                <div className="text-muted d-flex justify-content-between" style={{ fontSize: '10px' }}>
-                  <span>P: {lop.phongHoc || '-'}</span>
-                  {lop.tuTuan > 0 && <span>T{lop.tuTuan}-{lop.denTuan}</span>}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </td>
       )
     }
 
-    const lopChiemCho = cacLopThuNay.find(
-      (lop) => tiet > lop.tietBatDau && tiet <= lop.tietKetThuc
+    const layCaCuaTiet = (t: number) => (t <= 6 ? 1 : t <= 12 ? 2 : 3)
+    const coTheSpanBuoi = (buoi: BuoiHocHienThi) =>
+      buoi.tietBatDau > 0 &&
+      buoi.tietKetThuc >= buoi.tietBatDau &&
+      layCaCuaTiet(buoi.tietBatDau) === layCaCuaTiet(buoi.tietKetThuc) &&
+      !cacBuoiThuNay.some(
+        (other) =>
+          other !== buoi &&
+          Math.max(buoi.tietBatDau, other.tietBatDau) <=
+            Math.min(buoi.tietKetThuc, other.tietKetThuc)
+      )
+
+    const buoiDangSpan = cacBuoiThuNay.find(
+      (buoi) => coTheSpanBuoi(buoi) && tiet > buoi.tietBatDau && tiet <= buoi.tietKetThuc
     )
-    if (lopChiemCho) {
+    if (buoiDangSpan) {
       return null
     }
 
-    const cacLopBatDau = cacLopThuNay.filter((lop) => lop.tietBatDau === tiet)
-    if (cacLopBatDau.length === 0) {
+    const cacBuoiBatDau = cacBuoiThuNay.filter((buoi) => buoi.tietBatDau === tiet)
+    if (cacBuoiBatDau.length === 0) {
       return (
         <td
           key={`${thu}_${tiet}`}
@@ -547,9 +640,12 @@ function KetQuaXepLich() {
       )
     }
 
-    if (cacLopBatDau.length === 1) {
-      const lop = cacLopBatDau[0]
-      const span = Math.max(1, lop.tietKetThuc - lop.tietBatDau + 1)
+    if (cacBuoiBatDau.length === 1) {
+      const buoi = cacBuoiBatDau[0]
+      const { lop } = buoi
+      const span = coTheSpanBuoi(buoi)
+        ? Math.max(1, buoi.tietKetThuc - buoi.tietBatDau + 1)
+        : 1
       return (
         <td
           key={`${thu}_${tiet}`}
@@ -561,16 +657,23 @@ function KetQuaXepLich() {
         >
           <div className="d-flex flex-column h-100 justify-content-between gap-1">
             <div>
-              <div className="d-flex justify-content-between align-items-start mb-1">
+              <div className="d-flex justify-content-between align-items-start mb-1 gap-1">
                 <span
                   className={`badge ${lop.daKhoa ? 'bg-primary' : 'bg-success'}`}
                   style={{ fontSize: '10px' }}
                 >
                   {lop.daKhoa ? 'Đã khóa' : 'Dự kiến'}
                 </span>
-                <span className="badge bg-secondary" style={{ fontSize: '10px' }}>
-                  {lop.soTinChi} TC
-                </span>
+                <div className="d-flex gap-1 align-items-center">
+                  {buoi.tongSoBuoi > 1 && (
+                    <span className="badge bg-dark" style={{ fontSize: '10px' }}>
+                      B{buoi.buoiIdx + 1}/{buoi.tongSoBuoi}
+                    </span>
+                  )}
+                  <span className="badge bg-secondary" style={{ fontSize: '10px' }}>
+                    {lop.soTinChi} TC
+                  </span>
+                </div>
               </div>
               <div className="fw-bold text-dark small lh-sm">{lop.tenHocPhan}</div>
               <div className="text-muted" style={{ fontSize: '11px' }}>
@@ -584,12 +687,12 @@ function KetQuaXepLich() {
             </div>
             <div className="border-top pt-1 mt-1 text-muted" style={{ fontSize: '11px' }}>
               <div>
-                <strong>Tiết:</strong> {lop.tietBatDau}-{lop.tietKetThuc}
-                {lop.phongHoc && ` | P: ${lop.phongHoc}`}
+                <strong>Tiết:</strong> {buoi.tietBatDau}-{buoi.tietKetThuc}
+                {buoi.phongHoc && ` | P: ${buoi.phongHoc}`}
               </div>
-              {lop.tuTuan > 0 && (
+              {buoi.tuTuan > 0 && (
                 <div>
-                  <strong>Tuần:</strong> {lop.tuTuan}-{lop.denTuan}
+                  <strong>Tuần:</strong> {buoi.tuTuan}-{buoi.denTuan}
                 </div>
               )}
               {maGvMaTran === -1 && <div className="text-danger mt-1">Chưa có GV</div>}
@@ -606,16 +709,23 @@ function KetQuaXepLich() {
         style={{ minWidth: '135px' }}
       >
         <div className="d-flex flex-column gap-1">
-          {cacLopBatDau.map((lop) => (
+          {cacBuoiBatDau.map((buoi) => (
             <div
-              key={lop.maLopHocPhan}
+              key={`${buoi.lop.maLopHocPhan}_${buoi.buoiIdx}_${buoi.thu}_${buoi.tietBatDau}_${buoi.tuTuan}`}
               className="border rounded p-1 bg-white shadow-sm small"
             >
               <div className="fw-bold text-dark" style={{ fontSize: '11px' }}>
-                {lop.tenHocPhan}
+                {buoi.lop.tenHocPhan}{' '}
+                {buoi.tongSoBuoi > 1 && (
+                  <span className="badge bg-dark" style={{ fontSize: '9px' }}>
+                    B{buoi.buoiIdx + 1}/{buoi.tongSoBuoi}
+                  </span>
+                )}
               </div>
               <div className="text-muted" style={{ fontSize: '10px' }}>
-                {lop.maLopHocPhanTruong} | Tiết {lop.tietBatDau}-{lop.tietKetThuc}
+                {buoi.lop.maLopHocPhanTruong} | Tiết {buoi.tietBatDau}-{buoi.tietKetThuc}
+                {buoi.phongHoc ? ` | P: ${buoi.phongHoc}` : ''}
+                {buoi.tuTuan > 0 ? ` | T${buoi.tuTuan}-${buoi.denTuan}` : ''}
               </div>
             </div>
           ))}
@@ -634,7 +744,7 @@ function KetQuaXepLich() {
             Quản lý, can thiệp thủ công, ghim khóa lớp và theo dõi định mức tải giảng viên.
           </div>
         </div>
-        <div className="d-flex align-items-center gap-2 mt-2 mt-sm-0 flex-wrap">
+        <div className="d-flex align-items-center gap-2 mt-2 mt-sm-0 flex-wrap no-print">
           <label htmlFor="selectBoMon" className="col-form-label-sm text-nowrap fw-semibold">
             Bộ môn:
           </label>
@@ -688,7 +798,7 @@ function KetQuaXepLich() {
             className="btn btn-sm btn-outline-success"
             onClick={handleXuatExcel}
             disabled={dangTai || dangXuLy || dangXuatExcel || !bangPhanCong || bangPhanCong.tongSoLop === 0}
-            title="Xuất bảng thời khóa biểu và thống kê tải ra file Excel (.xlsx)"
+            title="Xuất bảng thời khóa biểu đầy đủ từng buổi học và thống kê tải ra file Excel (.xlsx)"
           >
             {dangXuatExcel ? 'Đang xuất...' : 'Xuất Excel'}
           </button>
@@ -697,10 +807,10 @@ function KetQuaXepLich() {
 
       {/* Thanh số liệu tóm tắt tối giản */}
       {bangPhanCong && (
-        <div className="row g-2 mb-3">
+        <div className="row g-2 mb-3 no-print">
           <div className="col-6 col-md-3">
             <div className="border rounded p-2 bg-light text-center">
-              <div className="small text-muted">Tổng số lớp</div>
+              <div className="small text-muted">Tổng số lớp ({tongSoBuoiTrongKy} buổi)</div>
               <div className="fs-5 fw-bold">{bangPhanCong.tongSoLop}</div>
             </div>
           </div>
@@ -726,14 +836,14 @@ function KetQuaXepLich() {
       )}
 
       {/* Tab điều hướng */}
-      <ul className="nav nav-tabs mb-3">
+      <ul className="nav nav-tabs mb-3 no-print">
         <li className="nav-item">
           <button
             type="button"
             className={`nav-link ${tabHienTai === 'phanCong' ? 'active fw-semibold' : ''}`}
             onClick={() => setTabHienTai('phanCong')}
           >
-            Bảng phân công thời khóa biểu ({bangPhanCong?.tongSoLop || 0})
+            Bảng phân công thời khóa biểu ({bangPhanCong?.tongSoLop || 0} lớp / {tongSoBuoiTrongKy} buổi)
           </button>
         </li>
         <li className="nav-item">
@@ -760,7 +870,7 @@ function KetQuaXepLich() {
       {tabHienTai === 'phanCong' && (
         <>
           {/* Thanh lọc & Tìm kiếm */}
-          <div className="row g-2 mb-3 align-items-center">
+          <div className="row g-2 mb-3 align-items-center no-print">
             <div className="col-md-4 col-sm-6">
               <input
                 type="text"
@@ -782,8 +892,36 @@ function KetQuaXepLich() {
                 <option value="DaKhoa">Đã khóa (Ghim)</option>
               </select>
             </div>
+            <div className="col-md-3 col-sm-6">
+              <div className="btn-group btn-group-sm" role="group">
+                <button
+                  type="button"
+                  className={`btn ${!tachTungBuoi ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setTachTungBuoi(false)}
+                  title="Hiển thị mỗi lớp 1 hàng (liệt kê đủ các buổi trong ô)"
+                >
+                  Theo lớp ({dsLopHienThi.length})
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${tachTungBuoi ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setTachTungBuoi(true)}
+                  title="Tách riêng mỗi buổi học thành 1 dòng đầy đủ giống file Excel xuất ra"
+                >
+                  Tách từng buổi ({dsBuoiHienThi.length})
+                </button>
+              </div>
+            </div>
             <div className="col text-end text-muted small">
-              Hiển thị: <strong>{dsLopHienThi.length}</strong> / {bangPhanCong?.tongSoLop || 0} lớp
+              {tachTungBuoi ? (
+                <>
+                  Hiển thị: <strong>{dsBuoiHienThi.length}</strong> / {tongSoBuoiTrongKy} buổi ({dsLopHienThi.length} lớp)
+                </>
+              ) : (
+                <>
+                  Hiển thị: <strong>{dsLopHienThi.length}</strong> / {bangPhanCong?.tongSoLop || 0} lớp ({dsBuoiHienThi.length} buổi)
+                </>
+              )}
             </div>
           </div>
 
@@ -802,24 +940,46 @@ function KetQuaXepLich() {
                     <th style={{ width: '110px' }}>Mã lớp HP</th>
                     <th>Học phần</th>
                     <th style={{ width: '50px' }}>TC</th>
-                    <th style={{ width: '130px' }}>Lịch học</th>
-                    <th style={{ width: '80px' }}>Phòng</th>
-                    <th style={{ width: '70px' }}>Tuần</th>
+                    <th style={{ width: '145px' }}>Lịch học</th>
+                    <th style={{ minWidth: '110px' }}>Phòng</th>
+                    <th style={{ width: '75px' }}>Tuần</th>
                     <th style={{ minWidth: '240px' }}>Giảng viên phân công</th>
                     <th style={{ width: '110px' }}>Trạng thái</th>
-                    {laTruongBoMon && <th style={{ width: '130px' }}>Thao tác</th>}
+                    {laTruongBoMon && <th style={{ width: '130px' }} className="no-print">Thao tác</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {dsLopHienThi.map((lop, idx) => {
+                  {(tachTungBuoi
+                    ? dsBuoiHienThi.map((buoi, idx) => ({
+                        rowKey: `${buoi.lop.maLopHocPhan}_b${buoi.buoiIdx}`,
+                        idx,
+                        lop: buoi.lop,
+                        buoiRieng: buoi,
+                        dsBuoi: [buoi],
+                      }))
+                    : dsLopHienThi.map((lop, idx) => ({
+                        rowKey: `${lop.maLopHocPhan}`,
+                        idx,
+                        lop,
+                        buoiRieng: null,
+                        dsBuoi: layDanhSachBuoiCuaLop(lop),
+                      }))
+                  ).map(({ rowKey, idx, lop, buoiRieng, dsBuoi }) => {
                     const daPhanCong = lop.maGiangVien && lop.maGiangVien > 0
                     return (
                       <tr
-                        key={lop.maLopHocPhan}
+                        key={rowKey}
                         className={lop.daKhoa ? 'table-secondary' : ''}
                       >
                         <td className="text-center text-muted">{idx + 1}</td>
-                        <td className="fw-semibold text-nowrap">{lop.maLopHocPhanTruong}</td>
+                        <td className="fw-semibold text-nowrap">
+                          <div>{lop.maLopHocPhanTruong}</div>
+                          {buoiRieng && buoiRieng.tongSoBuoi > 1 && (
+                            <div className="small text-muted fw-normal">
+                              Buổi {buoiRieng.buoiIdx + 1}/{buoiRieng.tongSoBuoi}
+                            </div>
+                          )}
+                        </td>
                         <td>
                           <div className="fw-medium">{lop.tenHocPhan}</div>
                           {lop.tenLop && (
@@ -828,18 +988,41 @@ function KetQuaXepLich() {
                         </td>
                         <td className="text-center">{lop.soTinChi}</td>
                         <td className="text-center text-nowrap">
-                          {lop.thu > 0 ? (
-                            <span>
-                              Thứ {lop.thu}, Tiết {lop.tietBatDau}-{lop.tietKetThuc}
-                              <span className="text-muted ms-1">({lop.soTiet}t)</span>
-                            </span>
-                          ) : (
-                            <span className="text-muted">-</span>
-                          )}
+                          {dsBuoi.map((b, bIdx) => (
+                            <div
+                              key={bIdx}
+                              className={bIdx > 0 ? 'pt-1 mt-1 border-top' : ''}
+                            >
+                              {b.thu > 0 ? (
+                                <span>
+                                  {dinhDangThu(b.thu)}, Tiết {b.tietBatDau}-{b.tietKetThuc}
+                                  <span className="text-muted ms-1">({b.soTiet}t)</span>
+                                </span>
+                              ) : (
+                                <span className="text-muted">-</span>
+                              )}
+                            </div>
+                          ))}
                         </td>
-                        <td className="text-center">{lop.phongHoc || '-'}</td>
                         <td className="text-center text-nowrap">
-                          {lop.tuTuan > 0 ? `${lop.tuTuan}-${lop.denTuan}` : '-'}
+                          {dsBuoi.map((b, bIdx) => (
+                            <div
+                              key={bIdx}
+                              className={bIdx > 0 ? 'pt-1 mt-1 border-top' : ''}
+                            >
+                              {b.phongHoc || '-'}
+                            </div>
+                          ))}
+                        </td>
+                        <td className="text-center text-nowrap">
+                          {dsBuoi.map((b, bIdx) => (
+                            <div
+                              key={bIdx}
+                              className={bIdx > 0 ? 'pt-1 mt-1 border-top' : ''}
+                            >
+                              {b.tuTuan > 0 ? `${b.tuTuan}-${b.denTuan}` : '-'}
+                            </div>
+                          ))}
                         </td>
                         <td>
                           {laTruongBoMon ? (
@@ -877,8 +1060,6 @@ function KetQuaXepLich() {
                                   )
                                 })}
                               </select>
-
-
 
                               {/* Thông tin phụ nguồn phân công */}
                               {daPhanCong && (
@@ -933,7 +1114,7 @@ function KetQuaXepLich() {
                           </div>
                         </td>
                         {laTruongBoMon && (
-                          <td className="text-center text-nowrap">
+                          <td className="text-center text-nowrap no-print">
                             <div className="btn-group btn-group-sm">
                               {/* Nút Khóa / Mở khóa */}
                               <button
@@ -990,9 +1171,9 @@ function KetQuaXepLich() {
                       <th style={{ width: '110px' }}>Mã lớp HP</th>
                       <th>Học phần</th>
                       <th style={{ width: '50px' }}>TC</th>
-                      <th style={{ width: '130px' }}>Lịch học</th>
-                      <th style={{ width: '80px' }}>Phòng</th>
-                      <th style={{ width: '70px' }}>Tuần</th>
+                      <th style={{ width: '145px' }}>Lịch học</th>
+                      <th style={{ minWidth: '100px' }}>Phòng</th>
+                      <th style={{ width: '75px' }}>Tuần</th>
                       <th style={{ minWidth: '220px' }}>Giảng viên phân công</th>
                       <th style={{ width: '110px' }}>Trạng thái</th>
                     </tr>
@@ -1000,39 +1181,52 @@ function KetQuaXepLich() {
                   <tbody>
                     {bangPhanCong.danhSachLop
                       .filter((lop) => lop.coLichTamNghi)
-                      .map((lop, idx) => (
-                        <tr key={`tam-nghi-${lop.maLopHocPhan}`}>
-                          <td className="text-center text-muted">{idx + 1}</td>
-                          <td className="fw-semibold text-nowrap">{lop.maLopHocPhanTruong}</td>
-                          <td>
-                            <div className="fw-medium">{lop.tenHocPhan}</div>
-                            {lop.tenLop && (
-                              <div className="small text-muted">Lớp: {lop.tenLop} ({lop.soLuongSinhVien} SV)</div>
-                            )}
-                          </td>
-                          <td className="text-center">{lop.soTinChi}</td>
-                          <td className="text-center text-nowrap">
-                            {lop.thu > 0 ? (
-                              <span>
-                                Thứ {lop.thu}, Tiết {lop.tietBatDau}-{lop.tietKetThuc}
-                                <span className="text-muted ms-1">({lop.soTiet}t)</span>
-                              </span>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
-                          <td className="text-center">{lop.phongHoc || '-'}</td>
-                          <td className="text-center text-nowrap fw-bold text-danger">
-                            {lop.tuanTamNghi || (lop.tuTuan > 0 ? `${lop.tuTuan}` : '-')}
-                          </td>
-                          <td>
-                            <span className="fw-semibold text-dark">{lop.tenGiangVien || 'Chưa phân công'}</span>
-                          </td>
-                          <td className="text-center text-nowrap">
-                            <span className="badge bg-warning text-dark px-2 py-1">Tạm hoãn</span>
-                          </td>
-                        </tr>
-                      ))}
+                      .map((lop, idx) => {
+                        const dsBuoiTamHoan = layDanhSachBuoiCuaLop(lop)
+                        return (
+                          <tr key={`tam-nghi-${lop.maLopHocPhan}`}>
+                            <td className="text-center text-muted">{idx + 1}</td>
+                            <td className="fw-semibold text-nowrap">{lop.maLopHocPhanTruong}</td>
+                            <td>
+                              <div className="fw-medium">{lop.tenHocPhan}</div>
+                              {lop.tenLop && (
+                                <div className="small text-muted">Lớp: {lop.tenLop} ({lop.soLuongSinhVien} SV)</div>
+                              )}
+                            </td>
+                            <td className="text-center">{lop.soTinChi}</td>
+                            <td className="text-center text-nowrap">
+                              {dsBuoiTamHoan.map((b, bIdx) => (
+                                <div key={bIdx} className={bIdx > 0 ? 'pt-1 mt-1 border-top' : ''}>
+                                  {b.thu > 0 ? (
+                                    <span>
+                                      {dinhDangThu(b.thu)}, Tiết {b.tietBatDau}-{b.tietKetThuc}
+                                      <span className="text-muted ms-1">({b.soTiet}t)</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted">-</span>
+                                  )}
+                                </div>
+                              ))}
+                            </td>
+                            <td className="text-center text-nowrap">
+                              {dsBuoiTamHoan.map((b, bIdx) => (
+                                <div key={bIdx} className={bIdx > 0 ? 'pt-1 mt-1 border-top' : ''}>
+                                  {b.phongHoc || '-'}
+                                </div>
+                              ))}
+                            </td>
+                            <td className="text-center text-nowrap fw-bold text-danger">
+                              {lop.tuanTamNghi || (lop.tuTuan > 0 ? `${lop.tuTuan}` : '-')}
+                            </td>
+                            <td>
+                              <span className="fw-semibold text-dark">{lop.tenGiangVien || 'Chưa phân công'}</span>
+                            </td>
+                            <td className="text-center text-nowrap">
+                              <span className="badge bg-warning text-dark px-2 py-1">Tạm hoãn</span>
+                            </td>
+                          </tr>
+                        )
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -1114,7 +1308,7 @@ function KetQuaXepLich() {
       {tabHienTai === 'maTran' && (
         <>
           {/* Thanh công cụ chọn giảng viên & Thao tác */}
-          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-light p-2 border rounded">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-light p-2 border rounded no-print">
             <div className="d-flex align-items-center gap-2">
               <label htmlFor="selectGvMaTran" className="col-form-label-sm text-nowrap fw-semibold">
                 Xem thời khóa biểu của:
@@ -1164,9 +1358,9 @@ function KetQuaXepLich() {
                   type="button"
                   className={`btn ${kieuHienThiMaTran === 'tietHoc' ? 'btn-dark' : 'btn-outline-dark'}`}
                   onClick={() => setKieuHienThiMaTran('tietHoc')}
-                  title="Hiển thị chi tiết theo từng Tiết 1 - 12"
+                  title="Hiển thị chi tiết theo từng Tiết"
                 >
-                  Từng Tiết (1 - 12)
+                  Từng Tiết (1 - {coTietBuoiToi ? '15' : '12'})
                 </button>
               </div>
 
@@ -1174,15 +1368,15 @@ function KetQuaXepLich() {
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
                 onClick={() => window.print()}
-                title="In ma trận thời khóa biểu tuần"
+                title="In ma trận thời khóa biểu"
               >
                 In TKB
               </button>
             </div>
           </div>
 
-          {/* Thanh điều hướng Tuần (Kéo lịch từ Tuần 1 đến Tuần 20) */}
-          <div className="card mb-3 border bg-light shadow-sm">
+          {/* Thanh điều hướng Tuần (Kéo lịch từ Tuần 1 đến maxTuanHoc) */}
+          <div className="card mb-3 border bg-light shadow-sm no-print">
             <div className="card-body p-2">
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                 <div className="d-flex align-items-center gap-2">
@@ -1199,8 +1393,8 @@ function KetQuaXepLich() {
                     <button
                       type="button"
                       className="btn btn-outline-primary"
-                      onClick={() => setTuanHienTai((prev) => Math.min(20, prev + 1))}
-                      disabled={tuanHienTai >= 20 || xemTatCaTuan}
+                      onClick={() => setTuanHienTai((prev) => Math.min(maxTuanHoc, prev + 1))}
+                      disabled={tuanHienTai >= maxTuanHoc || xemTatCaTuan}
                       title="Tiến sang tuần sau"
                     >
                       Tuần sau &rarr;
@@ -1227,7 +1421,7 @@ function KetQuaXepLich() {
                       }}
                     >
                       <option value={-1}>-- Xem gộp tất cả các tuần --</option>
-                      {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => {
+                      {Array.from({ length: maxTuanHoc }, (_, i) => i + 1).map((w) => {
                         const info = tinhNgayTrongTuan(hocKyHienTai?.ngayBatDau, w)
                         return (
                           <option key={w} value={w}>
@@ -1261,7 +1455,7 @@ function KetQuaXepLich() {
                 </div>
               </div>
 
-              {/* Thanh trượt / kéo lịch tuần từ 1 đến 20 */}
+              {/* Thanh trượt / kéo lịch tuần từ 1 đến maxTuanHoc */}
               {!xemTatCaTuan && (
                 <div className="d-flex align-items-center gap-3 px-2 pt-1 border-top">
                   <span className="small text-muted fw-bold text-nowrap">Tuần 1</span>
@@ -1269,13 +1463,13 @@ function KetQuaXepLich() {
                     type="range"
                     className="form-range flex-grow-1"
                     min={1}
-                    max={20}
+                    max={maxTuanHoc}
                     step={1}
                     value={tuanHienTai}
                     onChange={(e) => setTuanHienTai(Number(e.target.value))}
                     title={`Kéo chuột để duyệt qua các tuần (Hiện tại: Tuần ${tuanHienTai})`}
                   />
-                  <span className="small text-muted fw-bold text-nowrap">Tuần 20</span>
+                  <span className="small text-muted fw-bold text-nowrap">Tuần {maxTuanHoc}</span>
                   <span className="badge bg-primary text-white text-nowrap py-1 px-2" style={{ minWidth: '95px' }}>
                     Đang xem: Tuần {tuanHienTai}
                   </span>
@@ -1288,12 +1482,12 @@ function KetQuaXepLich() {
           {maGvMaTran === -2 && (
             <div className="alert alert-info border small py-2 px-3 mb-3 d-flex flex-wrap justify-content-between align-items-center">
               <div>
-                <strong>Thời khóa biểu toàn bộ môn:</strong> Đang hiển thị phủ kín tất cả{' '}
-                <strong>{dsLopCuaGv.length}</strong> lớp học phần trong{' '}
+                <strong>Thời khóa biểu toàn bộ môn:</strong> Đang hiển thị phủ kín{' '}
+                <strong>{soLopCuaGv}</strong> lớp học phần ({dsBuoiCuaGv.length} buổi học) trong{' '}
                 <strong>{xemTatCaTuan ? 'toàn bộ học kỳ' : `Tuần ${tuanHienTai} (${thongTinTuan.tuNgayStr} - ${thongTinTuan.denNgayStr})`}</strong>.
               </div>
               <div className="d-flex gap-3 mt-1 mt-sm-0">
-                <span>Số lớp hiển thị: <strong>{dsLopCuaGv.length}</strong> / {bangPhanCong?.soLopDaPhanCong || 0} lớp</span>
+                <span>Số lớp hiển thị: <strong>{soLopCuaGv}</strong> / {bangPhanCong?.soLopDaPhanCong || 0} lớp ({dsBuoiCuaGv.length} buổi)</span>
                 <span>Số GV tham gia dạy: <strong>{thongKeTai.filter((g) => g.soLopPhanCong > 0).length}</strong></span>
               </div>
             </div>
@@ -1308,7 +1502,7 @@ function KetQuaXepLich() {
                 <span className="text-muted ms-2">Email: {thongTinGvChon.email}</span>
               </div>
               <div className="d-flex gap-3">
-                <span>Số lớp tuần này: <strong>{dsLopCuaGv.length}</strong></span>
+                <span>Số lớp / buổi: <strong>{soLopCuaGv}</strong> lớp ({dsBuoiCuaGv.length} buổi)</span>
                 <span>Tổng TC: <strong>{thongTinGvChon.tongSoTinChi}</strong></span>
                 <span>Tiết/tuần: <strong>{thongTinGvChon.tongSoTietTuan}</strong></span>
                 <span>
@@ -1341,7 +1535,7 @@ function KetQuaXepLich() {
 
           {maGvMaTran === -1 && (
             <div className="alert alert-warning small py-2 px-3 mb-3">
-              Đang hiển thị ma trận phân bổ các <strong>lớp học phần chưa được phân công</strong> trong {xemTatCaTuan ? 'học kỳ' : `Tuần ${tuanHienTai}`} ({dsLopCuaGv.length} lớp).
+              Đang hiển thị ma trận phân bổ các <strong>lớp học phần chưa được phân công</strong> trong {xemTatCaTuan ? 'học kỳ' : `Tuần ${tuanHienTai}`} ({soLopCuaGv} lớp - {dsBuoiCuaGv.length} buổi).
             </div>
           )}
 
@@ -1406,7 +1600,7 @@ function KetQuaXepLich() {
             </div>
           )}
 
-          {/* BẢNG MA TRẬN THEO TỪNG TIẾT 1 - 12 (TÙY CHỌN CHI TIẾT) */}
+          {/* BẢNG MA TRẬN THEO TỪNG TIẾT (TÙY CHỌN CHI TIẾT) */}
           {kieuHienThiMaTran === 'tietHoc' && (
             <div className="table-responsive border rounded bg-white">
               <table className="table table-bordered table-sm mb-0 align-middle">
@@ -1470,6 +1664,25 @@ function KetQuaXepLich() {
                       {CAC_THU_MA_TRAN.map((thu) => renderCellMaTran(thu.id, tiet))}
                     </tr>
                   ))}
+
+                  {/* Buổi Tối: Tiết 13 - 15 (nếu có lớp học ca tối) */}
+                  {coTietBuoiToi && (
+                    <>
+                      <tr className="table-secondary py-1">
+                        <td colSpan={8} className="fw-semibold small py-1 px-2 text-uppercase text-secondary">
+                          Buổi tối (Tiết 13 - 15)
+                        </td>
+                      </tr>
+                      {CAC_TIET_MA_TRAN.slice(12, 15).map((tiet) => (
+                        <tr key={tiet}>
+                          <td className="text-center table-light fw-semibold small">
+                            Tiết {tiet}
+                          </td>
+                          {CAC_THU_MA_TRAN.map((thu) => renderCellMaTran(thu.id, tiet))}
+                        </tr>
+                      ))}
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>

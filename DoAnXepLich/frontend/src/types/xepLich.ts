@@ -62,6 +62,15 @@ export interface UngVienLop {
   lyDoKhongHopLe: string
 }
 
+export interface ChiTietBuoiHoc {
+  thu: number
+  tietBatDau: number
+  tietKetThuc: number
+  phongHoc: string
+  tuTuan: number
+  denTuan: number
+}
+
 export interface DongPhanCongLop {
   maLopHocPhan: number
   maLopHocPhanTruong: string
@@ -77,6 +86,8 @@ export interface DongPhanCongLop {
   phongHoc: string
   tuTuan: number
   denTuan: number
+  thoiGianHocTongHop?: string
+  danhSachBuoiHoc?: ChiTietBuoiHoc[]
   maPhanCong?: number
   maGiangVien?: number
   tenGiangVien?: string

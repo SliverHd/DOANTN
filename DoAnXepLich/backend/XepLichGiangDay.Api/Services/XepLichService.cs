@@ -91,7 +91,11 @@ public class XepLichService(
         foreach (var lop in dsLop)
         {
             var hp = dsHocPhan.TryGetValue(lop.MaHocPhan, out var hocPhan) ? hocPhan : null;
-            var cacBuoiHoc = chiTietTheoLop.TryGetValue(lop.MaLopHocPhan, out var dsCtLopHoc) ? dsCtLopHoc : [];
+            var cacBuoiHoc = (chiTietTheoLop.TryGetValue(lop.MaLopHocPhan, out var dsCtLopHoc) ? dsCtLopHoc : [])
+                .OrderBy(b => b.Thu)
+                .ThenBy(b => b.TietBatDau)
+                .ThenBy(b => b.TuTuan)
+                .ToList();
             var ct = cacBuoiHoc.FirstOrDefault();
             var pc = phanCongTheoLop.TryGetValue(lop.MaLopHocPhan, out var phanCong) ? phanCong : null;
 
@@ -106,7 +110,7 @@ public class XepLichService(
             }).ToList();
 
             string thoiGianTongHop = string.Join("; ", cacBuoiHoc.Select(b =>
-                $"Thứ {b.Thu} (T{b.TietBatDau}-{b.TietKetThuc}){(string.IsNullOrWhiteSpace(b.PhongHoc) ? "" : $" P.{b.PhongHoc}")}"));
+                $"{(b.Thu == 8 ? "Chủ nhật" : $"Thứ {b.Thu}")} (T{b.TietBatDau}-{b.TietKetThuc}){(string.IsNullOrWhiteSpace(b.PhongHoc) ? "" : $" P.{b.PhongHoc}")}"));
 
             var dong = new DongPhanCongLopDto
             {
@@ -141,12 +145,13 @@ public class XepLichService(
                     dong.EmailGiangVien = gv.Email;
                 }
 
-                // Kiểm tra xem giảng viên này có đơn xin nghỉ/hoãn ca này trong học kỳ không
+                // Kiểm tra xem giảng viên này có đơn xin nghỉ/hoãn trùng vào bất kỳ buổi học nào của lớp không
                 if (nguyenVongTheoGv.TryGetValue(pc.MaGiangVien, out var dsNvCuaGv))
                 {
                     var nvNghi = dsNvCuaGv.FirstOrDefault(nv =>
-                        nv.Thu == ct?.Thu &&
-                        Math.Max(nv.TietBatDau ?? 1, ct?.TietBatDau ?? 1) <= Math.Min(nv.TietKetThuc ?? 12, ct?.TietKetThuc ?? 12));
+                        cacBuoiHoc.Any(b =>
+                            nv.Thu == b.Thu &&
+                            Math.Max(nv.TietBatDau ?? 1, b.TietBatDau) <= Math.Min(nv.TietKetThuc ?? 12, b.TietKetThuc)));
 
                     if (nvNghi != null)
                     {
@@ -667,41 +672,68 @@ public class XepLichService(
         int stt1 = 1;
         foreach (var lop in bangPhanCong.DanhSachLop)
         {
-            ws1.Cell(row1, 1).Value = stt1++;
-            ws1.Cell(row1, 2).Value = lop.MaLopHocPhanTruong;
-            ws1.Cell(row1, 3).Value = lop.TenHocPhan;
-            ws1.Cell(row1, 4).Value = lop.SoTinChi;
-            ws1.Cell(row1, 5).Value = lop.TenLop;
-            ws1.Cell(row1, 6).Value = lop.SoLuongSinhVien;
-            ws1.Cell(row1, 7).Value = lop.Thu > 0 ? $"Thứ {lop.Thu}" : "-";
-            ws1.Cell(row1, 8).Value = lop.TietBatDau > 0 ? lop.TietBatDau : "-";
-            ws1.Cell(row1, 9).Value = lop.TietKetThuc > 0 ? lop.TietKetThuc : "-";
-            ws1.Cell(row1, 10).Value = lop.SoTiet;
-            ws1.Cell(row1, 11).Value = lop.PhongHoc;
-            ws1.Cell(row1, 12).Value = lop.TuTuan > 0 ? $"{lop.TuTuan}-{lop.DenTuan}" : "-";
-            ws1.Cell(row1, 13).Value = !string.IsNullOrEmpty(lop.TenGiangVien) ? lop.TenGiangVien : "Chưa phân công";
-            ws1.Cell(row1, 14).Value = lop.DaKhoa ? "Đã khóa" : (!string.IsNullOrEmpty(lop.TenGiangVien) ? "Dự kiến" : "Chưa phân công");
-            ws1.Cell(row1, 15).Value = lop.NguonPhanCong == "ThuCong" ? "Thủ công" : lop.NguonPhanCong;
+            var cacBuoiXuat = lop.DanhSachBuoiHoc != null && lop.DanhSachBuoiHoc.Count > 0
+                ? lop.DanhSachBuoiHoc
+                : new List<ChiTietBuoiHocDto>
+                {
+                    new()
+                    {
+                        Thu = lop.Thu,
+                        TietBatDau = lop.TietBatDau,
+                        TietKetThuc = lop.TietKetThuc,
+                        PhongHoc = lop.PhongHoc,
+                        TuTuan = lop.TuTuan,
+                        DenTuan = lop.DenTuan
+                    }
+                };
 
-            // Kẻ viền và căn chỉnh
-            for (int col = 1; col <= 15; col++)
+            string tenGv = !string.IsNullOrEmpty(lop.TenGiangVien) ? lop.TenGiangVien : "Chưa phân công";
+            string trangThai = lop.DaKhoa ? "Đã khóa" : (!string.IsNullOrEmpty(lop.TenGiangVien) ? "Dự kiến" : "Chưa phân công");
+            string nguonPc = lop.NguonPhanCong == "ThuCong" ? "Thủ công" : lop.NguonPhanCong;
+
+            foreach (var buoi in cacBuoiXuat)
             {
-                ws1.Cell(row1, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            }
-            ws1.Cell(row1, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 2).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 4).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 6).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 7).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 8).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 9).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 10).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 11).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 12).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 14).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
-            ws1.Cell(row1, 15).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                int soTietBuoi = buoi.TietKetThuc >= buoi.TietBatDau && buoi.TietBatDau > 0
+                    ? (buoi.TietKetThuc - buoi.TietBatDau + 1)
+                    : 0;
+                string thuStr = buoi.Thu == 8 ? "Chủ nhật" : (buoi.Thu > 0 ? $"Thứ {buoi.Thu}" : "-");
 
-            row1++;
+                ws1.Cell(row1, 1).Value = stt1++;
+                ws1.Cell(row1, 2).Value = lop.MaLopHocPhanTruong;
+                ws1.Cell(row1, 3).Value = lop.TenHocPhan;
+                ws1.Cell(row1, 4).Value = lop.SoTinChi;
+                ws1.Cell(row1, 5).Value = lop.TenLop;
+                ws1.Cell(row1, 6).Value = lop.SoLuongSinhVien;
+                ws1.Cell(row1, 7).Value = thuStr;
+                ws1.Cell(row1, 8).Value = buoi.TietBatDau > 0 ? buoi.TietBatDau : "-";
+                ws1.Cell(row1, 9).Value = buoi.TietKetThuc > 0 ? buoi.TietKetThuc : "-";
+                ws1.Cell(row1, 10).Value = soTietBuoi;
+                ws1.Cell(row1, 11).Value = buoi.PhongHoc;
+                ws1.Cell(row1, 12).Value = buoi.TuTuan > 0 ? $"{buoi.TuTuan}-{buoi.DenTuan}" : "-";
+                ws1.Cell(row1, 13).Value = tenGv;
+                ws1.Cell(row1, 14).Value = trangThai;
+                ws1.Cell(row1, 15).Value = nguonPc;
+
+                // Kẻ viền và căn chỉnh
+                for (int col = 1; col <= 15; col++)
+                {
+                    ws1.Cell(row1, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                }
+                ws1.Cell(row1, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 2).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 4).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 6).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 7).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 8).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 9).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 10).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 11).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 12).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 14).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                ws1.Cell(row1, 15).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+
+                row1++;
+            }
         }
         ws1.Columns().AdjustToContents();
 

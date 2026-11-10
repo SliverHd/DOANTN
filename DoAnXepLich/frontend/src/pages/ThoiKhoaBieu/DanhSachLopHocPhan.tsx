@@ -206,7 +206,7 @@ function DanhSachLopHocPhan() {
                         </span>
                       </td>
                       <td>{lop.soTinChi}</td>
-                      <td>Thứ {lop.thu === 8 ? 'CN' : lop.thu}</td>
+                      <td>{lop.thu === 8 ? 'Chủ nhật' : `Thứ ${lop.thu}`}</td>
                       <td>{lop.tietBatDau} - {lop.tietKetThuc}</td>
                       <td>{lop.phongHoc || '-'}</td>
                       <td>{lop.tuTuan} - {lop.denTuan}</td>
