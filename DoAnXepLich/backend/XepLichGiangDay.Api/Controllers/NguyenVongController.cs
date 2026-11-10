@@ -9,16 +9,22 @@ namespace XepLichGiangDay.Api.Controllers;
 public class NguyenVongController(NguyenVongService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<NguyenVongDto>>> GetNguyenVong([FromQuery] int maHocKy, [FromQuery] int? maGiangVien)
+    public async Task<ActionResult<List<NguyenVongDto>>> GetNguyenVong(
+        [FromQuery] int maHocKy,
+        [FromQuery] int? maGiangVien,
+        [FromQuery] int? maBoMon)
     {
-        var result = await service.LayNguyenVongAsync(maHocKy, maGiangVien);
+        var result = await service.LayNguyenVongAsync(maHocKy, maGiangVien, maBoMon);
         return Ok(result);
     }
 
     [HttpGet("lich-ban")]
-    public async Task<ActionResult<List<LichBanDto>>> GetLichBan([FromQuery] int maHocKy, [FromQuery] int? maGiangVien)
+    public async Task<ActionResult<List<LichBanDto>>> GetLichBan(
+        [FromQuery] int maHocKy,
+        [FromQuery] int? maGiangVien,
+        [FromQuery] int? maBoMon)
     {
-        var result = await service.LayLichBanAsync(maHocKy, maGiangVien);
+        var result = await service.LayLichBanAsync(maHocKy, maGiangVien, maBoMon);
         return Ok(result);
     }
 

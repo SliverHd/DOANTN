@@ -8,8 +8,14 @@ import type {
 } from '../types/nguyenVong'
 
 export const nguyenVongApi = {
-  getNguyenVong: (maHocKy: number, maGiangVien?: number) =>
-    axiosClient.get<NguyenVong[]>('/nguyen-vong', { params: { maHocKy, maGiangVien } }),
+  getNguyenVong: (maHocKy: number, maGiangVien?: number, maBoMon?: number) =>
+    axiosClient.get<NguyenVong[]>('/nguyen-vong', {
+      params: {
+        maHocKy,
+        maGiangVien: maGiangVien && maGiangVien > 0 ? maGiangVien : undefined,
+        maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined,
+      },
+    }),
 
   themNguyenVong: (data: ThemNguyenVongRequest) =>
     axiosClient.post<NguyenVong>('/nguyen-vong', data),
@@ -23,8 +29,14 @@ export const nguyenVongApi = {
   tuChoi: (id: number, ghiChu?: string) =>
     axiosClient.post<KetQuaDuyetNguyenVong>(`/nguyen-vong/${id}/tu-choi`, { ghiChu }),
 
-  getLichBan: (maHocKy: number, maGiangVien?: number) =>
-    axiosClient.get<LichBan[]>('/nguyen-vong/lich-ban', { params: { maHocKy, maGiangVien } }),
+  getLichBan: (maHocKy: number, maGiangVien?: number, maBoMon?: number) =>
+    axiosClient.get<LichBan[]>('/nguyen-vong/lich-ban', {
+      params: {
+        maHocKy,
+        maGiangVien: maGiangVien && maGiangVien > 0 ? maGiangVien : undefined,
+        maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined,
+      },
+    }),
 
   luuMaTran: (data: LuuMaTranNguyenVongRequest) =>
     axiosClient.post<{ message: string }>('/nguyen-vong/luu-ma-tran', data),

@@ -7,12 +7,20 @@ namespace XepLichGiangDay.Api.Services;
 
 public class NguyenVongService(AppDbContext context)
 {
-    public async Task<List<LichBanDto>> LayLichBanAsync(int maHocKy, int? maGiangVien = null)
+    public async Task<List<LichBanDto>> LayLichBanAsync(int maHocKy, int? maGiangVien = null, int? maBoMon = null)
     {
         var query = context.LichBanGiangVien.Where(x => x.MaHocKy == maHocKy);
         if (maGiangVien.HasValue && maGiangVien.Value > 0)
         {
             query = query.Where(x => x.MaGiangVien == maGiangVien.Value);
+        }
+        else if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            var dsGvBm = await context.GiangVien
+                .Where(g => g.MaBoMon == maBoMon.Value)
+                .Select(g => g.MaGiangVien)
+                .ToListAsync();
+            query = query.Where(x => dsGvBm.Contains(x.MaGiangVien));
         }
 
         return await query.Select(x => new LichBanDto
@@ -27,12 +35,20 @@ public class NguyenVongService(AppDbContext context)
         }).ToListAsync();
     }
 
-    public async Task<List<NguyenVongDto>> LayNguyenVongAsync(int maHocKy, int? maGiangVien = null)
+    public async Task<List<NguyenVongDto>> LayNguyenVongAsync(int maHocKy, int? maGiangVien = null, int? maBoMon = null)
     {
         var query = context.NguyenVongGiangVien.Where(x => x.MaHocKy == maHocKy);
         if (maGiangVien.HasValue && maGiangVien.Value > 0)
         {
             query = query.Where(x => x.MaGiangVien == maGiangVien.Value);
+        }
+        else if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            var dsGvBm = await context.GiangVien
+                .Where(g => g.MaBoMon == maBoMon.Value)
+                .Select(g => g.MaGiangVien)
+                .ToListAsync();
+            query = query.Where(x => dsGvBm.Contains(x.MaGiangVien));
         }
 
         var danhSach = await query.ToListAsync();
@@ -40,16 +56,24 @@ public class NguyenVongService(AppDbContext context)
         var dsGiangVien = await context.GiangVien
             .Where(x => dsGvId.Contains(x.MaGiangVien))
             .ToDictionaryAsync(x => x.MaGiangVien);
+        var dsBoMon = await context.BoMon.AsNoTracking().ToDictionaryAsync(x => x.MaBoMon);
 
         return danhSach.Select(x =>
         {
             dsGiangVien.TryGetValue(x.MaGiangVien, out var gv);
+            string? tenBm = null;
+            if (gv?.MaBoMon != null && dsBoMon.TryGetValue(gv.MaBoMon.Value, out var bm))
+            {
+                tenBm = bm.TenBoMon;
+            }
             var (maRb, tenRb) = PhanTichMaRangBuoc(x.LoaiNguyenVong, x.NoiDungGoc);
             return new NguyenVongDto
             {
                 MaNguyenVong = x.MaNguyenVong,
                 MaGiangVien = x.MaGiangVien,
                 TenGiangVien = gv?.HoTen ?? $"GV #{x.MaGiangVien}",
+                MaBoMon = gv?.MaBoMon,
+                TenBoMon = tenBm,
                 MaHocKy = x.MaHocKy,
                 MaRangBuocMem = maRb,
                 TenRangBuocMem = tenRb,
@@ -82,7 +106,6 @@ public class NguyenVongService(AppDbContext context)
             }
             else if (dto.TuTuan.Value == dto.DenTuan.Value)
             {
-                // Nghỉ trong 1 tuần: Từ tuần == Đến tuần (vd: Tuần 15)
                 noiDung = string.IsNullOrWhiteSpace(noiDung)
                     ? $"Tạm nghỉ Tuần {dto.TuTuan}"
                     : $"[Tuần {dto.TuTuan}] {noiDung}";
@@ -114,6 +137,12 @@ public class NguyenVongService(AppDbContext context)
         await context.SaveChangesAsync();
 
         var gv = await context.GiangVien.FindAsync(dto.MaGiangVien);
+        string? tenBm = null;
+        if (gv?.MaBoMon != null)
+        {
+            var bm = await context.BoMon.FindAsync(gv.MaBoMon.Value);
+            tenBm = bm?.TenBoMon;
+        }
         var (maRb, tenRb) = PhanTichMaRangBuoc(entity.LoaiNguyenVong, entity.NoiDungGoc);
 
         return new NguyenVongDto
@@ -121,6 +150,8 @@ public class NguyenVongService(AppDbContext context)
             MaNguyenVong = entity.MaNguyenVong,
             MaGiangVien = entity.MaGiangVien,
             TenGiangVien = gv?.HoTen ?? $"GV #{entity.MaGiangVien}",
+            MaBoMon = gv?.MaBoMon,
+            TenBoMon = tenBm,
             MaHocKy = entity.MaHocKy,
             MaRangBuocMem = maRb,
             TenRangBuocMem = tenRb,
@@ -139,12 +170,6 @@ public class NguyenVongService(AppDbContext context)
         };
     }
 
-    /// <summary>
-    /// Trưởng bộ môn DUYỆT yêu cầu xin nghỉ / lịch bận của giảng viên:
-    /// - Cập nhật trạng thái thành DaDuyet
-    /// - Tự động đồng bộ sang LichBanGiangVien (Ràng buộc cứng H3)
-    /// - TỰ ĐỘNG HỦY PHÂN CÔNG (KICK GIÁNG VIÊN RA) nếu GV đang được phân công dạy lớp học phần nào trùng vào ca này
-    /// </summary>
     public async Task<KetQuaDuyetNguyenVongDto> DuyetNguyenVongAsync(int maNguyenVong, string? ghiChu = null, CancellationToken cancellationToken = default)
     {
         var nv = await context.NguyenVongGiangVien.FindAsync([maNguyenVong], cancellationToken);
@@ -166,9 +191,6 @@ public class NguyenVongService(AppDbContext context)
 
         var danhSachLopBiHuy = new List<string>();
 
-        // Chỉ sinh Lịch bận cố định (H3) và hủy phân công nếu là đơn nghỉ CẢ HỌC KỲ!
-        // Nếu chỉ xin nghỉ 1 hoặc 1 vài tuần (ví dụ: [Tuần 15] hoặc [Tuần 15-16]), đây là RÀNG BUỘC MỀM tạm hoãn,
-        // TUYỆT ĐỐI KHÔNG sinh Lịch bận cố định H3 và KHÔNG kick giảng viên khỏi lớp.
         bool laNghiCaHocKy = !string.IsNullOrWhiteSpace(nv.NoiDungGoc) && (
             nv.NoiDungGoc.Contains("Cả học kỳ", StringComparison.OrdinalIgnoreCase) ||
             nv.NoiDungGoc.Contains("Tuần 1-20", StringComparison.OrdinalIgnoreCase) ||
@@ -182,7 +204,6 @@ public class NguyenVongService(AppDbContext context)
 
         if (laNguyenVongNghiDay && nv.Thu.HasValue && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
         {
-            // 1. Đồng bộ sang Lịch bận cố định (H3) để thuật toán hoặc phân công tay không bao giờ xếp GV vào ca này
             var daCoLichBan = await context.LichBanGiangVien.AnyAsync(x =>
                 x.MaGiangVien == nv.MaGiangVien &&
                 x.MaHocKy == nv.MaHocKy &&
@@ -203,7 +224,6 @@ public class NguyenVongService(AppDbContext context)
                 });
             }
 
-            // 2. KICK GIÁO VIÊN XIN NGHỈ RA KHỎI LỚP HỌC PHẦN TRÙNG CA ĐÓ (Hủy phân công hiện tại)
             var dsPhanCongGv = await context.PhanCongGiangDay
                 .Where(x => x.MaHocKy == nv.MaHocKy && x.MaGiangVien == nv.MaGiangVien)
                 .ToListAsync(cancellationToken);
@@ -228,7 +248,6 @@ public class NguyenVongService(AppDbContext context)
 
                     if (trungCaNghi)
                     {
-                        // Hủy phân công của giảng viên tại lớp này
                         context.PhanCongGiangDay.Remove(pc);
 
                         string tenLop = dsLopHp.TryGetValue(pc.MaLopHocPhan, out var lop)
@@ -244,6 +263,12 @@ public class NguyenVongService(AppDbContext context)
 
         var gv = await context.GiangVien.FindAsync([nv.MaGiangVien], cancellationToken);
         var tenGv = gv?.HoTen ?? $"GV #{nv.MaGiangVien}";
+        string? tenBm = null;
+        if (gv?.MaBoMon != null)
+        {
+            var bm = await context.BoMon.FindAsync([gv.MaBoMon.Value], cancellationToken);
+            tenBm = bm?.TenBoMon;
+        }
 
         string thongDiep = danhSachLopBiHuy.Count > 0
             ? $"Đã duyệt đơn xin nghỉ của {tenGv}. Đã hủy phân công của giảng viên tại {danhSachLopBiHuy.Count} lớp trùng ca: {string.Join(", ", danhSachLopBiHuy)}. Các lớp này hiện ở trạng thái Chưa phân công để xếp giảng viên khác."
@@ -262,6 +287,8 @@ public class NguyenVongService(AppDbContext context)
                 MaNguyenVong = nv.MaNguyenVong,
                 MaGiangVien = nv.MaGiangVien,
                 TenGiangVien = tenGv,
+                MaBoMon = gv?.MaBoMon,
+                TenBoMon = tenBm,
                 MaHocKy = nv.MaHocKy,
                 MaRangBuocMem = maRb,
                 TenRangBuocMem = tenRb,
@@ -281,9 +308,6 @@ public class NguyenVongService(AppDbContext context)
         };
     }
 
-    /// <summary>
-    /// Trưởng bộ môn TỪ CHỐI yêu cầu xin nghỉ / lịch bận của giảng viên
-    /// </summary>
     public async Task<KetQuaDuyetNguyenVongDto> TuChoiNguyenVongAsync(int maNguyenVong, string? ghiChu = null, CancellationToken cancellationToken = default)
     {
         var nv = await context.NguyenVongGiangVien.FindAsync([maNguyenVong], cancellationToken);
@@ -303,7 +327,6 @@ public class NguyenVongService(AppDbContext context)
             nv.GhiChuDuyet = ghiChu.Trim();
         }
 
-        // Nếu trước đó đã sinh Lịch bận cố định, xóa bỏ để không bị chặn
         if (nv.Thu.HasValue && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
         {
             var dsLbCu = await context.LichBanGiangVien.Where(x =>
@@ -337,7 +360,6 @@ public class NguyenVongService(AppDbContext context)
         var item = await context.NguyenVongGiangVien.FindAsync(maNguyenVong);
         if (item is null) return false;
 
-        // Nếu có lịch bận tương ứng được sinh ra, xóa cùng
         if (item.Thu.HasValue && item.TietBatDau.HasValue && item.TietKetThuc.HasValue)
         {
             var dsLbCu = await context.LichBanGiangVien.Where(x =>
@@ -376,7 +398,6 @@ public class NguyenVongService(AppDbContext context)
 
     public async Task<bool> LuuMaTranAsync(LuuMaTranNguyenVongRequest request)
     {
-        // 1. Cập nhật Lịch bận cố định (BUSY)
         var oldLichBan = await context.LichBanGiangVien
             .Where(x => x.MaGiangVien == request.MaGiangVien && x.MaHocKy == request.MaHocKy)
             .ToListAsync();
@@ -395,7 +416,6 @@ public class NguyenVongService(AppDbContext context)
             });
         }
 
-        // 2. Cập nhật Nguyện vọng giảng dạy (PREFERRED / AVOID)
         var oldNguyenVong = await context.NguyenVongGiangVien
             .Where(x => x.MaGiangVien == request.MaGiangVien && x.MaHocKy == request.MaHocKy)
             .ToListAsync();

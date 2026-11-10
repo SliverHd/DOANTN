@@ -24,6 +24,8 @@ public class NguyenVongDto
     public int MaNguyenVong { get; set; }
     public int MaGiangVien { get; set; }
     public string? TenGiangVien { get; set; }
+    public int? MaBoMon { get; set; }
+    public string? TenBoMon { get; set; }
     public int MaHocKy { get; set; }
     public string MaRangBuocMem { get; set; } = "SC01";
     public string TenRangBuocMem { get; set; } = string.Empty;

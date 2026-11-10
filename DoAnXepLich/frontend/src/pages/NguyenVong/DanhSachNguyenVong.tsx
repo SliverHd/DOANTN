@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { hocKyApi } from '../../api/hocKyApi'
+import { boMonApi } from '../../api/boMonApi'
 import { giangVienApi } from '../../api/giangVienApi'
 import { nguyenVongApi } from '../../api/nguyenVongApi'
 import { useAuth } from '../../contexts/AuthContext'
 import Loading from '../../components/Loading'
 import type { HocKy } from '../../types/hocKy'
+import type { BoMon } from '../../types/boMon'
 import type { GiangVien } from '../../types/giangVien'
 import {
   DANH_MUC_RANG_BUOC_MEM,
@@ -31,15 +33,17 @@ function DanhSachNguyenVong() {
   const laGiangVien = user?.vaiTro === 'GiangVien'
 
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
+  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
   const [danhSachGiangVien, setDanhSachGiangVien] = useState<GiangVien[]>([])
   const [maHocKy, setMaHocKy] = useState<number>(0)
+  const [maBoMon, setMaBoMon] = useState<number>(user?.maBoMon || 0)
   const [boLocGiangVien, setBoLocGiangVien] = useState<number>(0)
   const [tabHienTai, setTabHienTai] = useState<TabTrangThai>('tatCa')
 
   // Danh sách nguyện vọng lấy từ backend
   const [danhSachNguyenVong, setDanhSachNguyenVong] = useState<NguyenVong[]>([])
 
-  // Ẩn/hiện form thêm nguyện vọng (Trưởng bộ môn mặc định chỉ xem danh sách nhận được)
+  // Ẩn/hiện form thêm nguyện vọng
   const [hienFormThem, setHienFormThem] = useState<boolean>(!laTruongBoMon)
 
   // State Form nhập liệu
@@ -64,16 +68,24 @@ function DanhSachNguyenVong() {
   const [loi, setLoi] = useState('')
   const [ketQuaDuyet, setKetQuaDuyet] = useState<KetQuaDuyetNguyenVong | null>(null)
 
-  // 1. Tải danh mục Học kỳ và Giảng viên
+  // Danh sách giảng viên lọc theo Bộ môn đang chọn
+  const dsGiangVienTheoBoMon =
+    maBoMon > 0
+      ? danhSachGiangVien.filter((gv) => gv.maBoMon === maBoMon)
+      : danhSachGiangVien
+
+  // 1. Tải danh mục Học kỳ, Bộ môn và Giảng viên
   useEffect(() => {
     const khoiTao = async () => {
       try {
         setDangTai(true)
-        const [resHK, resGV] = await Promise.all([
+        const [resHK, resBM, resGV] = await Promise.all([
           hocKyApi.getAll(),
+          boMonApi.getAll(),
           giangVienApi.getAll(),
         ])
         setDanhSachHocKy(resHK.data)
+        setDanhSachBoMon(resBM.data)
         setDanhSachGiangVien(resGV.data)
 
         if (resHK.data.length > 0) {
@@ -86,37 +98,56 @@ function DanhSachNguyenVong() {
         if (laGiangVien && user?.maGiangVien) {
           setBoLocGiangVien(user.maGiangVien)
           setForm((prev) => ({ ...prev, maGiangVien: user.maGiangVien! }))
-        } else if (resGV.data.length > 0) {
-          const gvDau = resGV.data[0].maGiangVien
-          setForm((prev) => ({ ...prev, maGiangVien: gvDau }))
+        } else {
+          const bmInit = user?.maBoMon || 0
+          const dsGvInit = bmInit > 0 ? resGV.data.filter((g) => g.maBoMon === bmInit) : resGV.data
+          if (dsGvInit.length > 0) {
+            setForm((prev) => ({ ...prev, maGiangVien: dsGvInit[0].maGiangVien }))
+          }
         }
       } catch {
-        setLoi('Không thể tải danh mục học kỳ hoặc giảng viên.')
+        setLoi('Không thể tải danh mục học kỳ, bộ môn hoặc giảng viên.')
       } finally {
         setDangTai(false)
       }
     }
     void khoiTao()
-  }, [laGiangVien, user?.maGiangVien])
+  }, [laGiangVien, user?.maGiangVien, user?.maBoMon])
 
-  // 2. Tải danh sách nguyện vọng khi chọn học kỳ hoặc đổi bộ lọc GV
+  // 2. Tải danh sách nguyện vọng khi chọn học kỳ, bộ môn hoặc đổi bộ lọc GV
   useEffect(() => {
     if (maHocKy > 0) {
       const gvId = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
-      void taiDanhSachNguyenVong(maHocKy, gvId)
+      void taiDanhSachNguyenVong(maHocKy, gvId, maBoMon)
       setForm((prev) => ({ ...prev, maHocKy }))
     }
-  }, [maHocKy, boLocGiangVien, laGiangVien, user?.maGiangVien])
+  }, [maHocKy, maBoMon, boLocGiangVien, laGiangVien, user?.maGiangVien])
 
-  const taiDanhSachNguyenVong = async (hkId: number, gvId?: number) => {
+  const taiDanhSachNguyenVong = async (hkId: number, gvId?: number, bmId?: number) => {
     try {
       setDangTai(true)
-      const res = await nguyenVongApi.getNguyenVong(hkId, gvId && gvId > 0 ? gvId : undefined)
+      const res = await nguyenVongApi.getNguyenVong(
+        hkId,
+        gvId && gvId > 0 ? gvId : undefined,
+        bmId && bmId > 0 ? bmId : undefined
+      )
       setDanhSachNguyenVong(res.data)
     } catch {
       setLoi('Không thể tải danh sách nguyện vọng.')
     } finally {
       setDangTai(false)
+    }
+  }
+
+  // Khi đổi Bộ môn
+  const handleDoiBoMon = (bmId: number) => {
+    setMaBoMon(bmId)
+    setBoLocGiangVien(0)
+    const dsGvLoc = bmId > 0 ? danhSachGiangVien.filter((g) => g.maBoMon === bmId) : danhSachGiangVien
+    if (dsGvLoc.length > 0) {
+      setForm((prev) => ({ ...prev, maGiangVien: dsGvLoc[0].maGiangVien }))
+    } else {
+      setForm((prev) => ({ ...prev, maGiangVien: 0 }))
     }
   }
 
@@ -165,7 +196,7 @@ function DanhSachNguyenVong() {
       setThongBao('Đã gửi nguyện vọng / xin nghỉ thành công và đang chờ Trưởng bộ môn duyệt.')
       setForm((prev) => ({ ...prev, lyDo: '' }))
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
-      await taiDanhSachNguyenVong(maHocKy, gvLoc)
+      await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
     } catch {
       setLoi('Không thể thêm nguyện vọng. Vui lòng kiểm tra lại dữ liệu.')
     } finally {
@@ -182,7 +213,7 @@ function DanhSachNguyenVong() {
       setThongBao('Đã xóa nguyện vọng thành công.')
       setKetQuaDuyet(null)
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
-      await taiDanhSachNguyenVong(maHocKy, gvLoc)
+      await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
     } catch {
       setLoi('Lỗi khi xóa nguyện vọng.')
     }
@@ -208,7 +239,7 @@ function DanhSachNguyenVong() {
       setThongBao(res.data.thongBao)
 
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
-      await taiDanhSachNguyenVong(maHocKy, gvLoc)
+      await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
     } catch {
       setLoi('Lỗi trong quá trình duyệt nguyện vọng.')
     } finally {
@@ -222,7 +253,7 @@ function DanhSachNguyenVong() {
       `Nhập lý do từ chối nguyện vọng của ${item.tenGiangVien || `GV #${item.maGiangVien}`}:`,
       'Không phù hợp với kế hoạch phân công khoa'
     )
-    if (lyDo === null) return // Hủy bấm
+    if (lyDo === null) return
 
     try {
       setDangXuLyId(item.maNguyenVong)
@@ -234,7 +265,7 @@ function DanhSachNguyenVong() {
       setThongBao(res.data.thongBao)
 
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
-      await taiDanhSachNguyenVong(maHocKy, gvLoc)
+      await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
     } catch {
       setLoi('Lỗi trong quá trình từ chối nguyện vọng.')
     } finally {
@@ -264,19 +295,19 @@ function DanhSachNguyenVong() {
         <div>
           <h2 className="h4 mb-1">
             {laTruongBoMon
-              ? 'Duyệt Nguyện vọng & Lịch bận Giảng viên'
+              ? 'Duyệt Nguyện vọng & Lịch bận Giảng viên theo Bộ môn'
               : laGiangVien
               ? 'Khai báo Nguyện vọng & Lịch bận xin nghỉ của tôi'
-              : 'Quản lý Nguyện vọng & Ràng buộc mềm Giảng viên'}
+              : 'Quản lý Nguyện vọng & Ràng buộc mềm Giảng viên theo Bộ môn'}
           </h2>
           <p className="text-muted small mb-0">
             {laTruongBoMon
-              ? 'Trưởng bộ môn theo dõi, duyệt hoặc từ chối các yêu cầu lịch bận / xin nghỉ do giảng viên gửi lên. Khi duyệt, giảng viên sẽ được tự động gỡ khỏi ca học bị trùng.'
-              : 'Khai báo nguyện vọng tránh khung giờ bận, ca tối hoặc ràng buộc mềm để gửi Trưởng bộ môn phê duyệt.'}
+              ? 'Trưởng bộ môn theo dõi, duyệt hoặc từ chối các yêu cầu lịch bận / xin nghỉ của giảng viên trong bộ môn. Khi duyệt, giảng viên sẽ được tự động gỡ khỏi ca học bị trùng.'
+              : 'Khai báo nguyện vọng tránh khung giờ bận, ca tối hoặc ràng buộc mềm theo từng bộ môn để gửi Trưởng bộ môn phê duyệt.'}
           </p>
         </div>
 
-        {/* Nút bật/tắt form khai báo hộ cho Trưởng bộ môn */}
+        {/* Nút bật/hiện form khai báo hộ cho Trưởng bộ môn */}
         {laTruongBoMon && (
           <button
             type="button"
@@ -324,12 +355,12 @@ function DanhSachNguyenVong() {
         </div>
       )}
 
-      {/* Thanh chọn Học kỳ, Bộ lọc & Tóm tắt thống kê của Trưởng bộ môn */}
+      {/* Thanh chọn Học kỳ, Bộ môn, Bộ lọc GV & Tóm tắt thống kê */}
       <div className="row g-2 mb-3 align-items-center bg-light p-2 border">
         <div className="col-auto">
           <label className="col-form-label col-form-label-sm fw-semibold">Học kỳ:</label>
         </div>
-        <div className="col-md-3">
+        <div className="col-md-2">
           <select
             className="form-select form-select-sm"
             value={maHocKy}
@@ -343,10 +374,28 @@ function DanhSachNguyenVong() {
           </select>
         </div>
 
-        {/* Bộ lọc Giảng viên (chỉ hiển thị cho Trưởng bộ môn / Admin) */}
+        {/* Bộ lọc Bộ môn & Giảng viên (hiển thị cho Trưởng bộ môn / Admin) */}
         {!laGiangVien && (
           <>
-            <div className="col-auto ms-md-3">
+            <div className="col-auto ms-md-2">
+              <label className="col-form-label col-form-label-sm fw-semibold">Bộ môn:</label>
+            </div>
+            <div className="col-md-3">
+              <select
+                className="form-select form-select-sm"
+                value={maBoMon}
+                onChange={(e) => handleDoiBoMon(Number(e.target.value))}
+              >
+                <option value={0}>-- Tất cả bộ môn --</option>
+                {danhSachBoMon.map((bm) => (
+                  <option key={bm.maBoMon} value={bm.maBoMon}>
+                    {bm.tenBoMon}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-auto ms-md-2">
               <label className="col-form-label col-form-label-sm fw-semibold">Lọc theo GV:</label>
             </div>
             <div className="col-md-3">
@@ -355,10 +404,12 @@ function DanhSachNguyenVong() {
                 value={boLocGiangVien}
                 onChange={(e) => setBoLocGiangVien(Number(e.target.value))}
               >
-                <option value={0}>-- Tất cả giảng viên ({soGvDaGui} GV đã gửi) --</option>
-                {danhSachGiangVien.map((gv) => (
+                <option value={0}>
+                  -- Tất cả GV {maBoMon > 0 ? 'trong bộ môn' : ''} ({dsGiangVienTheoBoMon.length} GV) --
+                </option>
+                {dsGiangVienTheoBoMon.map((gv) => (
                   <option key={gv.maGiangVien} value={gv.maGiangVien}>
-                    {gv.hoTen} ({gv.email || `Mã: ${gv.maGiangVien}`})
+                    {gv.hoTen} ({gv.tenBoMon || `Mã: ${gv.maGiangVien}`})
                   </option>
                 ))}
               </select>
@@ -366,24 +417,29 @@ function DanhSachNguyenVong() {
           </>
         )}
 
-        {/* Khối thống kê nhanh cho Trưởng bộ môn */}
-        {laTruongBoMon && (
+        {/* Khối thống kê nhanh */}
+        {!laGiangVien && (
           <div className="col text-end small text-muted">
-            Tổng GV gửi: <strong className="text-primary">{soGvDaGui}</strong> | Chờ duyệt:{' '}
+            GV đã gửi: <strong className="text-primary">{soGvDaGui}</strong> | Chờ duyệt:{' '}
             <strong className="text-warning">{countChoDuyet}</strong> | Đã duyệt:{' '}
             <strong className="text-success">{countDaDuyet}</strong>
           </div>
         )}
       </div>
 
-      {/* Form khai báo nguyện vọng / xin nghỉ (hiển thị khi hienFormThem = true hoặc là Giảng viên) */}
+      {/* Form khai báo nguyện vọng / xin nghỉ */}
       {hienFormThem && (
         <div className="border bg-white p-3 mb-4">
-          <div className="fw-semibold mb-3 text-dark border-bottom pb-2 d-flex justify-content-between">
+          <div className="fw-semibold mb-3 text-dark border-bottom pb-2 d-flex justify-content-between align-items-center">
             <span>
               {laGiangVien
                 ? 'Gửi nguyện vọng / Xin nghỉ ca dạy đến Trưởng bộ môn'
                 : 'Khai báo nguyện vọng / Ràng buộc mềm cho giảng viên'}
+              {!laGiangVien && maBoMon > 0 && (
+                <span className="badge bg-primary ms-2">
+                  {danhSachBoMon.find((b) => b.maBoMon === maBoMon)?.tenBoMon}
+                </span>
+              )}
             </span>
             {laTruongBoMon && (
               <button
@@ -397,8 +453,27 @@ function DanhSachNguyenVong() {
 
           <form onSubmit={handleThemNguyenVong}>
             <div className="row g-2 mb-2">
+              {/* Chọn Bộ môn nhanh ngay trong form (nếu không phải Giảng viên) */}
+              {!laGiangVien && (
+                <div className="col-md-3">
+                  <label className="form-label small fw-semibold">Bộ môn</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={maBoMon}
+                    onChange={(e) => handleDoiBoMon(Number(e.target.value))}
+                  >
+                    <option value={0}>-- Tất cả bộ môn --</option>
+                    {danhSachBoMon.map((bm) => (
+                      <option key={bm.maBoMon} value={bm.maBoMon}>
+                        {bm.tenBoMon}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* Giảng viên */}
-              <div className="col-md-4">
+              <div className={laGiangVien ? 'col-md-4' : 'col-md-3'}>
                 <label className="form-label small fw-semibold">
                   Giảng viên <span className="text-danger">*</span>
                 </label>
@@ -416,9 +491,9 @@ function DanhSachNguyenVong() {
                     onChange={(e) => setForm({ ...form, maGiangVien: Number(e.target.value) })}
                     required
                   >
-                    {danhSachGiangVien.map((gv) => (
+                    {dsGiangVienTheoBoMon.map((gv) => (
                       <option key={gv.maGiangVien} value={gv.maGiangVien}>
-                        [GV #{gv.maGiangVien}] {gv.hoTen}
+                        [GV #{gv.maGiangVien}] {gv.hoTen} {gv.tenBoMon ? `- ${gv.tenBoMon}` : ''}
                       </option>
                     ))}
                   </select>
@@ -426,7 +501,7 @@ function DanhSachNguyenVong() {
               </div>
 
               {/* Lỗi / Mã ràng buộc mềm */}
-              <div className="col-md-5">
+              <div className={laGiangVien ? 'col-md-5' : 'col-md-4'}>
                 <label className="form-label small fw-semibold">
                   Lỗi / Mã ràng buộc mềm <span className="text-danger">*</span>
                 </label>
@@ -444,7 +519,7 @@ function DanhSachNguyenVong() {
               </div>
 
               {/* Thông số phạt */}
-              <div className="col-md-3">
+              <div className={laGiangVien ? 'col-md-3' : 'col-md-2'}>
                 <label className="form-label small fw-semibold">Thông số phạt</label>
                 <input
                   type="number"
@@ -483,7 +558,7 @@ function DanhSachNguyenVong() {
                   value={form.tietBatDau ?? 1}
                   onChange={(e) => setForm({ ...form, tietBatDau: Number(e.target.value) })}
                 >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((tiet) => (
+                  {Array.from({ length: 15 }, (_, i) => i + 1).map((tiet) => (
                     <option key={tiet} value={tiet}>
                       Tiết {tiet}
                     </option>
@@ -499,7 +574,7 @@ function DanhSachNguyenVong() {
                   value={form.tietKetThuc ?? 5}
                   onChange={(e) => setForm({ ...form, tietKetThuc: Number(e.target.value) })}
                 >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((tiet) => (
+                  {Array.from({ length: 15 }, (_, i) => i + 1).map((tiet) => (
                     <option key={tiet} value={tiet}>
                       Tiết {tiet}
                     </option>
@@ -508,7 +583,7 @@ function DanhSachNguyenVong() {
               </div>
 
               {/* Khoảng Tuần áp dụng */}
-              <div className="col-md-2">
+              <div className="col-md-1">
                 <label className="form-label small fw-semibold">Từ tuần</label>
                 <select
                   className="form-select form-select-sm"
@@ -523,11 +598,11 @@ function DanhSachNguyenVong() {
                   }}
                 >
                   {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
-                    <option key={w} value={w}>Tuần {w}</option>
+                    <option key={w} value={w}>T{w}</option>
                   ))}
                 </select>
               </div>
-              <div className="col-md-2">
+              <div className="col-md-1">
                 <label className="form-label small fw-semibold">Đến tuần</label>
                 <select
                   className="form-select form-select-sm"
@@ -535,18 +610,18 @@ function DanhSachNguyenVong() {
                   onChange={(e) => setForm({ ...form, denTuan: Number(e.target.value) })}
                 >
                   {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
-                    <option key={w} value={w}>Tuần {w}</option>
+                    <option key={w} value={w}>T{w}</option>
                   ))}
                 </select>
               </div>
 
               {/* Lí do */}
-              <div className="col-md-4">
+              <div className="col-md-2">
                 <label className="form-label small fw-semibold">Lí do / Ghi chú của GV</label>
                 <input
                   type="text"
                   className="form-control form-control-sm"
-                  placeholder="VD: Đi công tác, việc cá nhân, tập huấn..."
+                  placeholder="VD: Seminar, công tác..."
                   value={form.lyDo ?? ''}
                   onChange={(e) => setForm({ ...form, lyDo: e.target.value })}
                 />
@@ -625,6 +700,11 @@ function DanhSachNguyenVong() {
               : laGiangVien
               ? `Các yêu cầu tôi đã gửi (${dsTheoTab.length})`
               : `Danh sách nguyện vọng & ràng buộc mềm (${dsTheoTab.length})`}
+            {maBoMon > 0 && (
+              <span className="badge bg-primary ms-2">
+                {danhSachBoMon.find((b) => b.maBoMon === maBoMon)?.tenBoMon}
+              </span>
+            )}
           </div>
         </div>
 
@@ -638,6 +718,7 @@ function DanhSachNguyenVong() {
                   <th style={{ width: '40px' }}>STT</th>
                   <th style={{ width: '80px' }}>Mã GV</th>
                   <th>Giảng viên</th>
+                  <th>Bộ môn</th>
                   <th style={{ width: '85px' }}>Mã RB</th>
                   <th>Loại nguyện vọng / Ràng buộc</th>
                   <th style={{ width: '160px' }}>Khung thời gian</th>
@@ -650,12 +731,12 @@ function DanhSachNguyenVong() {
               <tbody>
                 {dsTheoTab.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center text-muted py-4">
+                    <td colSpan={11} className="text-center text-muted py-4">
                       {laTruongBoMon
                         ? 'Không có yêu cầu nguyện vọng nào trong mục này.'
                         : laGiangVien
                         ? 'Bạn không có yêu cầu nào trong mục này.'
-                        : 'Không có dữ liệu trong mục này.'}
+                        : 'Chưa có nguyện vọng nào cho bộ môn / học kỳ đang chọn.'}
                     </td>
                   </tr>
                 ) : (
@@ -670,6 +751,11 @@ function DanhSachNguyenVong() {
                         <td className="text-center font-monospace small">GV #{item.maGiangVien}</td>
                         <td className="fw-semibold">
                           {item.tenGiangVien || `Giảng viên #${item.maGiangVien}`}
+                        </td>
+                        <td className="text-center">
+                          <span className="badge bg-light text-primary border">
+                            {item.tenBoMon || 'Chưa gán'}
+                          </span>
                         </td>
                         <td className="text-center">
                           <span className="badge bg-secondary">{item.maRangBuocMem}</span>

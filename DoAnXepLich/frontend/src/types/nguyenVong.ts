@@ -19,6 +19,8 @@ export interface NguyenVong {
   maNguyenVong: number
   maGiangVien: number
   tenGiangVien?: string
+  maBoMon?: number
+  tenBoMon?: string
   maHocKy: number
   maRangBuocMem: string
   tenRangBuocMem: string
