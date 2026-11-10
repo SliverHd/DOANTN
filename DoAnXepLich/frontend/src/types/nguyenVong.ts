@@ -1,11 +1,42 @@
 export interface LichBan {
   maLichBan: number
   maGiangVien: number
+  tenGiangVien?: string
+  maBoMon?: number
+  tenBoMon?: string
   maHocKy: number
   thu: number
   tietBatDau: number
   tietKetThuc: number
   lyDo?: string
+  laSeminar?: boolean
+}
+
+export interface TaoLichSeminarRequest {
+  maHocKy: number
+  tenSeminar: string
+  thu: number
+  tietBatDau: number
+  tietKetThuc: number
+  danhSachMaGiangVien: number[]
+}
+
+export interface KetQuaTaoLichSeminar {
+  thanhCong: boolean
+  thongDiep: string
+  soGiangVienDaKhoa: number
+  soGiangVienDaTonTai: number
+  soLopBiGo: number
+  danhSachLopBiGo: string[]
+}
+
+export interface XoaNhomSeminarRequest {
+  maHocKy: number
+  thu: number
+  tietBatDau: number
+  tietKetThuc: number
+  lyDo?: string
+  maBoMon?: number
 }
 
 export interface TaoLichBanDto {

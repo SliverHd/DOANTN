@@ -838,6 +838,121 @@ public class GeneticAlgorithmTests
         Assert.All(pcHienTai, pc => Assert.Equal("GA", pc.NguonPhanCong));
     }
 
+    /// <summary>
+    /// Case 27: Khóa chết cứng lịch Seminar - GA KHÔNG BAO GIỜ phân công GV vào lớp trùng giờ Seminar,
+    /// ngay cả khi đó là GV chuyên môn duy nhất (chấp nhận bỏ trống lớp trùng thay vì vi phạm Seminar).
+    /// </summary>
+    [Fact]
+    public async Task Test_27_GaService_KhoaChetCungSeminar_KhongBaoGioPhanCongGvTrungSeminar()
+    {
+        var db = TaoInMemoryDbContext(nameof(Test_27_GaService_KhoaChetCungSeminar_KhongBaoGioPhanCongGvTrungSeminar));
+
+        db.LopHocPhan.AddRange(
+            new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_TRUNG_SEM" },
+            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_RANH" }
+        );
+        db.ChiTietThoiKhoaBieu.AddRange(
+            new ChiTietThoiKhoaBieu { MaLopHocPhan = 1, Thu = 3, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 10 },
+            new ChiTietThoiKhoaBieu { MaLopHocPhan = 2, Thu = 4, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10 }
+        );
+        db.GiangVien.Add(new GiangVien { MaGiangVien = 10, HoTen = "GV Duy Nhất", TrangThai = "DangLamViec" });
+        db.NangLucGiangDay.Add(new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 101, TrangThai = "DangApDung" });
+        db.LichBanGiangVien.Add(new LichBanGiangVien
+        {
+            MaHocKy = 1,
+            MaGiangVien = 10,
+            Thu = 3,
+            TietBatDau = 4,
+            TietKetThuc = 6,
+            LyDo = "[Seminar] Seminar Bộ môn Toán"
+        });
+        await db.SaveChangesAsync();
+
+        var boDanhGia = new BoDanhGiaPhuongAn(db, new BoKiemTraRangBuoc());
+        var taoUngVien = new TaoDanhSachUngVien(db);
+        var luuKetQuaService = new LuuKetQuaXepLichService(db, boDanhGia);
+        var gaService = new GeneticAlgorithmService(db, boDanhGia, taoUngVien, luuKetQuaService);
+
+        var kq = await gaService.ChayAsync(new DuLieuXepLichDto
+        {
+            MaHocKy = 1,
+            ThuatToan = "GA",
+            KichThuocQuanThe = 10,
+            SoTheHe = 10,
+            RandomSeed = 42
+        });
+
+        Assert.Equal("KhaThiMotPhan", kq.TrangThai);
+        Assert.Equal(1, kq.SoLopChuaPhanCong);
+        Assert.DoesNotContain(kq.DanhSachViPham, v => v.Contains("lịch bận"));
+        Assert.Single(kq.DanhSachPhanCong);
+        Assert.Equal(2, kq.DanhSachPhanCong[0].MaLopHocPhan);
+        Assert.Equal(10, kq.DanhSachPhanCong[0].MaGiangVien);
+
+        var pcDb = await db.PhanCongGiangDay.Where(x => x.MaHocKy == 1).ToListAsync();
+        Assert.Single(pcDb);
+        Assert.Equal(2, pcDb[0].MaLopHocPhan);
+    }
+
+    /// <summary>
+    /// Case 28: Khóa chết cứng lịch Seminar tự động bỏ qua trạng thái DaKhoa cũ nếu vi phạm Seminar.
+    /// </summary>
+    [Fact]
+    public async Task Test_28_GaService_KhoaChetCungSeminar_GoDaKhoaCuNeuTrungSeminar()
+    {
+        var db = TaoInMemoryDbContext(nameof(Test_28_GaService_KhoaChetCungSeminar_GoDaKhoaCuNeuTrungSeminar));
+
+        db.LopHocPhan.Add(new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_LOCKED_SEM" });
+        db.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu { MaLopHocPhan = 1, Thu = 3, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 10 });
+        db.GiangVien.AddRange(
+            new GiangVien { MaGiangVien = 10, HoTen = "GV Bận Seminar", TrangThai = "DangLamViec" },
+            new GiangVien { MaGiangVien = 20, HoTen = "GV Rảnh", TrangThai = "DangLamViec" }
+        );
+        db.NangLucGiangDay.AddRange(
+            new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 101, TrangThai = "DangApDung" },
+            new NangLucGiangDay { MaGiangVien = 20, MaHocPhan = 101, TrangThai = "DangApDung" }
+        );
+        db.PhanCongGiangDay.Add(new PhanCongGiangDay
+        {
+            MaHocKy = 1,
+            MaLopHocPhan = 1,
+            MaGiangVien = 10,
+            TrangThai = "DaKhoa",
+            NguonPhanCong = "ThuCong"
+        });
+        db.LichBanGiangVien.Add(new LichBanGiangVien
+        {
+            MaHocKy = 1,
+            MaGiangVien = 10,
+            Thu = 3,
+            TietBatDau = 4,
+            TietKetThuc = 6,
+            LyDo = "[Seminar] Hội thảo chuyên môn"
+        });
+        await db.SaveChangesAsync();
+
+        var boDanhGia = new BoDanhGiaPhuongAn(db, new BoKiemTraRangBuoc());
+        var taoUngVien = new TaoDanhSachUngVien(db);
+        var luuKetQuaService = new LuuKetQuaXepLichService(db, boDanhGia);
+        var gaService = new GeneticAlgorithmService(db, boDanhGia, taoUngVien, luuKetQuaService);
+
+        var kq = await gaService.ChayAsync(new DuLieuXepLichDto
+        {
+            MaHocKy = 1,
+            ThuatToan = "GA",
+            KichThuocQuanThe = 10,
+            SoTheHe = 10,
+            RandomSeed = 42
+        });
+
+        Assert.Equal(0, kq.SoViPhamCung);
+        Assert.Single(kq.DanhSachPhanCong);
+        Assert.Equal(20, kq.DanhSachPhanCong[0].MaGiangVien);
+
+        var pcDb = await db.PhanCongGiangDay.FirstAsync(x => x.MaLopHocPhan == 1);
+        Assert.Equal(20, pcDb.MaGiangVien);
+    }
+
     private static AppDbContext TaoInMemoryDbContext(string dbName)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

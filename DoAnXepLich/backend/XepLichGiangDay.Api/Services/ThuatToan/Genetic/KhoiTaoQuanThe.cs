@@ -19,22 +19,26 @@ public class KhoiTaoQuanThe
         Dictionary<int, List<int>> ungVienTheoLop,
         Dictionary<int, int>? phanCongCoDinh = null,
         Dictionary<int, List<ThoiGianLop>>? thoiGianTheoLop = null,
-        Dictionary<int, List<ThoiGianBan>>? lichBanTheoGv = null)
+        Dictionary<int, List<ThoiGianBan>>? lichBanTheoGv = null,
+        bool choPhepLopBoTrong = false)
     {
         if (danhSachMaLop == null || danhSachMaLop.Count == 0)
         {
             return [];
         }
 
-        // Kiểm tra tiền điều kiện: mọi lớp chưa khóa phải có ít nhất 1 ứng viên
-        foreach (var maLop in danhSachMaLop)
+        // Kiểm tra tiền điều kiện: mọi lớp chưa khóa phải có ít nhất 1 ứng viên (trừ khi cho phép bỏ trống do lịch bận/Seminar khóa cứng)
+        if (!choPhepLopBoTrong)
         {
-            bool daKhoa = phanCongCoDinh != null && phanCongCoDinh.TryGetValue(maLop, out var gvKhoa) && gvKhoa > 0;
-            if (!daKhoa)
+            foreach (var maLop in danhSachMaLop)
             {
-                if (!ungVienTheoLop.TryGetValue(maLop, out var dsUngVien) || dsUngVien == null || dsUngVien.Count == 0)
+                bool daKhoa = phanCongCoDinh != null && phanCongCoDinh.TryGetValue(maLop, out var gvKhoa) && gvKhoa > 0;
+                if (!daKhoa)
                 {
-                    throw new InvalidOperationException($"Lớp học phần ID {maLop} không có bất kỳ giảng viên ứng viên đủ điều kiện chuyên môn nào.");
+                    if (!ungVienTheoLop.TryGetValue(maLop, out var dsUngVien) || dsUngVien == null || dsUngVien.Count == 0)
+                    {
+                        throw new InvalidOperationException($"Lớp học phần ID {maLop} không có bất kỳ giảng viên ứng viên đủ điều kiện chuyên môn nào.");
+                    }
                 }
             }
         }
@@ -55,7 +59,7 @@ public class KhoiTaoQuanThe
             var caThe = new CaThe();
             foreach (var maLop in danhSachMaLop)
             {
-                int maGv = 0;
+                int? maGv = null;
 
                 // Nếu lớp đã bị khóa/ghim cố định thì giữ nguyên
                 if (phanCongCoDinh != null && phanCongCoDinh.TryGetValue(maLop, out var gvKhoa) && gvKhoa > 0)
@@ -197,10 +201,11 @@ public class KhoiTaoQuanThe
         // Đóng gói cá thể theo đúng thứ tự danhSachMaLop ban đầu
         foreach (var maLop in danhSachMaLop)
         {
+            int gvVal = mapKetQua.GetValueOrDefault(maLop, 0);
             caThe.DanhSachGen.Add(new Gen
             {
                 MaLopHocPhan = maLop,
-                MaGiangVien = mapKetQua.GetValueOrDefault(maLop, 0)
+                MaGiangVien = gvVal > 0 ? gvVal : null
             });
         }
 

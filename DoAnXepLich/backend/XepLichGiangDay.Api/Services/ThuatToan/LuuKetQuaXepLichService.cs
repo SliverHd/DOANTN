@@ -55,9 +55,21 @@ public class LuuKetQuaXepLichService(
                 {
                     // Lớp bị bỏ trống (không tìm được giảng viên thỏa mãn ràng buộc cứng):
                     // nếu đang có phân công cũ chưa khóa, xóa đi để phản ánh đúng trạng thái "chưa phân công".
-                    if (mapPc.TryGetValue(maLop, out var pcCu) && pcCu.TrangThai != "DaKhoa")
+                    if (mapPc.TryGetValue(maLop, out var pcCu))
                     {
-                        context.PhanCongGiangDay.Remove(pcCu);
+                        bool khoaBiVuongSeminar = pcCu.TrangThai == "DaKhoa" &&
+                            boiCanh.LichBanTheoGv.TryGetValue(pcCu.MaGiangVien, out var dsLbCu) &&
+                            boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCtCu) &&
+                            dsCtCu.Any(ct => dsLbCu.Any(lb =>
+                                !string.IsNullOrWhiteSpace(lb.LyDo) &&
+                                lb.LyDo.Contains("Seminar", StringComparison.OrdinalIgnoreCase) &&
+                                lb.Thu == ct.Thu &&
+                                Math.Max(lb.TietBatDau, ct.TietBatDau) <= Math.Min(lb.TietKetThuc, ct.TietKetThuc)));
+
+                        if (pcCu.TrangThai != "DaKhoa" || khoaBiVuongSeminar)
+                        {
+                            context.PhanCongGiangDay.Remove(pcCu);
+                        }
                     }
                     continue;
                 }
@@ -66,8 +78,17 @@ public class LuuKetQuaXepLichService(
 
                 if (mapPc.TryGetValue(maLop, out var pc))
                 {
-                    // Nếu lớp đã ở trạng thái DaKhoa: giữ nguyên phân công và khóa, không ghi đè
-                    if (pc.TrangThai == "DaKhoa")
+                    bool khoaBiVuongSeminar = pc.TrangThai == "DaKhoa" &&
+                        boiCanh.LichBanTheoGv.TryGetValue(pc.MaGiangVien, out var dsLbPc) &&
+                        boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCtPc) &&
+                        dsCtPc.Any(ct => dsLbPc.Any(lb =>
+                            !string.IsNullOrWhiteSpace(lb.LyDo) &&
+                            lb.LyDo.Contains("Seminar", StringComparison.OrdinalIgnoreCase) &&
+                            lb.Thu == ct.Thu &&
+                            Math.Max(lb.TietBatDau, ct.TietBatDau) <= Math.Min(lb.TietKetThuc, ct.TietKetThuc)));
+
+                    // Nếu lớp đã ở trạng thái DaKhoa (và không vi phạm Seminar): giữ nguyên phân công và khóa, không ghi đè
+                    if (pc.TrangThai == "DaKhoa" && !khoaBiVuongSeminar)
                     {
                         ketQua.SoLopGiuKhoa++;
                         dsPhanCongKetQua.Add(pc);

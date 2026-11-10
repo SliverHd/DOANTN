@@ -60,6 +60,7 @@ public class UngVienLopDto
     public string? ChucDanh { get; set; }
     public bool CoNangLuc { get; set; }
     public bool BiVuongLichBan { get; set; }
+    public bool BiKhoaCungSeminar { get; set; }
     public bool BiTrungLichDay { get; set; }
     public bool HopLe => CoNangLuc && !BiVuongLichBan && !BiTrungLichDay;
     public string LyDoKhongHopLe { get; set; } = string.Empty;

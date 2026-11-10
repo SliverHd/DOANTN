@@ -4,11 +4,45 @@ public class LichBanDto
 {
     public int MaLichBan { get; set; }
     public int MaGiangVien { get; set; }
+    public string? TenGiangVien { get; set; }
+    public int? MaBoMon { get; set; }
+    public string? TenBoMon { get; set; }
     public int MaHocKy { get; set; }
     public int Thu { get; set; }
     public int TietBatDau { get; set; }
     public int TietKetThuc { get; set; }
     public string? LyDo { get; set; }
+    public bool LaSeminar { get; set; }
+}
+
+public class TaoLichSeminarRequest
+{
+    public int MaHocKy { get; set; }
+    public string TenSeminar { get; set; } = string.Empty;
+    public int Thu { get; set; }
+    public int TietBatDau { get; set; }
+    public int TietKetThuc { get; set; }
+    public List<int> DanhSachMaGiangVien { get; set; } = [];
+}
+
+public class KetQuaTaoLichSeminarDto
+{
+    public bool ThanhCong { get; set; }
+    public string ThongDiep { get; set; } = string.Empty;
+    public int SoGiangVienDaKhoa { get; set; }
+    public int SoGiangVienDaTonTai { get; set; }
+    public int SoLopBiGo { get; set; }
+    public List<string> DanhSachLopBiGo { get; set; } = [];
+}
+
+public class XoaNhomSeminarRequest
+{
+    public int MaHocKy { get; set; }
+    public int Thu { get; set; }
+    public int TietBatDau { get; set; }
+    public int TietKetThuc { get; set; }
+    public string? LyDo { get; set; }
+    public int? MaBoMon { get; set; }
 }
 
 public class TaoLichBanDto

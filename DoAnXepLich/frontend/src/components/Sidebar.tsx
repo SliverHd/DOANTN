@@ -25,6 +25,7 @@ const truongBoMonMenuItems: MenuItem[] = [
   { path: '/giang-vien', label: 'Quản lý giảng viên', icon: 'users' },
   { path: '/hoc-phan', label: 'Quản lý học phần', icon: 'book' },
   { path: '/thoi-khoa-bieu', label: 'Thời khóa biểu', icon: 'table' },
+  { path: '/seminar', label: 'Lịch Seminar (Khóa cứng)', icon: 'lock' },
   { path: '/nguyen-vong', label: 'Lịch bận & Nguyện vọng', icon: 'clock' },
   { path: '/rang-buoc', label: 'Cấu hình ràng buộc', icon: 'sliders' },
   { path: '/xep-lich', label: 'Xếp lịch tự động', icon: 'cpu' },
@@ -33,6 +34,7 @@ const truongBoMonMenuItems: MenuItem[] = [
 
 const giangVienMenuItems: MenuItem[] = [
   { path: '/thoi-khoa-bieu', label: 'Thời khóa biểu', icon: 'table' },
+  { path: '/seminar', label: 'Lịch Seminar (Khóa cứng)', icon: 'lock' },
   { path: '/nguyen-vong', label: 'Nguyện vọng', icon: 'clock' },
   { path: '/ket-qua', label: 'Kết quả xếp lịch', icon: 'check-square' },
 ]
@@ -95,6 +97,13 @@ function renderMenuIcon(icon: string) {
           <line x1="3" y1="15" x2="21" y2="15" />
           <line x1="9" y1="3" x2="9" y2="21" />
           <line x1="15" y1="3" x2="15" y2="21" />
+        </svg>
+      )
+    case 'lock':
+      return (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       )
     case 'clock':

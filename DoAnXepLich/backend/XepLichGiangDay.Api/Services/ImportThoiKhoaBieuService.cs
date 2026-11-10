@@ -450,8 +450,12 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
         var dsHocPhan = await context.HocPhan.ToListAsync(cancellationToken);
         var dsGiangVien = await context.GiangVien.ToListAsync(cancellationToken);
         var dsNangLuc = await context.NangLucGiangDay.ToListAsync(cancellationToken);
+        var dsLichSeminar = await context.LichBanGiangVien
+            .Where(x => x.MaHocKy == request.MaHocKy && x.LyDo != null && x.LyDo.Contains("Seminar"))
+            .ToListAsync(cancellationToken);
         int soDongThanhCong = 0;
         var dsLopDaKhoa = new HashSet<int>();
+        var dsLopBoQuaViSeminar = new List<string>();
 
         using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -606,29 +610,47 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
                             x => x.MaLopHocPhan == lop.MaLopHocPhan && x.MaHocKy == request.MaHocKy,
                             cancellationToken);
 
-                        if (pcHienTai == null)
+                        bool vuongSeminar = dsLichSeminar.Any(lb =>
+                            lb.MaGiangVien == gv.MaGiangVien &&
+                            lb.Thu == dong.Thu &&
+                            Math.Max(lb.TietBatDau, dong.TietBatDau) <= Math.Min(lb.TietKetThuc, dong.TietKetThuc));
+
+                        if (vuongSeminar)
                         {
-                            pcHienTai = new PhanCongGiangDay
+                            // Giảng viên đã khóa chết cứng lịch Seminar trùng giờ -> KHÔNG phân công lớp này vào lịch Seminar
+                            if (pcHienTai != null)
                             {
-                                MaLopHocPhan = lop.MaLopHocPhan,
-                                MaGiangVien = gv.MaGiangVien,
-                                MaHocKy = request.MaHocKy,
-                                NguonPhanCong = "ThuCong",
-                                DiemPhat = 0,
-                                TrangThai = "DaKhoa"
-                            };
-                            context.PhanCongGiangDay.Add(pcHienTai);
+                                context.PhanCongGiangDay.Remove(pcHienTai);
+                                await context.SaveChangesAsync(cancellationToken);
+                            }
+                            dsLopBoQuaViSeminar.Add($"{lop.MaLopHocPhanTruong} ({gv.HoTen})");
                         }
                         else
                         {
-                            pcHienTai.MaGiangVien = gv.MaGiangVien;
-                            pcHienTai.NguonPhanCong = "ThuCong";
-                            pcHienTai.DiemPhat = 0;
-                            pcHienTai.TrangThai = "DaKhoa";
-                        }
+                            if (pcHienTai == null)
+                            {
+                                pcHienTai = new PhanCongGiangDay
+                                {
+                                    MaLopHocPhan = lop.MaLopHocPhan,
+                                    MaGiangVien = gv.MaGiangVien,
+                                    MaHocKy = request.MaHocKy,
+                                    NguonPhanCong = "ThuCong",
+                                    DiemPhat = 0,
+                                    TrangThai = "DaKhoa"
+                                };
+                                context.PhanCongGiangDay.Add(pcHienTai);
+                            }
+                            else
+                            {
+                                pcHienTai.MaGiangVien = gv.MaGiangVien;
+                                pcHienTai.NguonPhanCong = "ThuCong";
+                                pcHienTai.DiemPhat = 0;
+                                pcHienTai.TrangThai = "DaKhoa";
+                            }
 
-                        await context.SaveChangesAsync(cancellationToken);
-                        dsLopDaKhoa.Add(lop.MaLopHocPhan);
+                            await context.SaveChangesAsync(cancellationToken);
+                            dsLopDaKhoa.Add(lop.MaLopHocPhan);
+                        }
                     }
                 }
 
@@ -643,6 +665,7 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
             }
 
             string ghiChuKhoa = dsLopDaKhoa.Count > 0 ? $" (Đã khóa cứng {dsLopDaKhoa.Count} lớp có sẵn giảng viên)" : "";
+            string ghiChuSeminar = dsLopBoQuaViSeminar.Count > 0 ? $" [Bỏ qua khóa {dsLopBoQuaViSeminar.Count} phân công trùng lịch Seminar]" : "";
 
             // Lưu lịch sử import
             var lichSu = new LichSuImport
@@ -654,7 +677,7 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
                 SoDongThanhCong = soDongThanhCong,
                 SoDongLoi = request.DanhSachDong.Count - soDongThanhCong,
                 TrangThai = soDongThanhCong == request.DanhSachDong.Count ? "ThanhCong" : (soDongThanhCong > 0 ? "MotPhan" : "Loi"),
-                GhiChu = $"{ghiChuBm}Import thành công {soDongThanhCong}/{request.DanhSachDong.Count} dòng{ghiChuKhoa}."
+                GhiChu = $"{ghiChuBm}Import thành công {soDongThanhCong}/{request.DanhSachDong.Count} dòng{ghiChuKhoa}{ghiChuSeminar}."
             };
 
             context.LichSuImport.Add(lichSu);

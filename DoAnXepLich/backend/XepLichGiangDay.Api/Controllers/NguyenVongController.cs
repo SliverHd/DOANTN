@@ -22,10 +22,44 @@ public class NguyenVongController(NguyenVongService service) : ControllerBase
     public async Task<ActionResult<List<LichBanDto>>> GetLichBan(
         [FromQuery] int maHocKy,
         [FromQuery] int? maGiangVien,
-        [FromQuery] int? maBoMon)
+        [FromQuery] int? maBoMon,
+        [FromQuery] bool? chiSeminar)
     {
-        var result = await service.LayLichBanAsync(maHocKy, maGiangVien, maBoMon);
+        var result = await service.LayLichBanAsync(maHocKy, maGiangVien, maBoMon, chiSeminar);
         return Ok(result);
+    }
+
+    [HttpPost("seminar")]
+    public async Task<ActionResult<KetQuaTaoLichSeminarDto>> TaoLichSeminar(
+        [FromBody] TaoLichSeminarRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.TaoLichSeminarAsync(request, cancellationToken);
+        if (!result.ThanhCong)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpDelete("lich-ban/{id:int}")]
+    public async Task<IActionResult> XoaLichBan(int id, CancellationToken cancellationToken)
+    {
+        var success = await service.XoaLichBanAsync(id, cancellationToken);
+        if (!success)
+        {
+            return NotFound("Không tìm thấy lịch bận / Seminar cần xóa.");
+        }
+        return Ok(new { Message = "Đã xóa lịch khóa cứng thành công." });
+    }
+
+    [HttpPost("seminar/xoa-nhom")]
+    public async Task<IActionResult> XoaNhomSeminar(
+        [FromBody] XoaNhomSeminarRequest request,
+        CancellationToken cancellationToken)
+    {
+        var count = await service.XoaNhomSeminarAsync(request, cancellationToken);
+        return Ok(new { SoBanGhiDaXoa = count, Message = $"Đã gỡ lịch Seminar cho {count} giảng viên." });
     }
 
     [HttpPost]

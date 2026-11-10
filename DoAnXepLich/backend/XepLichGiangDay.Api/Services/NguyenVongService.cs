@@ -7,7 +7,7 @@ namespace XepLichGiangDay.Api.Services;
 
 public class NguyenVongService(AppDbContext context)
 {
-    public async Task<List<LichBanDto>> LayLichBanAsync(int maHocKy, int? maGiangVien = null, int? maBoMon = null)
+    public async Task<List<LichBanDto>> LayLichBanAsync(int maHocKy, int? maGiangVien = null, int? maBoMon = null, bool? chiSeminar = null)
     {
         var query = context.LichBanGiangVien.Where(x => x.MaHocKy == maHocKy);
         if (maGiangVien.HasValue && maGiangVien.Value > 0)
@@ -23,16 +23,218 @@ public class NguyenVongService(AppDbContext context)
             query = query.Where(x => dsGvBm.Contains(x.MaGiangVien));
         }
 
-        return await query.Select(x => new LichBanDto
+        var danhSach = await query.ToListAsync();
+        var dsGvId = danhSach.Select(x => x.MaGiangVien).Distinct().ToList();
+        var dsGiangVien = await context.GiangVien
+            .Where(x => dsGvId.Contains(x.MaGiangVien))
+            .ToDictionaryAsync(x => x.MaGiangVien);
+        var dsBoMon = await context.BoMon.AsNoTracking().ToDictionaryAsync(x => x.MaBoMon);
+
+        var ketQua = danhSach.Select(x =>
         {
-            MaLichBan = x.MaLichBan,
-            MaGiangVien = x.MaGiangVien,
-            MaHocKy = x.MaHocKy,
-            Thu = x.Thu,
-            TietBatDau = x.TietBatDau,
-            TietKetThuc = x.TietKetThuc,
-            LyDo = x.LyDo
-        }).ToListAsync();
+            dsGiangVien.TryGetValue(x.MaGiangVien, out var gv);
+            string? tenBm = null;
+            if (gv?.MaBoMon != null && dsBoMon.TryGetValue(gv.MaBoMon.Value, out var bm))
+            {
+                tenBm = bm.TenBoMon;
+            }
+            bool laSeminar = !string.IsNullOrWhiteSpace(x.LyDo) &&
+                             x.LyDo.Contains("Seminar", StringComparison.OrdinalIgnoreCase);
+
+            return new LichBanDto
+            {
+                MaLichBan = x.MaLichBan,
+                MaGiangVien = x.MaGiangVien,
+                TenGiangVien = gv?.HoTen ?? $"GV #{x.MaGiangVien}",
+                MaBoMon = gv?.MaBoMon,
+                TenBoMon = tenBm,
+                MaHocKy = x.MaHocKy,
+                Thu = x.Thu,
+                TietBatDau = x.TietBatDau,
+                TietKetThuc = x.TietKetThuc,
+                LyDo = x.LyDo,
+                LaSeminar = laSeminar
+            };
+        });
+
+        if (chiSeminar.HasValue)
+        {
+            ketQua = ketQua.Where(x => x.LaSeminar == chiSeminar.Value);
+        }
+
+        return ketQua
+            .OrderBy(x => x.Thu)
+            .ThenBy(x => x.TietBatDau)
+            .ThenBy(x => x.TenGiangVien)
+            .ToList();
+    }
+
+    public async Task<KetQuaTaoLichSeminarDto> TaoLichSeminarAsync(TaoLichSeminarRequest req, CancellationToken cancellationToken = default)
+    {
+        var dsGvIds = req.DanhSachMaGiangVien
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+
+        if (req.MaHocKy <= 0 || dsGvIds.Count == 0 || req.Thu < 2 || req.Thu > 8 ||
+            req.TietBatDau < 1 || req.TietKetThuc > 15 || req.TietBatDau > req.TietKetThuc)
+        {
+            return new KetQuaTaoLichSeminarDto
+            {
+                ThanhCong = false,
+                ThongDiep = "Dữ liệu lịch Seminar không hợp lệ (kiểm tra học kỳ, thứ 2-8, tiết 1-15 và danh sách giảng viên)."
+            };
+        }
+
+        string tenSeminar = string.IsNullOrWhiteSpace(req.TenSeminar)
+            ? "Seminar Bộ môn"
+            : req.TenSeminar.Trim();
+        string lyDoChuan = tenSeminar.StartsWith("[Seminar]", StringComparison.OrdinalIgnoreCase)
+            ? tenSeminar
+            : $"[Seminar] {tenSeminar}";
+
+        var dsLbHienCo = await context.LichBanGiangVien
+            .Where(x => x.MaHocKy == req.MaHocKy && dsGvIds.Contains(x.MaGiangVien))
+            .ToListAsync(cancellationToken);
+
+        int soDaKhoa = 0;
+        int soDaTonTai = 0;
+
+        foreach (var maGv in dsGvIds)
+        {
+            var daCoSeminarTrung = dsLbHienCo.FirstOrDefault(x =>
+                x.MaGiangVien == maGv &&
+                x.Thu == req.Thu &&
+                x.TietBatDau == req.TietBatDau &&
+                x.TietKetThuc == req.TietKetThuc &&
+                !string.IsNullOrWhiteSpace(x.LyDo) &&
+                x.LyDo.Contains("Seminar", StringComparison.OrdinalIgnoreCase));
+
+            if (daCoSeminarTrung != null)
+            {
+                daCoSeminarTrung.LyDo = lyDoChuan;
+                soDaTonTai++;
+            }
+            else
+            {
+                context.LichBanGiangVien.Add(new LichBanGiangVien
+                {
+                    MaGiangVien = maGv,
+                    MaHocKy = req.MaHocKy,
+                    Thu = req.Thu,
+                    TietBatDau = req.TietBatDau,
+                    TietKetThuc = req.TietKetThuc,
+                    LyDo = lyDoChuan
+                });
+                soDaKhoa++;
+            }
+        }
+
+        // Quét toàn bộ phân công hiện tại (kể cả DaKhoa hay DuKien) trùng giờ Seminar -> gỡ phân công để khóa chết cứng 100%
+        var dsPhanCongTrungGv = await context.PhanCongGiangDay
+            .Where(x => x.MaHocKy == req.MaHocKy && dsGvIds.Contains(x.MaGiangVien))
+            .ToListAsync(cancellationToken);
+
+        var danhSachLopBiGo = new List<string>();
+        if (dsPhanCongTrungGv.Count > 0)
+        {
+            var dsLopIds = dsPhanCongTrungGv.Select(x => x.MaLopHocPhan).Distinct().ToList();
+            var dsBuoiHoc = await context.ChiTietThoiKhoaBieu
+                .Where(x => dsLopIds.Contains(x.MaLopHocPhan))
+                .ToListAsync(cancellationToken);
+            var buoiTheoLop = dsBuoiHoc.GroupBy(x => x.MaLopHocPhan).ToDictionary(g => g.Key, g => g.ToList());
+
+            var dsLop = await context.LopHocPhan
+                .Where(x => dsLopIds.Contains(x.MaLopHocPhan))
+                .ToDictionaryAsync(x => x.MaLopHocPhan, cancellationToken);
+            var dsGv = await context.GiangVien
+                .Where(x => dsGvIds.Contains(x.MaGiangVien))
+                .ToDictionaryAsync(x => x.MaGiangVien, cancellationToken);
+
+            foreach (var pc in dsPhanCongTrungGv)
+            {
+                if (buoiTheoLop.TryGetValue(pc.MaLopHocPhan, out var buoiCuaLop))
+                {
+                    bool trungKhungSeminar = buoiCuaLop.Any(b =>
+                        b.Thu == req.Thu &&
+                        Math.Max(b.TietBatDau, req.TietBatDau) <= Math.Min(b.TietKetThuc, req.TietKetThuc));
+
+                    if (trungKhungSeminar)
+                    {
+                        context.PhanCongGiangDay.Remove(pc);
+                        string tenLop = dsLop.TryGetValue(pc.MaLopHocPhan, out var lop)
+                            ? $"{lop.MaLopHocPhanTruong} ({lop.TenLop})"
+                            : $"Lớp #{pc.MaLopHocPhan}";
+                        string tenGv = dsGv.TryGetValue(pc.MaGiangVien, out var gv)
+                            ? gv.HoTen
+                            : $"GV #{pc.MaGiangVien}";
+                        danhSachLopBiGo.Add($"{tenLop} — đã gỡ {tenGv}");
+                    }
+                }
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        string thuStr = req.Thu == 8 ? "Chủ nhật" : $"Thứ {req.Thu}";
+        string thongDiep = $"Đã khóa chết cứng lịch {lyDoChuan} vào {thuStr} (Tiết {req.TietBatDau}-{req.TietKetThuc}) cho {soDaKhoa} giảng viên" +
+            (soDaTonTai > 0 ? $" (cập nhật {soDaTonTai} giảng viên đã có lịch này trước đó)" : "") +
+            (danhSachLopBiGo.Count > 0 ? $". Đã tự động gỡ phân công {danhSachLopBiGo.Count} lớp học phần trùng giờ Seminar." : ".");
+
+        return new KetQuaTaoLichSeminarDto
+        {
+            ThanhCong = true,
+            ThongDiep = thongDiep,
+            SoGiangVienDaKhoa = soDaKhoa,
+            SoGiangVienDaTonTai = soDaTonTai,
+            SoLopBiGo = danhSachLopBiGo.Count,
+            DanhSachLopBiGo = danhSachLopBiGo
+        };
+    }
+
+    public async Task<bool> XoaLichBanAsync(int maLichBan, CancellationToken cancellationToken = default)
+    {
+        var item = await context.LichBanGiangVien.FindAsync([maLichBan], cancellationToken);
+        if (item is null) return false;
+
+        context.LichBanGiangVien.Remove(item);
+        await context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<int> XoaNhomSeminarAsync(XoaNhomSeminarRequest req, CancellationToken cancellationToken = default)
+    {
+        var query = context.LichBanGiangVien.Where(x =>
+            x.MaHocKy == req.MaHocKy &&
+            x.Thu == req.Thu &&
+            x.TietBatDau == req.TietBatDau &&
+            x.TietKetThuc == req.TietKetThuc);
+
+        if (!string.IsNullOrWhiteSpace(req.LyDo))
+        {
+            var lyDoTrim = req.LyDo.Trim();
+            query = query.Where(x => x.LyDo == lyDoTrim);
+        }
+        else
+        {
+            query = query.Where(x => x.LyDo != null && x.LyDo.Contains("Seminar"));
+        }
+
+        if (req.MaBoMon.HasValue && req.MaBoMon.Value > 0)
+        {
+            var dsGvBm = await context.GiangVien
+                .Where(g => g.MaBoMon == req.MaBoMon.Value)
+                .Select(g => g.MaGiangVien)
+                .ToListAsync(cancellationToken);
+            query = query.Where(x => dsGvBm.Contains(x.MaGiangVien));
+        }
+
+        var items = await query.ToListAsync(cancellationToken);
+        if (items.Count == 0) return 0;
+
+        context.LichBanGiangVien.RemoveRange(items);
+        await context.SaveChangesAsync(cancellationToken);
+        return items.Count;
     }
 
     public async Task<List<NguyenVongDto>> LayNguyenVongAsync(int maHocKy, int? maGiangVien = null, int? maBoMon = null)
@@ -345,7 +547,8 @@ public class NguyenVongService(AppDbContext context)
                 x.MaHocKy == nv.MaHocKy &&
                 cacThuCanXoa.Contains(x.Thu) &&
                 x.TietBatDau == nv.TietBatDau.Value &&
-                x.TietKetThuc == nv.TietKetThuc.Value).ToListAsync(cancellationToken);
+                x.TietKetThuc == nv.TietKetThuc.Value &&
+                (x.LyDo == null || !x.LyDo.Contains("Seminar"))).ToListAsync(cancellationToken);
             if (dsLbCu.Count > 0)
             {
                 context.LichBanGiangVien.RemoveRange(dsLbCu);
@@ -382,7 +585,8 @@ public class NguyenVongService(AppDbContext context)
                 x.MaHocKy == item.MaHocKy &&
                 cacThuCanXoa.Contains(x.Thu) &&
                 x.TietBatDau == item.TietBatDau.Value &&
-                x.TietKetThuc == item.TietKetThuc.Value).ToListAsync();
+                x.TietKetThuc == item.TietKetThuc.Value &&
+                (x.LyDo == null || !x.LyDo.Contains("Seminar"))).ToListAsync();
             if (dsLbCu.Count > 0)
             {
                 context.LichBanGiangVien.RemoveRange(dsLbCu);
@@ -414,7 +618,9 @@ public class NguyenVongService(AppDbContext context)
     public async Task<bool> LuuMaTranAsync(LuuMaTranNguyenVongRequest request)
     {
         var oldLichBan = await context.LichBanGiangVien
-            .Where(x => x.MaGiangVien == request.MaGiangVien && x.MaHocKy == request.MaHocKy)
+            .Where(x => x.MaGiangVien == request.MaGiangVien &&
+                        x.MaHocKy == request.MaHocKy &&
+                        (x.LyDo == null || !x.LyDo.Contains("Seminar")))
             .ToListAsync();
         context.LichBanGiangVien.RemoveRange(oldLichBan);
 

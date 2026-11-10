@@ -14,6 +14,7 @@ import ChayXepLich from './pages/XepLich/ChayXepLich'
 import Login from './pages/Auth/Login'
 import DanhSachNguoiDung from './pages/NguoiDung/DanhSachNguoiDung'
 import DanhSachBoMon from './pages/BoMon/DanhSachBoMon'
+import QuanLyLichSeminar from './pages/Seminar/QuanLyLichSeminar'
 
 function ProtectedLayout() {
   const { user, dangTai } = useAuth()
@@ -156,6 +157,14 @@ const router = createBrowserRouter([
         element: (
           <RoleRoute allowedRoles={['TruongBoMon', 'GiangVien']}>
             <DanhSachNguyenVong />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'seminar',
+        element: (
+          <RoleRoute allowedRoles={['TruongBoMon', 'GiangVien']}>
+            <QuanLyLichSeminar />
           </RoleRoute>
         ),
       },

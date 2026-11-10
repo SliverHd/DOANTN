@@ -5,6 +5,9 @@ import type {
   ThemNguyenVongRequest,
   LuuMaTranNguyenVongRequest,
   KetQuaDuyetNguyenVong,
+  TaoLichSeminarRequest,
+  KetQuaTaoLichSeminar,
+  XoaNhomSeminarRequest,
 } from '../types/nguyenVong'
 
 export const nguyenVongApi = {
@@ -29,14 +32,24 @@ export const nguyenVongApi = {
   tuChoi: (id: number, ghiChu?: string) =>
     axiosClient.post<KetQuaDuyetNguyenVong>(`/nguyen-vong/${id}/tu-choi`, { ghiChu }),
 
-  getLichBan: (maHocKy: number, maGiangVien?: number, maBoMon?: number) =>
+  getLichBan: (maHocKy: number, maGiangVien?: number, maBoMon?: number, chiSeminar?: boolean) =>
     axiosClient.get<LichBan[]>('/nguyen-vong/lich-ban', {
       params: {
         maHocKy,
         maGiangVien: maGiangVien && maGiangVien > 0 ? maGiangVien : undefined,
         maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined,
+        chiSeminar: chiSeminar !== undefined ? chiSeminar : undefined,
       },
     }),
+
+  taoLichSeminar: (data: TaoLichSeminarRequest) =>
+    axiosClient.post<KetQuaTaoLichSeminar>('/nguyen-vong/seminar', data),
+
+  xoaLichBan: (id: number) =>
+    axiosClient.delete<{ message: string }>(`/nguyen-vong/lich-ban/${id}`),
+
+  xoaNhomSeminar: (data: XoaNhomSeminarRequest) =>
+    axiosClient.post<{ soBanGhiDaXoa: number; message: string }>('/nguyen-vong/seminar/xoa-nhom', data),
 
   luuMaTran: (data: LuuMaTranNguyenVongRequest) =>
     axiosClient.post<{ message: string }>('/nguyen-vong/luu-ma-tran', data),
