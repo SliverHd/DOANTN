@@ -124,7 +124,7 @@ public class NguyenVongService(AppDbContext context)
             MaHocKy = dto.MaHocKy,
             LoaiNguyenVong = string.IsNullOrWhiteSpace(dto.MaRangBuocMem) ? "SC01" : dto.MaRangBuocMem.Trim(),
             MucDo = 1,
-            Thu = dto.Thu,
+            Thu = dto.Thu.HasValue && dto.Thu.Value > 0 ? dto.Thu.Value : null,
             TietBatDau = dto.TietBatDau,
             TietKetThuc = dto.TietKetThuc,
             TrongSoPhat = dto.TrongSoPhat > 0 ? dto.TrongSoPhat : 10.0,
@@ -202,26 +202,33 @@ public class NguyenVongService(AppDbContext context)
              nv.LoaiNguyenVong == "XinNghi") &&
             laNghiCaHocKy;
 
-        if (laNguyenVongNghiDay && nv.Thu.HasValue && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
+        if (laNguyenVongNghiDay && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
         {
-            var daCoLichBan = await context.LichBanGiangVien.AnyAsync(x =>
-                x.MaGiangVien == nv.MaGiangVien &&
-                x.MaHocKy == nv.MaHocKy &&
-                x.Thu == nv.Thu.Value &&
-                x.TietBatDau == nv.TietBatDau.Value &&
-                x.TietKetThuc == nv.TietKetThuc.Value, cancellationToken);
+            var cacThuApDung = (nv.Thu.HasValue && nv.Thu.Value > 0)
+                ? new List<int> { nv.Thu.Value }
+                : new List<int> { 2, 3, 4, 5, 6, 7, 8 };
 
-            if (!daCoLichBan)
+            foreach (var thuApDung in cacThuApDung)
             {
-                context.LichBanGiangVien.Add(new LichBanGiangVien
+                var daCoLichBan = await context.LichBanGiangVien.AnyAsync(x =>
+                    x.MaGiangVien == nv.MaGiangVien &&
+                    x.MaHocKy == nv.MaHocKy &&
+                    x.Thu == thuApDung &&
+                    x.TietBatDau == nv.TietBatDau.Value &&
+                    x.TietKetThuc == nv.TietKetThuc.Value, cancellationToken);
+
+                if (!daCoLichBan)
                 {
-                    MaGiangVien = nv.MaGiangVien,
-                    MaHocKy = nv.MaHocKy,
-                    Thu = nv.Thu.Value,
-                    TietBatDau = nv.TietBatDau.Value,
-                    TietKetThuc = nv.TietKetThuc.Value,
-                    LyDo = string.IsNullOrWhiteSpace(nv.NoiDungGoc) ? "Lịch bận đã duyệt" : $"[Đã duyệt] {nv.NoiDungGoc}"
-                });
+                    context.LichBanGiangVien.Add(new LichBanGiangVien
+                    {
+                        MaGiangVien = nv.MaGiangVien,
+                        MaHocKy = nv.MaHocKy,
+                        Thu = thuApDung,
+                        TietBatDau = nv.TietBatDau.Value,
+                        TietKetThuc = nv.TietKetThuc.Value,
+                        LyDo = string.IsNullOrWhiteSpace(nv.NoiDungGoc) ? "Lịch bận đã duyệt" : $"[Đã duyệt] {nv.NoiDungGoc}"
+                    });
+                }
             }
 
             var dsPhanCongGv = await context.PhanCongGiangDay
@@ -243,7 +250,7 @@ public class NguyenVongService(AppDbContext context)
                 if (buoiTheoLop.TryGetValue(pc.MaLopHocPhan, out var buoiCuaLop))
                 {
                     bool trungCaNghi = buoiCuaLop.Any(b =>
-                        b.Thu == nv.Thu.Value &&
+                        cacThuApDung.Contains(b.Thu) &&
                         !(b.TietKetThuc < nv.TietBatDau.Value || b.TietBatDau > nv.TietKetThuc.Value));
 
                     if (trungCaNghi)
@@ -327,12 +334,16 @@ public class NguyenVongService(AppDbContext context)
             nv.GhiChuDuyet = ghiChu.Trim();
         }
 
-        if (nv.Thu.HasValue && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
+        if (nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
         {
+            var cacThuCanXoa = (nv.Thu.HasValue && nv.Thu.Value > 0)
+                ? new List<int> { nv.Thu.Value }
+                : new List<int> { 2, 3, 4, 5, 6, 7, 8 };
+
             var dsLbCu = await context.LichBanGiangVien.Where(x =>
                 x.MaGiangVien == nv.MaGiangVien &&
                 x.MaHocKy == nv.MaHocKy &&
-                x.Thu == nv.Thu.Value &&
+                cacThuCanXoa.Contains(x.Thu) &&
                 x.TietBatDau == nv.TietBatDau.Value &&
                 x.TietKetThuc == nv.TietKetThuc.Value).ToListAsync(cancellationToken);
             if (dsLbCu.Count > 0)
@@ -360,12 +371,16 @@ public class NguyenVongService(AppDbContext context)
         var item = await context.NguyenVongGiangVien.FindAsync(maNguyenVong);
         if (item is null) return false;
 
-        if (item.Thu.HasValue && item.TietBatDau.HasValue && item.TietKetThuc.HasValue)
+        if (item.TietBatDau.HasValue && item.TietKetThuc.HasValue)
         {
+            var cacThuCanXoa = (item.Thu.HasValue && item.Thu.Value > 0)
+                ? new List<int> { item.Thu.Value }
+                : new List<int> { 2, 3, 4, 5, 6, 7, 8 };
+
             var dsLbCu = await context.LichBanGiangVien.Where(x =>
                 x.MaGiangVien == item.MaGiangVien &&
                 x.MaHocKy == item.MaHocKy &&
-                x.Thu == item.Thu.Value &&
+                cacThuCanXoa.Contains(x.Thu) &&
                 x.TietBatDau == item.TietBatDau.Value &&
                 x.TietKetThuc == item.TietKetThuc.Value).ToListAsync();
             if (dsLbCu.Count > 0)

@@ -271,74 +271,82 @@ public class BoDanhGiaPhuongAn
                     var maRb = nv.LoaiNguyenVong?.Trim().ToUpperInvariant() ?? "";
                     double trongSoNv = nv.TrongSoPhat > 0 ? nv.TrongSoPhat : boiCanh.TrongSoNguyenVong;
 
-                    // SC01 hoặc TranhDay theo khung giờ cụ thể
-                    if (maRb == "SC01" || maRb == "TRANHDAY")
-                    {
-                        if (nv.Thu.HasValue && nv.Thu.Value == ct.Thu)
-                        {
-                            int nvTbd = nv.TietBatDau ?? 1;
-                            int nvTkt = nv.TietKetThuc ?? 12;
-                            if (Math.Max(nvTbd, ct.TietBatDau) <= Math.Min(nvTkt, ct.TietKetThuc))
-                            {
-                                diemPhat += trongSoNv;
-                                canhBao = $"{tenGv} bị phân vào khung giờ tránh dạy (Thứ {ct.Thu}, tiết {ct.TietBatDau}-{ct.TietKetThuc}) ở lớp [{maLopTruong}].";
-                            }
-                        }
-                    }
-                    // SC02: Tránh ca tối (Tiết 10-12)
-                    else if (maRb == "SC02")
-                    {
-                        if (ct.TietKetThuc >= 10)
-                        {
-                            diemPhat += trongSoNv * 1.5;
-                            canhBao = $"{tenGv} có nguyện vọng tránh ca tối nhưng lớp [{maLopTruong}] có tiết đến {ct.TietKetThuc}.";
-                        }
-                    }
-                    // SC03: Tránh dạy thứ 7 / Chủ nhật
-                    else if (maRb == "SC03")
-                    {
-                        if (ct.Thu >= 7)
-                        {
-                            diemPhat += trongSoNv * 2.0;
-                            canhBao = $"{tenGv} có nguyện vọng tránh dạy cuối tuần nhưng lớp [{maLopTruong}] xếp vào Thứ {ct.Thu}.";
-                        }
-                    }
-                    // SC04 hoặc ThichDay sáng (Tiết 1-6)
-                    else if (maRb == "SC04" || (maRb == "THICHDAY" && (nv.TietKetThuc ?? 0) <= 6 && !nv.Thu.HasValue))
-                    {
-                        if (ct.TietBatDau >= 7)
-                        {
-                            diemPhat += trongSoNv * 0.8;
-                            canhBao = $"{tenGv} ưu tiên dạy ca sáng nhưng lớp [{maLopTruong}] học ca chiều (tiết {ct.TietBatDau}-{ct.TietKetThuc}).";
-                        }
-                    }
-                    // SC05: Ưu tiên dạy chiều (Tiết 7-12)
-                    else if (maRb == "SC05" || (maRb == "THICHDAY" && (nv.TietBatDau ?? 0) >= 7 && !nv.Thu.HasValue))
-                    {
-                        if (ct.TietKetThuc <= 6)
-                        {
-                            diemPhat += trongSoNv * 0.8;
-                            canhBao = $"{tenGv} ưu tiên dạy ca chiều nhưng lớp [{maLopTruong}] học ca sáng (tiết {ct.TietBatDau}-{ct.TietKetThuc}).";
-                        }
-                    }
-                    // ThichDay theo khung giờ cụ thể
-                    else if (maRb == "THICHDAY" && nv.Thu.HasValue)
-                    {
-                        if (nv.Thu.Value == ct.Thu)
-                        {
-                            int nvTbd = nv.TietBatDau ?? 1;
-                            int nvTkt = nv.TietKetThuc ?? 12;
-                            if (Math.Max(nvTbd, ct.TietBatDau) <= Math.Min(nvTkt, ct.TietKetThuc))
-                            {
-                                // Đúng nguyện vọng mong muốn -> Giảm điểm phạt nếu có
-                                diemPhat = Math.Max(0, diemPhat - 2.0);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
+                    // Kiểm tra phạm vi Thứ áp dụng: null hoặc 0 nghĩa là áp dụng cho Cả tuần (Thứ 2 - CN)
+                    bool dungThu = !nv.Thu.HasValue || nv.Thu.Value == 0 || nv.Thu.Value == ct.Thu;
+
+                    // SC01 hoặc TranhDay theo khung giờ cụ thể (hoặc cả tuần)
+                    if (maRb == "SC01" || maRb == "TRANHDAY")
+                    {
+                        if (dungThu)
+                        {
+                            int nvTbd = nv.TietBatDau ?? 1;
+                            int nvTkt = nv.TietKetThuc ?? 15;
+                            if (Math.Max(nvTbd, ct.TietBatDau) <= Math.Min(nvTkt, ct.TietKetThuc))
+                            {
+                                diemPhat += trongSoNv;
+                                canhBao = $"{tenGv} bị phân vào khung giờ tránh dạy (Thứ {ct.Thu}, tiết {ct.TietBatDau}-{ct.TietKetThuc}) ở lớp [{maLopTruong}].";
+                            }
+                        }
+                    }
+                    // SC02: Tránh ca tối (Tiết 10-15)
+                    else if (maRb == "SC02")
+                    {
+                        int mocToi = nv.TietBatDau ?? 10;
+                        if (dungThu && ct.TietKetThuc >= mocToi)
+                        {
+                            diemPhat += trongSoNv * 1.5;
+                            canhBao = $"{tenGv} có nguyện vọng tránh ca tối nhưng lớp [{maLopTruong}] có tiết đến {ct.TietKetThuc}.";
+                        }
+                    }
+                    // SC03: Tránh dạy thứ 7 / Chủ nhật
+                    else if (maRb == "SC03")
+                    {
+                        if (ct.Thu >= 7)
+                        {
+                            diemPhat += trongSoNv * 2.0;
+                            canhBao = $"{tenGv} có nguyện vọng tránh dạy cuối tuần nhưng lớp [{maLopTruong}] xếp vào Thứ {ct.Thu}.";
+                        }
+                    }
+                    // SC04 hoặc ThichDay sáng (Tiết 1-6)
+                    else if (maRb == "SC04" || (maRb == "THICHDAY" && (nv.TietKetThuc ?? 0) <= 6 && (!nv.Thu.HasValue || nv.Thu.Value == 0)))
+                    {
+                        int tbdUuTien = nv.TietBatDau ?? 1;
+                        int tktUuTien = nv.TietKetThuc ?? 6;
+                        if (dungThu && (ct.TietBatDau < tbdUuTien || ct.TietKetThuc > tktUuTien))
+                        {
+                            diemPhat += trongSoNv * 0.8;
+                            canhBao = $"{tenGv} ưu tiên dạy ca sáng (tiết {tbdUuTien}-{tktUuTien}) nhưng lớp [{maLopTruong}] học tiết {ct.TietBatDau}-{ct.TietKetThuc}.";
+                        }
+                    }
+                    // SC05: Ưu tiên dạy chiều (Tiết 7-12)
+                    else if (maRb == "SC05" || (maRb == "THICHDAY" && (nv.TietBatDau ?? 0) >= 7 && (!nv.Thu.HasValue || nv.Thu.Value == 0)))
+                    {
+                        int tbdUuTien = nv.TietBatDau ?? 7;
+                        int tktUuTien = nv.TietKetThuc ?? 12;
+                        if (dungThu && (ct.TietBatDau < tbdUuTien || ct.TietKetThuc > tktUuTien))
+                        {
+                            diemPhat += trongSoNv * 0.8;
+                            canhBao = $"{tenGv} ưu tiên dạy ca chiều (tiết {tbdUuTien}-{tktUuTien}) nhưng lớp [{maLopTruong}] học tiết {ct.TietBatDau}-{ct.TietKetThuc}.";
+                        }
+                    }
+                    // ThichDay theo khung giờ cụ thể
+                    else if (maRb == "THICHDAY" && nv.Thu.HasValue && nv.Thu.Value > 0)
+                    {
+                        if (nv.Thu.Value == ct.Thu)
+                        {
+                            int nvTbd = nv.TietBatDau ?? 1;
+                            int nvTkt = nv.TietKetThuc ?? 15;
+                            if (Math.Max(nvTbd, ct.TietBatDau) <= Math.Min(nvTkt, ct.TietKetThuc))
+                            {
+                                // Đúng nguyện vọng mong muốn -> Giảm điểm phạt nếu có
+                                diemPhat = Math.Max(0, diemPhat - 2.0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Ưu tiên GV cơ hữu đủ giờ trước khi dùng Trợ giảng / Thỉnh giảng
         if (boiCanh.GiangVienTheoMa.TryGetValue(maGiangVien, out var giangVien))
         {

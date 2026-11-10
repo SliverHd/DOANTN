@@ -16,6 +16,7 @@ import {
 } from '../../types/nguyenVong'
 
 const CAC_THU = [
+  { id: 0, ten: 'Cả tuần (Thứ 2 - CN)' },
   { id: 2, ten: 'Thứ 2' },
   { id: 3, ten: 'Thứ 3' },
   { id: 4, ten: 'Thứ 4' },
@@ -222,7 +223,9 @@ function DanhSachNguyenVong() {
   // Trưởng bộ môn DUYỆT nguyện vọng
   const handleDuyetNguyenVong = async (item: NguyenVong) => {
     const tenGV = item.tenGiangVien || `Giảng viên #${item.maGiangVien}`
-    const tenThu = CAC_THU.find((t) => t.id === item.thu)?.ten || `Thứ ${item.thu}`
+    const tenThu = !item.thu || item.thu === 0
+      ? 'Cả tuần (Thứ 2 - CN)'
+      : (CAC_THU.find((t) => t.id === item.thu)?.ten || `Thứ ${item.thu}`)
     const xacNhan = window.confirm(
       `Bạn có chắc chắn muốn DUYỆT nguyện vọng xin nghỉ của ${tenGV} vào ${tenThu} (Tiết ${item.tietBatDau} - ${item.tietKetThuc})?\n\nLưu ý: Nếu giảng viên đang có lớp dạy vào ca này, hệ thống sẽ tự động gỡ giảng viên ra khỏi lớp học phần đó.`
     )
@@ -539,7 +542,7 @@ function DanhSachNguyenVong() {
                 <label className="form-label small fw-semibold">Thứ</label>
                 <select
                   className="form-select form-select-sm"
-                  value={form.thu ?? 2}
+                  value={form.thu ?? 0}
                   onChange={(e) => setForm({ ...form, thu: Number(e.target.value) })}
                 >
                   {CAC_THU.map((thu) => (
@@ -741,7 +744,9 @@ function DanhSachNguyenVong() {
                   </tr>
                 ) : (
                   dsTheoTab.map((item, idx) => {
-                    const tenThu = CAC_THU.find((t) => t.id === item.thu)?.ten || `Thứ ${item.thu}`
+                    const tenThu = !item.thu || item.thu === 0
+                      ? 'Cả tuần (T2 - CN)'
+                      : (CAC_THU.find((t) => t.id === item.thu)?.ten || `Thứ ${item.thu}`)
                     const trangThai = item.trangThai || 'ChoDuyet'
                     const dangXuLy = dangXuLyId === item.maNguyenVong
 
@@ -762,12 +767,12 @@ function DanhSachNguyenVong() {
                         </td>
                         <td>{item.tenRangBuocMem || item.loaiNguyenVong}</td>
                         <td className="text-center">
-                          {item.thu && item.tietBatDau && item.tietKetThuc ? (
+                          {item.tietBatDau && item.tietKetThuc ? (
                             <span>
                               <strong>{tenThu}</strong>: Tiết {item.tietBatDau} - {item.tietKetThuc}
                             </span>
                           ) : (
-                            <span className="text-muted">Cả học kỳ</span>
+                            <span className="text-muted">{tenThu} (Cả ngày)</span>
                           )}
                         </td>
                         <td className="text-center text-danger fw-semibold">
