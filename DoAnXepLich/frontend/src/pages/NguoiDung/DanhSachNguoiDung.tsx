@@ -157,6 +157,7 @@ function DanhSachNguoiDung() {
         email: u.email,
         vaiTro: u.vaiTro,
         maGiangVien: u.maGiangVien,
+        maBoMon: u.maBoMon,
         trangThai: trangThaiMoi,
       })
       await taiDuLieu()

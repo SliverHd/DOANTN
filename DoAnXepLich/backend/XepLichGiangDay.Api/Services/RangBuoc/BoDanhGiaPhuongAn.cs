@@ -158,7 +158,6 @@ public class BoDanhGiaPhuongAn
                                          l1.MaHocPhan == l2.MaHocPhan &&
                                          ct1.Thu == ct2.Thu &&
                                          ct1.TietBatDau == ct2.TietBatDau &&
-                                         ct1.TietKetThuc == ct2.TietKetThuc &&
                                          ct1.TietKetThuc == ct2.TietKetThuc;
                         if (!laLopGhep)
                         {
@@ -334,6 +333,20 @@ public class BoDanhGiaPhuongAn
                         {
                             diemPhat += trongSoNv * 0.8;
                             canhBaos.Add($"{tenGv} ưu tiên dạy ca chiều (tiết {tbdUuTien}-{tktUuTien}) nhưng lớp [{maLopTruong}] học tiết {ct.TietBatDau}-{ct.TietKetThuc}.");
+                        }
+                    }
+                    // SC08: Xin nghỉ đột xuất / Tạm hoãn giảng dạy theo tuần
+                    else if (maRb == "SC08" || maRb == "NGHI_DOT_XUAT" || maRb == "XINNGHIDOTXUAT" || maRb == "TAMNGHI")
+                    {
+                        if (dungThu)
+                        {
+                            int nvTbd = nv.TietBatDau ?? 1;
+                            int nvTkt = nv.TietKetThuc ?? 15;
+                            if (Math.Max(nvTbd, ct.TietBatDau) <= Math.Min(nvTkt, ct.TietKetThuc))
+                            {
+                                diemPhat += trongSoNv * 3.0; // Phạt nặng để thuật toán né ca xin nghỉ đột xuất
+                                canhBaos.Add($"{tenGv} có đơn xin nghỉ đột xuất vào {nhanThu}, tiết {ct.TietBatDau}-{ct.TietKetThuc} ở lớp [{maLopTruong}].");
+                            }
                         }
                     }
                     // ThichDay theo khung giờ cụ thể

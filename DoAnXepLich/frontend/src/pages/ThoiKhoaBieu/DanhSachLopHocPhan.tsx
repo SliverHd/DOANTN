@@ -245,6 +245,7 @@ function DanhSachLopHocPhan() {
       ) : (
         <ImportThoiKhoaBieu
           maHocKyChon={maHocKy}
+          maBoMonChon={maBoMon > 0 ? maBoMon : undefined}
           onImportThanhCong={() => taiDanhSachLop(maHocKy, maBoMon)}
         />
       )}

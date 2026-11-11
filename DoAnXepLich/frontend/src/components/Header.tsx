@@ -17,6 +17,7 @@ const pageTitles: Record<string, string> = {
   '/hoc-phan': 'Quản lý học phần',
   '/rang-buoc': 'Cấu hình ràng buộc & Định mức',
   '/nguyen-vong': 'Lịch bận & Nguyện vọng',
+  '/seminar': 'Lịch Seminar (Khóa cứng)',
   '/tai-khoan': 'Quản lý tài khoản',
   '/nam-hoc': 'Quản lý năm học',
   '/hoc-ky': 'Quản lý học kỳ',

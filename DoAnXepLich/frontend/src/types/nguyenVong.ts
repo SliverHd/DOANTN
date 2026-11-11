@@ -72,10 +72,10 @@ export interface NguyenVong {
 
 export interface KetQuaDuyetNguyenVong {
   thanhCong: boolean
-  thongBao: string
+  thongDiep: string
   soLopBiHuy: number
   danhSachLopBiHuy: string[]
-  trangThai: string
+  nguyenVong?: NguyenVong
 }
 
 export interface ThemNguyenVongRequest {

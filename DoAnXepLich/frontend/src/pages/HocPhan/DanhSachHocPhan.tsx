@@ -47,16 +47,6 @@ function DanhSachHocPhan() {
       })
   }, [])
 
-  // Chỉ gọi API học phần khi cả bộ môn và học kỳ đã được chọn
-  useEffect(() => {
-    if (maBoMon > 0 && maHocKy > 0) {
-      void taiDuLieu(maBoMon, maHocKy)
-    } else {
-      setDanhSach([])
-      setDangTai(false)
-    }
-  }, [maBoMon, maHocKy])
-
   const taiDuLieu = async (bmId: number, hkId: number) => {
     try {
       setDangTai(true)
@@ -69,6 +59,16 @@ function DanhSachHocPhan() {
       setDangTai(false)
     }
   }
+
+  // Chỉ gọi API học phần khi đã chọn Bộ môn (Học kỳ là bộ lọc tùy chọn theo lớp mở)
+  useEffect(() => {
+    if (maBoMon > 0) {
+      void taiDuLieu(maBoMon, maHocKy)
+    } else {
+      setDanhSach([])
+      setDangTai(false)
+    }
+  }, [maBoMon, maHocKy])
 
   const handleMoModalThem = () => {
     setDangSuaId(null)
@@ -107,7 +107,9 @@ function DanhSachHocPhan() {
         await hocPhanApi.create(formData)
       }
       setHienModal(false)
-      if (maBoMon > 0 && maHocKy > 0) {
+      if (!dangSuaId && maHocKy > 0) {
+        setMaHocKy(0)
+      } else if (maBoMon > 0) {
         await taiDuLieu(maBoMon, maHocKy)
       }
     } catch {
@@ -121,7 +123,7 @@ function DanhSachHocPhan() {
     if (!confirm(`Bạn có chắc chắn muốn xóa học phần "${ten}"?`)) return
     try {
       await hocPhanApi.delete(id)
-      if (maBoMon > 0 && maHocKy > 0) {
+      if (maBoMon > 0) {
         await taiDuLieu(maBoMon, maHocKy)
       }
     } catch {
@@ -133,7 +135,7 @@ function DanhSachHocPhan() {
     hp.tenHocPhan.toLowerCase().includes(tuKhoa.toLowerCase())
   )
 
-  const daChonDuBoLoc = maBoMon > 0 && maHocKy > 0
+  const daChonBoMon = maBoMon > 0
 
   return (
     <section>
@@ -141,14 +143,14 @@ function DanhSachHocPhan() {
         <div>
           <h2 className="h4 mb-1">Danh mục Học phần (Môn học)</h2>
           <p className="text-muted small mb-0">
-            Quản lý danh sách các học phần theo từng Bộ môn và Học kỳ phục vụ phân công chuyên môn và thời khóa biểu
+            Quản lý danh sách học phần theo từng Bộ môn phục vụ phân công chuyên môn và thời khóa biểu
           </p>
         </div>
         <button
           className="btn btn-primary"
           onClick={handleMoModalThem}
-          disabled={!daChonDuBoLoc}
-          title={!daChonDuBoLoc ? 'Vui lòng chọn Bộ môn và Học kỳ trước' : undefined}
+          disabled={!daChonBoMon}
+          title={!daChonBoMon ? 'Vui lòng chọn Bộ môn trước' : undefined}
         >
           + Thêm học phần
         </button>
@@ -159,27 +161,9 @@ function DanhSachHocPhan() {
         <div className="row g-2 align-items-end">
           <div className="col-md-3">
             <label className="form-label small fw-semibold text-secondary mb-1">
-              Học kỳ <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select form-select-sm"
-              value={maHocKy}
-              onChange={(e) => setMaHocKy(Number(e.target.value))}
-            >
-              <option value={0}>-- Chọn học kỳ --</option>
-              {danhSachHocKy.map((hk) => (
-                <option key={hk.maHocKy} value={hk.maHocKy}>
-                  {hk.tenHocKy}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="col-md-3">
-            <label className="form-label small fw-semibold text-secondary mb-1">
               Bộ môn <span className="text-danger">*</span>
             </label>
-            {laAdmin ? (
+            {laAdmin || !maBoMonUser ? (
               <select
                 className="form-select form-select-sm"
                 value={maBoMon}
@@ -194,9 +178,28 @@ function DanhSachHocPhan() {
               </select>
             ) : (
               <div className="form-control form-control-sm bg-white text-primary fw-semibold">
-                {user?.tenBoMon || 'Chưa gán bộ môn'}
+                {user?.tenBoMon || danhSachBoMon.find((b) => b.maBoMon === maBoMonUser)?.tenBoMon || 'Bộ môn của bạn'}
               </div>
             )}
+          </div>
+
+          <div className="col-md-3">
+            <label className="form-label small fw-semibold text-secondary mb-1">
+              Lọc theo Học kỳ có mở lớp
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={maHocKy}
+              onChange={(e) => setMaHocKy(Number(e.target.value))}
+              disabled={!daChonBoMon}
+            >
+              <option value={0}>-- Tất cả học kỳ (Danh mục gốc) --</option>
+              {danhSachHocKy.map((hk) => (
+                <option key={hk.maHocKy} value={hk.maHocKy}>
+                  {hk.tenHocKy}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="col-md-6">
@@ -207,7 +210,7 @@ function DanhSachHocPhan() {
               placeholder="Tìm theo tên học phần..."
               value={tuKhoa}
               onChange={(e) => setTuKhoa(e.target.value)}
-              disabled={!daChonDuBoLoc}
+              disabled={!daChonBoMon}
             />
           </div>
         </div>
@@ -215,7 +218,7 @@ function DanhSachHocPhan() {
 
       {loi && <div className="alert alert-warning py-2">{loi}</div>}
 
-      {!daChonDuBoLoc ? (
+      {!daChonBoMon ? (
         <div className="card text-center p-5 bg-white border">
           <div className="text-muted mb-2">
             <svg
@@ -230,9 +233,9 @@ function DanhSachHocPhan() {
               <path d="M7 11.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5" />
             </svg>
           </div>
-          <h5 className="text-secondary">Chưa chọn Bộ môn hoặc Học kỳ</h5>
+          <h5 className="text-secondary">Chưa chọn Bộ môn</h5>
           <p className="text-muted small mb-0">
-            Vui lòng chọn cả <strong>Học kỳ</strong> và <strong>Bộ môn</strong> ở trên để tải danh sách các môn học tương ứng.
+            Vui lòng chọn <strong>Bộ môn</strong> ở trên để tải danh mục học phần tương ứng.
           </p>
         </div>
       ) : dangTai ? (

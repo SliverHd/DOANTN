@@ -78,11 +78,17 @@ public class XepLichService(
             .GroupBy(x => x.MaGiangVien)
             .ToDictionary(g => g.Key, g => g.Select(x => x.MaLopHocPhan).ToList());
 
-        // Lấy danh sách nguyện vọng đã duyệt trong học kỳ để hiển thị ghi chú tạm nghỉ
-        var dsNguyenVongDaDuyet = await context.NguyenVongGiangVien
-            .Where(x => x.MaHocKy == maHocKy && x.TrangThai == "DaDuyet")
+        // Chỉ lấy các đơn xin nghỉ đột xuất đã duyệt (SC08 / NGHI_DOT_XUAT) trong học kỳ để hiển thị ghi chú tạm hoãn.
+        // Các nguyện vọng tránh bận / ưu tiên ca thông thường (SC01 - SC07) KHÔNG được coi là tạm hoãn lớp.
+        var dsNguyenVongTamHoan = await context.NguyenVongGiangVien
+            .Where(x => x.MaHocKy == maHocKy &&
+                        x.TrangThai == "DaDuyet" &&
+                        (x.LoaiNguyenVong == "SC08" ||
+                         x.LoaiNguyenVong == "NGHI_DOT_XUAT" ||
+                         x.LoaiNguyenVong == "XinNghiDotXuat" ||
+                         x.LoaiNguyenVong == "TamNghi"))
             .ToListAsync(cancellationToken);
-        var nguyenVongTheoGv = dsNguyenVongDaDuyet
+        var nguyenVongTamHoanTheoGv = dsNguyenVongTamHoan
             .GroupBy(x => x.MaGiangVien)
             .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -145,12 +151,12 @@ public class XepLichService(
                     dong.EmailGiangVien = gv.Email;
                 }
 
-                // Kiểm tra xem giảng viên này có đơn xin nghỉ/hoãn trùng vào bất kỳ buổi học nào của lớp không
-                if (nguyenVongTheoGv.TryGetValue(pc.MaGiangVien, out var dsNvCuaGv))
+                // Kiểm tra xem giảng viên này có đơn xin nghỉ đột xuất đã duyệt (SC08) trùng vào bất kỳ buổi học nào của lớp không
+                if (nguyenVongTamHoanTheoGv.TryGetValue(pc.MaGiangVien, out var dsNvTamHoan))
                 {
-                    var nvNghi = dsNvCuaGv.FirstOrDefault(nv =>
+                    var nvNghi = dsNvTamHoan.FirstOrDefault(nv =>
                         cacBuoiHoc.Any(b =>
-                            nv.Thu == b.Thu &&
+                            (!nv.Thu.HasValue || nv.Thu.Value == 0 || nv.Thu.Value == b.Thu) &&
                             Math.Max(nv.TietBatDau ?? 1, b.TietBatDau) <= Math.Min(nv.TietKetThuc ?? 12, b.TietKetThuc)));
 
                     if (nvNghi != null)
@@ -172,12 +178,12 @@ public class XepLichService(
                         }
                         else
                         {
-                            dong.TuanTamNghi = dong.TuTuan > 0 ? $"{dong.TuTuan}" : "15";
+                            dong.TuanTamNghi = dong.TuTuan > 0 ? $"{dong.TuTuan}" : "Tạm hoãn";
                         }
 
                         dong.GhiChuTamNghi = !string.IsNullOrWhiteSpace(nvNghi.NoiDungGoc)
                             ? nvNghi.NoiDungGoc
-                            : "Tạm nghỉ theo đơn đã duyệt";
+                            : "Tạm hoãn giảng dạy theo đơn xin nghỉ đột xuất đã duyệt";
                     }
                 }
             }

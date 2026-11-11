@@ -29,6 +29,9 @@ const CAC_THU = [
 
 type TabTrangThai = 'tatCa' | 'ChoDuyet' | 'DaDuyet' | 'TuChoi'
 
+const RANG_BUOC_MAC_DINH =
+  DANH_MUC_RANG_BUOC_MEM.find((x) => x.maRb === 'SC01') ?? DANH_MUC_RANG_BUOC_MEM[0]
+
 function DanhSachNguyenVong() {
   const { user } = useAuth()
   const laTruongBoMon = user?.vaiTro === 'TruongBoMon'
@@ -52,14 +55,14 @@ function DanhSachNguyenVong() {
   const [form, setForm] = useState<ThemNguyenVongRequest>({
     maHocKy: 0,
     maGiangVien: user?.maGiangVien ?? 0,
-    maRangBuocMem: 'SC01',
-    tenRangBuocMem: DANH_MUC_RANG_BUOC_MEM[0].tenRb,
-    thu: 2,
-    tietBatDau: 1,
-    tietKetThuc: 5,
+    maRangBuocMem: RANG_BUOC_MAC_DINH.maRb,
+    tenRangBuocMem: RANG_BUOC_MAC_DINH.tenRb,
+    thu: RANG_BUOC_MAC_DINH.thuMacDinh ?? 2,
+    tietBatDau: RANG_BUOC_MAC_DINH.tietBdMacDinh ?? 1,
+    tietKetThuc: RANG_BUOC_MAC_DINH.tietKtMacDinh ?? 5,
     tuTuan: 1,
     denTuan: 20,
-    trongSoPhat: DANH_MUC_RANG_BUOC_MEM[0].diemPhatMacDinh,
+    trongSoPhat: RANG_BUOC_MAC_DINH.diemPhatMacDinh,
     lyDo: '',
     khoaCungLichBan: false,
   })
@@ -244,7 +247,7 @@ function DanhSachNguyenVong() {
 
       const res = await nguyenVongApi.duyet(item.maNguyenVong)
       setKetQuaDuyet(res.data)
-      setThongBao(res.data.thongBao)
+      setThongBao(res.data.thongDiep || 'Đã duyệt nguyện vọng thành công.')
 
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
       await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
@@ -270,7 +273,7 @@ function DanhSachNguyenVong() {
       setKetQuaDuyet(null)
 
       const res = await nguyenVongApi.tuChoi(item.maNguyenVong, lyDo)
-      setThongBao(res.data.thongBao)
+      setThongBao(res.data.thongDiep || 'Đã từ chối nguyện vọng.')
 
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
       await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
@@ -529,7 +532,7 @@ function DanhSachNguyenVong() {
                   value={form.maRangBuocMem}
                   onChange={(e) => handleThayDoiRangBuoc(e.target.value)}
                 >
-                  {DANH_MUC_RANG_BUOC_MEM.map((rb) => (
+                  {DANH_MUC_RANG_BUOC_MEM.filter((rb) => rb.maRb !== 'SEMINAR').map((rb) => (
                     <option key={rb.maRb} value={rb.maRb}>
                       [{rb.maRb}] {rb.tenRb} (Phạt mặc định: {rb.diemPhatMacDinh})
                     </option>
@@ -616,7 +619,7 @@ function DanhSachNguyenVong() {
                     })
                   }}
                 >
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
                     <option key={w} value={w}>T{w}</option>
                   ))}
                 </select>
@@ -628,7 +631,7 @@ function DanhSachNguyenVong() {
                   value={form.denTuan ?? 20}
                   onChange={(e) => setForm({ ...form, denTuan: Number(e.target.value) })}
                 >
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
                     <option key={w} value={w}>T{w}</option>
                   ))}
                 </select>
