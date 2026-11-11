@@ -81,9 +81,11 @@ export interface KetQuaDuyetNguyenVong {
 export interface ThemNguyenVongRequest {
   maHocKy: number
   maGiangVien: number
+  danhSachMaGiangVien?: number[]
   maRangBuocMem: string
   tenRangBuocMem?: string
   thu?: number
+  denThu?: number
   tietBatDau?: number
   tietKetThuc?: number
   tuTuan?: number
@@ -122,6 +124,15 @@ export interface RangBuocMemItem {
 }
 
 export const DANH_MUC_RANG_BUOC_MEM: RangBuocMemItem[] = [
+  {
+    maRb: 'SEMINAR',
+    tenRb: '🔴 Seminar / Sinh hoạt chuyên môn Bộ môn (Bắt buộc cố định)',
+    diemPhatMacDinh: 999999.0,
+    thuMacDinh: 5,
+    tietBdMacDinh: 7,
+    tietKtMacDinh: 9,
+    moTa: 'Lịch họp/hội thảo chung toàn bộ môn. Áp dụng cho nhiều hoặc tất cả GV, hệ số tuyệt đối.',
+  },
   {
     maRb: 'SC01',
     tenRb: 'Tránh khung giờ / tiết bận cụ thể',
@@ -184,5 +195,14 @@ export const DANH_MUC_RANG_BUOC_MEM: RangBuocMemItem[] = [
     tietBdMacDinh: 1,
     tietKtMacDinh: 15,
     moTa: 'Gom các buổi dạy lại, tránh đi dạy rải rác',
+  },
+  {
+    maRb: 'SC08',
+    tenRb: 'Xin nghỉ đột xuất / Tạm hoãn giảng dạy (theo tuần)',
+    diemPhatMacDinh: 50.0,
+    thuMacDinh: 2,
+    tietBdMacDinh: 1,
+    tietKtMacDinh: 12,
+    moTa: 'Giảng viên xin nghỉ đột xuất theo tuần/buổi cụ thể (công tác, việc riêng). Khi đơn được duyệt, lớp học phần trong tuần này sẽ hiển thị trạng thái Tạm hoãn.',
   },
 ]

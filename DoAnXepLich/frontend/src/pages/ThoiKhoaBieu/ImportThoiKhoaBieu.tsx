@@ -9,15 +9,18 @@ import type { KetQuaPreviewImport, LichSuImport } from '../../types/importTkb'
 
 interface Props {
   maHocKyChon?: number
+  maBoMonChon?: number
   onImportThanhCong?: () => void
 }
 
-function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
+function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Props) {
   const { user } = useAuth()
+  const boMonKhoiTao = maBoMonChon || user?.maBoMon || 0
+
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
-  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
   const [maHocKy, setMaHocKy] = useState<number>(maHocKyChon || 0)
-  const [maBoMon, setMaBoMon] = useState<number>(user?.maBoMon || 0)
+  const [danhSachBoMon, setDanhSachBoMon] = useState<BoMon[]>([])
+  const [maBoMon, setMaBoMon] = useState<number>(boMonKhoiTao)
   const [file, setFile] = useState<File | null>(null)
 
   const [dangPreview, setDangPreview] = useState(false)
@@ -34,18 +37,19 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
         setMaHocKy(res.data[0].maHocKy)
       }
     })
-
     boMonApi.getAll().then((res) => {
       setDanhSachBoMon(res.data)
-      if (!maBoMon) {
-        if (user?.maBoMon) {
-          setMaBoMon(user.maBoMon)
-        } else if (res.data.length > 0) {
-          setMaBoMon(res.data[0].maBoMon)
-        }
+      if (!boMonKhoiTao && user?.maBoMon) {
+        setMaBoMon(user.maBoMon)
       }
     })
   }, [])
+
+  useEffect(() => {
+    if (maBoMonChon && maBoMonChon > 0) {
+      setMaBoMon(maBoMonChon)
+    }
+  }, [maBoMonChon])
 
   useEffect(() => {
     if (maHocKy) {
@@ -59,6 +63,18 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
       setLichSu(res.data)
     } catch {
       // bỏ qua lỗi nếu chưa có lịch sử
+    }
+  }
+
+  const handleXoaLichSu = async (id: number) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa bản ghi lịch sử import này?')) return
+    try {
+      await importTkbApi.xoaLichSu(id)
+      if (maHocKy) {
+        taiLichSu(maHocKy)
+      }
+    } catch {
+      alert('Không thể xóa bản ghi lịch sử này.')
     }
   }
 
@@ -77,7 +93,7 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
       return
     }
     if (!maBoMon) {
-      alert('Vui lòng chọn bộ môn để import thời khóa biểu.')
+      alert('Vui lòng chọn bộ môn.')
       return
     }
     if (!file) {
@@ -89,7 +105,7 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
       setDangPreview(true)
       setLoi('')
       setThongBao('')
-      const res = await importTkbApi.preview(file, maHocKy, maBoMon)
+      const res = await importTkbApi.preview(file, maHocKy)
       setKetQuaPreview(res.data)
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: unknown } }
@@ -107,28 +123,26 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
   }
 
   const handleXacNhanImport = async () => {
-    if (!ketQuaPreview || ketQuaPreview.soDongHopLe === 0) {
-      alert('Không có dòng nào hợp lệ để import.')
+    if (!maBoMon || maBoMon <= 0) {
+      alert('Vui lòng chọn Bộ môn phụ trách để import đúng dữ liệu.')
       return
     }
-    if (!maBoMon) {
-      alert('Vui lòng chọn bộ môn để gán thời khóa biểu.')
+
+    if (!ketQuaPreview || ketQuaPreview.soDongHopLe === 0) {
+      alert('Không có dòng nào hợp lệ để import.')
       return
     }
 
     try {
       setDangImport(true)
       setLoi('')
-      const soLopKhoa = ketQuaPreview.soLopDaPhanCong || 0
       const res = await importTkbApi.xacNhan(
         maHocKy,
         file ? file.name : 'thoi_khoa_bieu.xlsx',
         ketQuaPreview.chiTiet,
-        maBoMon
+        maBoMon > 0 ? maBoMon : undefined
       )
-      const tenBm = danhSachBoMon.find((b) => b.maBoMon === maBoMon)?.tenBoMon || ''
-      const msgKhoa = soLopKhoa > 0 ? ` và tự động khóa cứng ${soLopKhoa} lớp đã có sẵn giảng viên` : ''
-      setThongBao(`Import thành công ${res.data.soDongThanhCong} dòng thời khóa biểu cho ${tenBm}${msgKhoa}!`)
+      setThongBao(`Import thành công ${res.data.soDongThanhCong} dòng thời khóa biểu cho bộ môn vào hệ thống!`)
       setKetQuaPreview(null)
       setFile(null)
       taiLichSu(maHocKy)
@@ -148,15 +162,17 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
     }
   }
 
-  const tenBoMonHienTai = danhSachBoMon.find((b) => b.maBoMon === maBoMon)?.tenBoMon || ''
-
   return (
-    <div className="card border p-3 bg-white mt-3 shadow-sm">
-      <div className="mb-3">
-        <h3 className="h6 mb-0 fw-bold text-primary">Import thời khóa biểu theo Bộ môn</h3>
-        <p className="text-muted small mb-0">
-          Mỗi bộ môn có thời khóa biểu riêng. Các lớp đã có sẵn tên giảng viên trong file Excel sẽ được <strong>nhận diện và khóa cứng tự động</strong>.
-        </p>
+    <div className="card border p-3 bg-white mt-3">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h3 className="h6 mb-0 fw-bold">Import thời khóa biểu từ Excel</h3>
+        <a
+          href={importTkbApi.downloadFileMauUrl}
+          download="Mau_ThoiKhoaBieu.xlsx"
+          className="btn btn-outline-secondary btn-sm"
+        >
+          Tải file mẫu Excel (.xlsx)
+        </a>
       </div>
 
       {loi && <div className="alert alert-danger py-2 small">{loi}</div>}
@@ -180,7 +196,7 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
         </div>
 
         <div className="col-md-3">
-          <label className="form-label small fw-semibold">Bộ môn xếp lịch</label>
+          <label className="form-label small fw-semibold">Bộ môn phụ trách</label>
           <select
             className="form-select form-select-sm"
             value={maBoMon}
@@ -193,23 +209,18 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
               </option>
             ))}
           </select>
-          {user?.vaiTro === 'TruongBoMon' && user?.maBoMon && (
-            <small className="text-muted d-block mt-1" style={{ fontSize: '0.72rem' }}>
-              * Bộ môn của bạn: <strong>{danhSachBoMon.find(b => b.maBoMon === user.maBoMon)?.tenBoMon}</strong>
-            </small>
-          )}
         </div>
 
         <div className="col-md-4">
-          <label className="form-label small fw-semibold">File Excel thời khóa biểu (.xlsx)</label>
+          <label className="form-label small fw-semibold">File Excel (.xlsx)</label>
           <input
             type="file"
             className="form-control form-control-sm"
             accept=".xlsx, .xls"
             onChange={handleFileChange}
           />
-          <small className="text-muted d-block mt-1" style={{ fontSize: '0.72rem' }}>
-            * Định dạng chuẩn <strong>.xlsx</strong>. Nếu là <code>.xls</code>, mở trong Excel chọn Save As &rarr; Excel Workbook (.xlsx).
+          <small className="text-muted d-block mt-1" style={{ fontSize: '0.75rem' }}>
+            * Lưu ý: Hệ thống xử lý chuẩn file <strong>.xlsx</strong>. Nếu là file <code>.xls</code> từ trường, bạn mở file trong Excel chọn <em>Save As &rarr; Excel Workbook (.xlsx)</em> nhé.
           </small>
         </div>
 
@@ -219,7 +230,7 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
             onClick={handlePreview}
             disabled={dangPreview || !file}
           >
-            {dangPreview ? 'Đang đọc...' : 'Xem trước'}
+            {dangPreview ? 'Đang đọc file...' : 'Xem trước'}
           </button>
         </div>
       </div>
@@ -227,20 +238,13 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
       {/* Kết quả Preview */}
       {ketQuaPreview && (
         <div className="border-top pt-3 mt-2">
-          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <div className="d-flex justify-content-between align-items-center mb-2">
             <div>
-              <span className="badge bg-primary me-2">Bộ môn: {tenBoMonHienTai || 'Chưa chọn'}</span>
               <span className="fw-semibold small me-3">
-                Tổng dòng: <span className="badge bg-secondary">{ketQuaPreview.tongSoDong}</span>
+                Tổng số dòng: <span className="badge bg-secondary">{ketQuaPreview.tongSoDong}</span>
               </span>
               <span className="fw-semibold small me-3 text-success">
                 Hợp lệ: <span className="badge bg-success">{ketQuaPreview.soDongHopLe}</span>
-              </span>
-              <span className="fw-semibold small me-3 text-warning-emphasis">
-                Đã có GV (Khóa cứng):{' '}
-                <span className="badge bg-warning text-dark">
-                  {ketQuaPreview.soLopDaPhanCong || 0} lớp ({ketQuaPreview.soDongDaPhanCong || 0} buổi)
-                </span>
               </span>
               <span className="fw-semibold small text-danger">
                 Lỗi: <span className="badge bg-danger">{ketQuaPreview.soDongLoi}</span>
@@ -252,13 +256,11 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
               onClick={handleXacNhanImport}
               disabled={dangImport || ketQuaPreview.soDongHopLe === 0}
             >
-              {dangImport
-                ? 'Đang lưu dữ liệu...'
-                : `Xác nhận import (${ketQuaPreview.soDongHopLe} dòng vào ${tenBoMonHienTai})`}
+              {dangImport ? 'Đang lưu dữ liệu...' : `Xác nhận import (${ketQuaPreview.soDongHopLe} dòng)`}
             </button>
           </div>
 
-          <div className="table-responsive border" style={{ maxHeight: '380px' }}>
+          <div className="table-responsive border" style={{ maxHeight: '350px' }}>
             <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
               <thead className="table-light sticky-top">
                 <tr>
@@ -266,39 +268,24 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
                   <th>Mã lớp HP</th>
                   <th>Tên lớp</th>
                   <th>Môn học</th>
-                  <th>Số TC</th>
                   <th>Thứ</th>
                   <th>Tiết</th>
                   <th>Phòng</th>
                   <th>Tuần</th>
-                  <th>Giảng viên (Trong file)</th>
                   <th>Trạng thái</th>
                 </tr>
               </thead>
               <tbody>
                 {ketQuaPreview.chiTiet.map((dong) => (
-                  <tr
-                    key={dong.soThuTu}
-                    className={!dong.hopLe ? 'table-danger' : dong.daPhanCong ? 'table-warning' : ''}
-                  >
+                  <tr key={dong.soThuTu} className={dong.hopLe ? '' : 'table-danger'}>
                     <td>{dong.soThuTu}</td>
                     <td className="fw-semibold">{dong.maLopHocPhanTruong}</td>
                     <td>{dong.tenLop}</td>
                     <td>{dong.tenHocPhan || dong.maHocPhanTruong}</td>
-                    <td>{dong.soTinChi || 3}</td>
                     <td>Thứ {dong.thu === 8 ? 'CN' : dong.thu}</td>
                     <td>{dong.tietBatDau} - {dong.tietKetThuc}</td>
                     <td>{dong.phongHoc || '-'}</td>
                     <td>{dong.tuTuan} - {dong.denTuan}</td>
-                    <td>
-                      {dong.daPhanCong && dong.tenGiangVien ? (
-                        <span className="badge bg-warning text-dark border border-dark-subtle">
-                          🔒 {dong.tenGiangVien} (Khóa cứng)
-                        </span>
-                      ) : (
-                        <span className="text-muted small">Chờ xếp tự động</span>
-                      )}
-                    </td>
                     <td>
                       {dong.hopLe ? (
                         <span className="badge bg-success">Hợp lệ</span>
@@ -328,11 +315,11 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
                 <tr>
                   <th>Thời gian</th>
                   <th>Tên file</th>
-                  <th>Ghi chú / Bộ môn</th>
                   <th>Tổng dòng</th>
                   <th>Thành công</th>
                   <th>Lỗi</th>
                   <th>Trạng thái</th>
+                  <th style={{ width: '80px' }} className="text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,7 +327,6 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
                   <tr key={ls.maLichSu}>
                     <td>{new Date(ls.ngayImport).toLocaleString('vi-VN')}</td>
                     <td className="fw-semibold">{ls.tenFile}</td>
-                    <td><small className="text-muted">{ls.ghiChu || '-'}</small></td>
                     <td>{ls.tongSoDong}</td>
                     <td className="text-success fw-semibold">{ls.soDongThanhCong}</td>
                     <td className={ls.soDongLoi > 0 ? 'text-danger fw-semibold' : ''}>
@@ -358,6 +344,15 @@ function ImportThoiKhoaBieu({ maHocKyChon, onImportThanhCong }: Props) {
                       >
                         {ls.trangThai === 'ThanhCong' ? 'Thành công' : ls.trangThai === 'MotPhan' ? 'Một phần' : 'Thất bại'}
                       </span>
+                    </td>
+                    <td className="text-center">
+                      <button
+                        className="btn btn-outline-danger btn-sm py-0 px-2"
+                        title="Xóa lịch sử"
+                        onClick={() => handleXoaLichSu(ls.maLichSu)}
+                      >
+                        Xóa
+                      </button>
                     </td>
                   </tr>
                 ))}

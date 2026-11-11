@@ -82,9 +82,11 @@ public class ThemNguyenVongDto
 {
     public int MaHocKy { get; set; }
     public int MaGiangVien { get; set; }
+    public List<int>? DanhSachMaGiangVien { get; set; }
     public string MaRangBuocMem { get; set; } = "SC01";
     public string? TenRangBuocMem { get; set; }
     public int? Thu { get; set; }
+    public int? DenThu { get; set; }
     public int? TietBatDau { get; set; }
     public int? TietKetThuc { get; set; }
     public int? TuTuan { get; set; } = 1;

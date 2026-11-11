@@ -26,6 +26,7 @@ public class AuthService(AppDbContext context, JwtTokenService? jwtTokenService 
             return null;
         }
 
+<<<<<<< HEAD
         if (!XacThucMatKhau(user, dto.MatKhau, out var canCapNhatHash))
         {
             return null;
@@ -37,11 +38,18 @@ public class AuthService(AppDbContext context, JwtTokenService? jwtTokenService 
             await context.SaveChangesAsync();
         }
 
-        int? maBoMon = null;
-        if (user.MaGiangVien.HasValue)
+        int? maBoMon = user.MaBoMon;
+        if (!maBoMon.HasValue && user.MaGiangVien.HasValue)
         {
             var gv = await context.GiangVien.FindAsync(user.MaGiangVien.Value);
             maBoMon = gv?.MaBoMon;
+        }
+
+        string? tenBoMon = null;
+        if (maBoMon.HasValue)
+        {
+            var bm = await context.BoMon.FindAsync(maBoMon.Value);
+            tenBoMon = bm?.TenBoMon;
         }
 
         var token = _jwtTokenService.TaoToken(user, maBoMon);
@@ -55,6 +63,7 @@ public class AuthService(AppDbContext context, JwtTokenService? jwtTokenService 
             VaiTro = user.VaiTro,
             MaGiangVien = user.MaGiangVien,
             MaBoMon = maBoMon,
+            TenBoMon = tenBoMon,
             Token = token
         };
     }

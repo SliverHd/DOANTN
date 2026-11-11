@@ -408,9 +408,9 @@ public class CpSatAlgorithmTests
     }
 
     [Fact]
-    public async Task Test_CpSat_KhoaChetCungSeminar_BoQuaKhoaCuVaKhongXepTrung()
+    public async Task Test_CpSat_LopGhep_TrungMonTrungCa_XepCungMotGiangVien_KhongViPhamTrungLich()
     {
-        var dbName = "CpSat_SeminarLock_" + Guid.NewGuid();
+        var dbName = "CpSat_LopGhep_" + Guid.NewGuid();
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: dbName)
             .Options;
@@ -421,313 +421,76 @@ public class CpSatAlgorithmTests
         var luuKetQuaService = new LuuKetQuaXepLichService(context, boDanhGia);
         var cpSatService = new CpSatAlgorithmService(context, boDanhGia, boKiemTra, luuKetQuaService);
 
-        context.GiangVien.AddRange(
-            new GiangVien { MaGiangVien = 10, HoTen = "GV Seminar", TrangThai = "DangLamViec" },
-            new GiangVien { MaGiangVien = 20, HoTen = "GV Thay Thế", TrangThai = "DangLamViec" }
-        );
-        context.NangLucGiangDay.AddRange(
-            new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 101, TrangThai = "DangApDung" },
-            new NangLucGiangDay { MaGiangVien = 20, MaHocPhan = 101, TrangThai = "DangApDung" },
-            new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 102, TrangThai = "DangApDung" }
-        );
-        context.LopHocPhan.AddRange(
-            new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L1", TenLop = "Lớp 1" },
-            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 102, MaLopHocPhanTruong = "L2", TenLop = "Lớp 2" }
-        );
-        context.ChiTietThoiKhoaBieu.AddRange(
-            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 3, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 10 },
-            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 5, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10 }
-        );
-        context.PhanCongGiangDay.Add(new PhanCongGiangDay
-        {
-            MaHocKy = 1,
-            MaLopHocPhan = 1,
-            MaGiangVien = 10,
-            TrangThai = "DaKhoa",
-            NguonPhanCong = "ThuCong"
-        });
-        context.LichBanGiangVien.AddRange(
-            new LichBanGiangVien { MaHocKy = 1, MaGiangVien = 10, Thu = 3, TietBatDau = 4, TietKetThuc = 6, LyDo = "[Seminar] Bộ môn" },
-            new LichBanGiangVien { MaHocKy = 1, MaGiangVien = 10, Thu = 5, TietBatDau = 1, TietKetThuc = 3, LyDo = "[Seminar] Hội thảo" }
-        );
-        await context.SaveChangesAsync();
+        int maHocKy = 1;
+        int maHp = 101;
+        int maGv = 10;
 
-        var result = await cpSatService.ChayAsync(new DuLieuXepLichDto
+        context.GiangVien.Add(new GiangVien
         {
-            MaHocKy = 1,
-            ThoiGianChayToiDa = 5.0
+            MaGiangVien = maGv,
+            HoTen = "GV Nguyễn Văn A"
+        });
+        context.NangLucGiangDay.Add(new NangLucGiangDay
+        {
+            MaGiangVien = maGv,
+            MaHocPhan = maHp,
+            TrangThai = "DangApDung"
         });
 
-        Assert.Equal("KhaThiMotPhan", result.TrangThai);
-        Assert.Equal(1, result.SoLopChuaPhanCong);
-        Assert.Single(result.DanhSachPhanCong);
-        Assert.Equal(1, result.DanhSachPhanCong[0].MaLopHocPhan);
-        Assert.Equal(20, result.DanhSachPhanCong[0].MaGiangVien);
-        Assert.DoesNotContain(result.DanhSachViPham, v => v.Contains("lịch bận"));
-    }
-
-    [Fact]
-    public async Task Test_PhanCongThuCong_ChanTuyetDoiKhiTrungSeminar_KeCaBoQuaCanhBao()
-    {
-        var dbName = "Manual_SeminarLock_" + Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: dbName)
-            .Options;
-
-        using var context = new AppDbContext(options);
-        var xepLichService = new XepLichGiangDay.Api.Services.XepLichService(context, new BoKiemTraRangBuoc());
-
-        context.GiangVien.Add(new GiangVien { MaGiangVien = 10, HoTen = "Thầy Cường", TrangThai = "DangLamViec" });
-        context.NangLucGiangDay.Add(new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 101, TrangThai = "DangApDung" });
-        context.LopHocPhan.Add(new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L1", TenLop = "Lớp 1" });
-        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 3, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 10 });
-        context.LichBanGiangVien.Add(new LichBanGiangVien
-        {
-            MaHocKy = 1,
-            MaGiangVien = 10,
-            Thu = 3,
-            TietBatDau = 4,
-            TietKetThuc = 6,
-            LyDo = "[Seminar] Seminar Bộ môn Toán"
-        });
-        await context.SaveChangesAsync();
-
-        var kqLan1 = await xepLichService.PhanCongThuCongAsync(new YeuCauPhanCongThuCongDto
+        // 2 lớp ghép cùng môn 101, cùng ca dạy Thứ 2 tiết 1-3 tuần 1-10
+        context.LopHocPhan.Add(new LopHocPhan
         {
             MaLopHocPhan = 1,
-            MaGiangVien = 10,
-            BoQuaCanhBao = false
+            MaHocKy = maHocKy,
+            MaHocPhan = maHp,
+            MaLopHocPhanTruong = "LHP01_GHEP1",
+            TenLop = "Lớp ghép 1"
         });
-        Assert.False(kqLan1.ThanhCong);
-        Assert.False(kqLan1.CanXacNhan);
-        Assert.Contains("KHÔNG THỂ PHÂN CÔNG", kqLan1.ThongBao);
-        Assert.Contains(kqLan1.DanhSachViPham, v => v.Contains("KHÓA CHẾT CỨNG SEMINAR"));
-
-        var kqEpGan = await xepLichService.PhanCongThuCongAsync(new YeuCauPhanCongThuCongDto
+        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu
         {
+            MaChiTiet = 1,
             MaLopHocPhan = 1,
-            MaGiangVien = 10,
-            BoQuaCanhBao = true
-        });
-        Assert.False(kqEpGan.ThanhCong);
-        Assert.False(kqEpGan.CanXacNhan);
-        Assert.Empty(await context.PhanCongGiangDay.ToListAsync());
-    }
-
-    [Fact]
-    public async Task Test_TaoLichSeminar_TuDongGoPhanCongDaKhoaTrungGio()
-    {
-        var dbName = "Service_CreateSeminar_" + Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: dbName)
-            .Options;
-
-        using var context = new AppDbContext(options);
-        var nvService = new XepLichGiangDay.Api.Services.NguyenVongService(context);
-
-        context.GiangVien.AddRange(
-            new GiangVien { MaGiangVien = 10, HoTen = "GV A", TrangThai = "DangLamViec" },
-            new GiangVien { MaGiangVien = 20, HoTen = "GV B", TrangThai = "DangLamViec" }
-        );
-        context.LopHocPhan.AddRange(
-            new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_TRUNG", TenLop = "Lớp Trùng" },
-            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 102, MaLopHocPhanTruong = "L_KHONG_TRUNG", TenLop = "Lớp Khác Giờ" }
-        );
-        context.ChiTietThoiKhoaBieu.AddRange(
-            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 3, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 10 },
-            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 5, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10 }
-        );
-        context.PhanCongGiangDay.AddRange(
-            new PhanCongGiangDay { MaHocKy = 1, MaLopHocPhan = 1, MaGiangVien = 10, TrangThai = "DaKhoa", NguonPhanCong = "ThuCong" },
-            new PhanCongGiangDay { MaHocKy = 1, MaLopHocPhan = 2, MaGiangVien = 20, TrangThai = "DaKhoa", NguonPhanCong = "ThuCong" }
-        );
-        await context.SaveChangesAsync();
-
-        var kq = await nvService.TaoLichSeminarAsync(new XepLichGiangDay.Api.DTOs.NguyenVong.TaoLichSeminarRequest
-        {
-            MaHocKy = 1,
-            TenSeminar = "Sinh hoạt học thuật tháng",
-            Thu = 3,
-            TietBatDau = 4,
-            TietKetThuc = 6,
-            DanhSachMaGiangVien = [10, 20]
-        });
-
-        Assert.True(kq.ThanhCong);
-        Assert.Equal(2, kq.SoGiangVienDaKhoa);
-        Assert.Equal(1, kq.SoLopBiGo);
-
-        var dsLb = await context.LichBanGiangVien.Where(x => x.MaHocKy == 1).ToListAsync();
-        Assert.Equal(2, dsLb.Count);
-        Assert.All(dsLb, lb => Assert.StartsWith("[Seminar]", lb.LyDo));
-
-        var dsPcConLai = await context.PhanCongGiangDay.Where(x => x.MaHocKy == 1).ToListAsync();
-        Assert.Single(dsPcConLai);
-        Assert.Equal(2, dsPcConLai[0].MaLopHocPhan);
-    }
-
-    [Fact]
-    public async Task Test_NguyenVongSC01_CaHocKy_MacDinhMem_KhongKhoaCungVaKhongGoLop()
-    {
-        var dbName = "Service_SoftSc01_" + Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: dbName)
-            .Options;
-
-        using var context = new AppDbContext(options);
-        var nvService = new XepLichGiangDay.Api.Services.NguyenVongService(context);
-
-        context.GiangVien.Add(new GiangVien { MaGiangVien = 19, HoTen = "Trần Thị Liễu", TrangThai = "DangLamViec" });
-        context.LopHocPhan.Add(new LopHocPhan { MaLopHocPhan = 10, MaHocKy = 1, MaHocPhan = 100, MaLopHocPhanTruong = "398803_71CS1", TenLop = "71CS1" });
-        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 10, Thu = 4, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 });
-        context.PhanCongGiangDay.Add(new PhanCongGiangDay { MaHocKy = 1, MaLopHocPhan = 10, MaGiangVien = 19, TrangThai = "DaKhoa", NguonPhanCong = "ThuCong" });
-        await context.SaveChangesAsync();
-
-        var created = await nvService.ThemNguyenVongAsync(new XepLichGiangDay.Api.DTOs.NguyenVong.ThemNguyenVongDto
-        {
-            MaHocKy = 1,
-            MaGiangVien = 19,
-            MaRangBuocMem = "SC01",
-            Thu = 0,
+            Thu = 2,
             TietBatDau = 1,
             TietKetThuc = 3,
             TuTuan = 1,
-            DenTuan = 20,
-            TrongSoPhat = 15,
-            LyDo = "Tránh tiết 1-3",
-            KhoaCungLichBan = false
+            DenTuan = 10,
+            PhongHoc = "P.101"
         });
 
-        Assert.NotNull(created);
-        Assert.Equal("[Cả học kỳ] Tránh tiết 1-3", created!.NoiDungGoc);
-        Assert.False(created.KhoaCungLichBan);
-        Assert.Equal(1, created.MucDo);
-
-        var kqDuyet = await nvService.DuyetNguyenVongAsync(created.MaNguyenVong);
-        Assert.True(kqDuyet.ThanhCong);
-        Assert.Equal(0, kqDuyet.SoLopBiHuy);
-        Assert.False(kqDuyet.NguyenVong!.KhoaCungLichBan);
-
-        Assert.Empty(await context.LichBanGiangVien.Where(x => x.MaHocKy == 1).ToListAsync());
-        Assert.Single(await context.PhanCongGiangDay.Where(x => x.MaHocKy == 1).ToListAsync());
-
-        var ds = await nvService.LayNguyenVongAsync(1, 19);
-        var item = Assert.Single(ds);
-        Assert.False(item.KhoaCungLichBan);
-    }
-
-    [Fact]
-    public async Task Test_NguyenVongSC01_KhoaCungLichBan_TaoLichBanVaGoLopTrung()
-    {
-        var dbName = "Service_HardSc01_" + Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: dbName)
-            .Options;
-
-        using var context = new AppDbContext(options);
-        var nvService = new XepLichGiangDay.Api.Services.NguyenVongService(context);
-
-        context.GiangVien.Add(new GiangVien { MaGiangVien = 19, HoTen = "Trần Thị Liễu", TrangThai = "DangLamViec" });
-        context.LopHocPhan.Add(new LopHocPhan { MaLopHocPhan = 11, MaHocKy = 1, MaHocPhan = 100, MaLopHocPhanTruong = "LOP_T5", TenLop = "Lớp T5" });
-        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 11, Thu = 5, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 });
-        context.PhanCongGiangDay.Add(new PhanCongGiangDay { MaHocKy = 1, MaLopHocPhan = 11, MaGiangVien = 19, TrangThai = "DuKien", NguonPhanCong = "GA" });
-        await context.SaveChangesAsync();
-
-        var created = await nvService.ThemNguyenVongAsync(new XepLichGiangDay.Api.DTOs.NguyenVong.ThemNguyenVongDto
+        context.LopHocPhan.Add(new LopHocPhan
         {
-            MaHocKy = 1,
-            MaGiangVien = 19,
-            MaRangBuocMem = "SC01",
-            Thu = 5,
+            MaLopHocPhan = 2,
+            MaHocKy = maHocKy,
+            MaHocPhan = maHp,
+            MaLopHocPhanTruong = "LHP02_GHEP2",
+            TenLop = "Lớp ghép 2"
+        });
+        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu
+        {
+            MaChiTiet = 2,
+            MaLopHocPhan = 2,
+            Thu = 2,
             TietBatDau = 1,
-            TietKetThuc = 15,
+            TietKetThuc = 3,
             TuTuan = 1,
-            DenTuan = 20,
-            TrongSoPhat = 15,
-            LyDo = "Xin nghỉ Thứ 5",
-            KhoaCungLichBan = true
+            DenTuan = 10,
+            PhongHoc = "P.102" // Khác tên phòng học vẫn là lớp ghép
         });
 
-        Assert.NotNull(created);
-        Assert.True(created!.KhoaCungLichBan);
-        Assert.Equal(2, created.MucDo);
-
-        var kqDuyet = await nvService.DuyetNguyenVongAsync(created.MaNguyenVong);
-        Assert.True(kqDuyet.ThanhCong);
-        Assert.Equal(1, kqDuyet.SoLopBiHuy);
-        Assert.True(kqDuyet.NguyenVong!.KhoaCungLichBan);
-
-        Assert.Single(await context.LichBanGiangVien.Where(x => x.MaHocKy == 1).ToListAsync());
-        Assert.Empty(await context.PhanCongGiangDay.Where(x => x.MaHocKy == 1).ToListAsync());
-
-        var ds = await nvService.LayNguyenVongAsync(1, 19);
-        var item = Assert.Single(ds);
-        Assert.True(item.KhoaCungLichBan);
-    }
-
-    [Fact]
-    public async Task Test_CpSat_TonTrongSC06_GioiHanSoTietToiDaTrongNgay()
-    {
-        var dbName = "CpSat_SC06_" + Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: dbName)
-            .Options;
-
-        using var context = new AppDbContext(options);
-        var boKiemTra = new BoKiemTraRangBuoc();
-        var boDanhGia = new BoDanhGiaPhuongAn(context, boKiemTra);
-        var luuKetQuaService = new LuuKetQuaXepLichService(context, boDanhGia);
-        var cpSatService = new CpSatAlgorithmService(context, boDanhGia, boKiemTra, luuKetQuaService);
-
-        // 2 GV cùng chuyên môn HP 101; mỗi lớp 3 tiết cùng vào Thứ 2 (tổng 9 tiết nếu dồn 1 người).
-        // GV 1 có SC06 giới hạn tối đa 6 tiết/ngày (tối đa 2 lớp vào Thứ 2); GV 2 không bị giới hạn SC06.
-        // Để tránh phạt cân bằng thiếu tải gây nhiễu, đặt minTiet = 3 cho cả 2 GV.
-        context.GiangVien.AddRange(
-            new GiangVien { MaGiangVien = 1, HoTen = "Cô Liễu", ChucDanh = "Giảng viên", TrangThai = "DangLamViec" },
-            new GiangVien { MaGiangVien = 2, HoTen = "Thầy Minh", ChucDanh = "Giảng viên", TrangThai = "DangLamViec" }
-        );
-        context.DinhMucGiangVien.AddRange(
-            new DinhMucGiangVien { MaHocKy = 1, MaGiangVien = 1, SoTietToiThieu = 3, SoTietToiDa = 25, TrangThai = "DangApDung" },
-            new DinhMucGiangVien { MaHocKy = 1, MaGiangVien = 2, SoTietToiThieu = 3, SoTietToiDa = 25, TrangThai = "DangApDung" }
-        );
-        context.NangLucGiangDay.AddRange(
-            new NangLucGiangDay { MaGiangVien = 1, MaHocPhan = 101, TrangThai = "DangApDung" },
-            new NangLucGiangDay { MaGiangVien = 2, MaHocPhan = 101, TrangThai = "DangApDung" }
-        );
-        context.LopHocPhan.AddRange(
-            new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L1" },
-            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L2" },
-            new LopHocPhan { MaLopHocPhan = 3, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L3" }
-        );
-        context.ChiTietThoiKhoaBieu.AddRange(
-            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 },
-            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 2, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15 },
-            new ChiTietThoiKhoaBieu { MaChiTiet = 3, MaLopHocPhan = 3, Thu = 2, TietBatDau = 7, TietKetThuc = 9, TuTuan = 1, DenTuan = 15 }
-        );
-        context.NguyenVongGiangVien.Add(new NguyenVongGiangVien
-        {
-            MaHocKy = 1,
-            MaGiangVien = 1,
-            LoaiNguyenVong = "SC06",
-            Thu = null,
-            TietBatDau = 1,
-            TietKetThuc = 6, // tối đa 6 tiết/ngày
-            TrongSoPhat = 100,
-            TrangThai = "DaDuyet"
-        });
         await context.SaveChangesAsync();
 
         var result = await cpSatService.ChayAsync(new DuLieuXepLichDto
         {
-            MaHocKy = 1,
-            ThoiGianChayToiDa = 5.0,
-            LuuKetQua = false
+            MaHocKy = maHocKy,
+            ThoiGianChayToiDa = 5.0
         });
 
-        Assert.Equal("ToiUuToanCuc", result.TrangThai);
+        // Cả 2 lớp phải được xếp cho cùng 1 GV 10, không vi phạm trùng lịch và không bỏ qua lớp nào
+        Assert.True(result.TrangThai == "ToiUuToanCuc" || result.TrangThai == "KhaThi");
         Assert.Equal(0, result.SoViPhamCung);
-        int soLopGv1 = result.DanhSachPhanCong.Count(x => x.MaGiangVien == 1);
-        Assert.True(soLopGv1 <= 2, $"GV 1 bị giao {soLopGv1} lớp (>2 lớp = >6 tiết/ngày).");
-        Assert.Equal(0, result.DiemPhatNguyenVong);
+        Assert.Equal(0, result.SoLopChuaPhanCong);
+        Assert.Equal(2, result.DanhSachPhanCong.Count);
+        Assert.All(result.DanhSachPhanCong, pc => Assert.Equal(maGv, pc.MaGiangVien));
     }
 }

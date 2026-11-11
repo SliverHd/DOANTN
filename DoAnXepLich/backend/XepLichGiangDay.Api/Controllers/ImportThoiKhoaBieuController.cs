@@ -86,6 +86,13 @@ public class ImportThoiKhoaBieuController(ImportThoiKhoaBieuService importServic
         return Ok(list);
     }
 
+    [HttpDelete("lich-su/{id:int}")]
+    public async Task<IActionResult> XoaLichSu(int id)
+    {
+        var ok = await importService.XoaLichSuImportAsync(id);
+        return ok ? NoContent() : NotFound();
+    }
+
     [HttpGet("file-mau")]
     public IActionResult DownloadFileMau()
     {

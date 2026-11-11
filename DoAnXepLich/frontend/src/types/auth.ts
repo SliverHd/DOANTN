@@ -11,6 +11,7 @@ export interface ThongTinNguoiDung {
   vaiTro: 'Admin' | 'TruongBoMon' | 'GiangVien' | string
   maGiangVien?: number
   maBoMon?: number
+  tenBoMon?: string
   token: string
 }
 

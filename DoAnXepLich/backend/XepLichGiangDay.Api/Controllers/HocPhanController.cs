@@ -11,9 +11,9 @@ namespace XepLichGiangDay.Api.Controllers;
 public class HocPhanController(HocPhanService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<HocPhanDto>>> GetAll()
+    public async Task<ActionResult<List<HocPhanDto>>> GetAll([FromQuery] int? maBoMon, [FromQuery] int? maHocKy)
     {
-        return Ok(await service.GetAllAsync());
+        return Ok(await service.GetAllAsync(maBoMon, maHocKy));
     }
 
     [HttpGet("{id:int}")]

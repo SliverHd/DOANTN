@@ -39,7 +39,62 @@ public class CpSatAlgorithmService(
             .GroupBy(x => x.MaLopHocPhan)
             .ToDictionary(g => g.Key, g => g.First().MaGiangVien);
 
-        // 2. Khởi tạo mô hình toán học CP-SAT
+        // 2. XỬ LÝ GỘP CỤM LỚP GHÉP (Merged Classes / Joint Sessions Pre-processing)
+        // Gom các lớp học phần học chung cùng môn, cùng ca dạy (thứ, tiết, tuần) thành 1 cụm lớp ghép
+        string TaoChuKyBuoiHoc(int maLop, int maHocPhan)
+        {
+            if (!boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt) || dsCt.Count == 0)
+            {
+                return $"HP_{maHocPhan}_LOP_{maLop}";
+            }
+            var chuoiBuoi = string.Join("|", dsCt
+                .OrderBy(c => c.Thu)
+                .ThenBy(c => c.TietBatDau)
+                .ThenBy(c => c.TuTuan)
+                .Select(c => $"{c.Thu}_{c.TietBatDau}_{c.TietKetThuc}_{c.TuTuan}_{c.DenTuan}"));
+            return $"HP_{maHocPhan}:{chuoiBuoi}";
+        }
+
+        var nhomLopGhep = boiCanh.DanhSachLop
+            .GroupBy(lop => TaoChuKyBuoiHoc(lop.MaLopHocPhan, lop.MaHocPhan))
+            .ToList();
+
+        // Ánh xạ lớp -> lớp đại diện của cụm
+        var lopDaiDienCuaLop = new Dictionary<int, int>();
+        var cacCumLopGhep = new List<List<int>>();
+
+        foreach (var nhom in nhomLopGhep)
+        {
+            var dsThanhVien = nhom.Select(l => l.MaLopHocPhan).ToList();
+            int lopDaiDien = dsThanhVien.FirstOrDefault(id => dsLopKhoa.ContainsKey(id));
+            if (lopDaiDien == 0) lopDaiDien = dsThanhVien.First();
+
+            foreach (var maLop in dsThanhVien)
+            {
+                lopDaiDienCuaLop[maLop] = lopDaiDien;
+            }
+
+            if (dsThanhVien.Count > 1)
+            {
+                cacCumLopGhep.Add(dsThanhVien);
+            }
+        }
+
+        // Đồng bộ trạng thái khóa cho cụm lớp ghép: nếu 1 lớp bị khóa thì tất cả lớp trong cụm khóa theo
+        foreach (var cum in cacCumLopGhep)
+        {
+            var lopBiKhoa = cum.FirstOrDefault(id => dsLopKhoa.ContainsKey(id));
+            if (lopBiKhoa > 0)
+            {
+                int gvKhoa = dsLopKhoa[lopBiKhoa];
+                foreach (var maLop in cum)
+                {
+                    dsLopKhoa[maLop] = gvKhoa;
+                }
+            }
+        }
+
+        // 3. Khởi tạo mô hình toán học CP-SAT
         var model = new CpModel();
         var xVars = new Dictionary<(int MaGiangVien, int MaLopHocPhan), BoolVar>();
         var ungVienTheoLop = new Dictionary<int, List<int>>();
@@ -162,7 +217,37 @@ public class CpSatAlgorithmService(
             objectiveTerms.Add(bienBoTrong * TRONG_SO_BO_TRONG);
         }
 
+        // (RÀNG BUỘC ĐỒNG NHẤT LỚP GHÉP): Các lớp học phần trong cùng cụm lớp ghép (cùng môn, cùng ca dạy)
+        // BẮT BUỘC phải được xếp cho CÙNG 1 GIẢNG VIÊN dạy.
+        foreach (var cum in cacCumLopGhep)
+        {
+            int lopChinh = cum[0];
+            for (int k = 1; k < cum.Count; k++)
+            {
+                int lopPhu = cum[k];
+                var tatCaGv = ungVienTheoLop[lopChinh].Union(ungVienTheoLop[lopPhu]).Distinct().ToList();
+                foreach (var maGv in tatCaGv)
+                {
+                    bool coChinh = xVars.TryGetValue((maGv, lopChinh), out var varChinh);
+                    bool coPhu = xVars.TryGetValue((maGv, lopPhu), out var varPhu);
+                    if (coChinh && coPhu)
+                    {
+                        model.Add(varChinh == varPhu);
+                    }
+                    else if (coChinh && !coPhu)
+                    {
+                        model.Add(varChinh == 0);
+                    }
+                    else if (!coChinh && coPhu)
+                    {
+                        model.Add(varPhu == 0);
+                    }
+                }
+            }
+        }
+
         // (H1) Khống chế trùng lịch giảng viên: Một GV không dạy 2 lớp trùng thời gian
+        // NGOẠI TRỪ: Các lớp trong cùng cụm lớp ghép (cùng môn, cùng ca dạy)
         foreach (var (maGv, dsLopCuaGv) in lopTheoGv)
         {
             if (dsLopCuaGv.Count <= 1) continue;
@@ -173,6 +258,14 @@ public class CpSatAlgorithmService(
                 {
                     int lop1 = dsLopCuaGv[i];
                     int lop2 = dsLopCuaGv[j];
+
+                    // Nếu 2 lớp thuộc cùng cụm lớp ghép: BỎ QUA vì đã có ràng buộc đồng nhất cùng 1 GV dạy
+                    if (lopDaiDienCuaLop.TryGetValue(lop1, out var dd1) &&
+                        lopDaiDienCuaLop.TryGetValue(lop2, out var dd2) &&
+                        dd1 == dd2)
+                    {
+                        continue;
+                    }
 
                     var ct1 = boiCanh.ChiTietTheoLop.GetValueOrDefault(lop1) ?? [];
                     var ct2 = boiCanh.ChiTietTheoLop.GetValueOrDefault(lop2) ?? [];
@@ -212,6 +305,12 @@ public class CpSatAlgorithmService(
 
                     foreach (var maLop in dsLopCuaGv)
                     {
+                        // Với cụm lớp ghép: chỉ tính số tiết của lớp đại diện để không nhân đôi giờ thực tế đứng lớp
+                        if (lopDaiDienCuaLop.TryGetValue(maLop, out var dd) && dd != maLop)
+                        {
+                            continue;
+                        }
+
                         int tietLopTuan = soTietTheoTuanTheoLop[maLop].GetValueOrDefault(w, 0);
                         if (tietLopTuan > 0)
                         {
@@ -228,8 +327,9 @@ public class CpSatAlgorithmService(
             }
             else
             {
-                var dsBienGv = dsLopCuaGv.Select(maLop => xVars[(maGv, maLop)]).ToList();
-                var dsSoTiet = dsLopCuaGv.Select(maLop => (long)TinhSoTiet(maLop, boiCanh)).ToList();
+                var dsLopKhongGhep = dsLopCuaGv.Where(maLop => !lopDaiDienCuaLop.TryGetValue(maLop, out var dd) || dd == maLop).ToList();
+                var dsBienGv = dsLopKhongGhep.Select(maLop => xVars[(maGv, maLop)]).ToList();
+                var dsSoTiet = dsLopKhongGhep.Select(maLop => (long)TinhSoTiet(maLop, boiCanh)).ToList();
                 model.Add(LinearExpr.WeightedSum(dsBienGv, dsSoTiet) <= tranCungTuan);
             }
         }
@@ -241,6 +341,12 @@ public class CpSatAlgorithmService(
         // w1 * P1: Phạt vi phạm nguyện vọng ca dạy ưu tiên & ưu tiên GV cơ hữu
         foreach (var ((maGv, maLop), xVar) in xVars)
         {
+            // Tránh phạt lặp lại nhiều lần cho cùng một ca của cụm lớp ghép
+            if (lopDaiDienCuaLop.TryGetValue(maLop, out var dd) && dd != maLop)
+            {
+                continue;
+            }
+
             double diemPhatNv = boDanhGia.TinhDiemNguyenVong(maGv, maLop, boiCanh);
             if (diemPhatNv > 0)
             {

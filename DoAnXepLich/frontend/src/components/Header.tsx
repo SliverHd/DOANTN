@@ -102,7 +102,8 @@ function Header({ onToggleSidebar }: HeaderProps) {
               Xin chào, <strong style={{ color: '#0f172a' }}>{hienThiHoTen(user.hoTen)}</strong>
             </span>
             <span className="badge bg-light text-secondary border" style={{ fontSize: '11px' }}>
-              {user.vaiTro === 'Admin' ? 'Quản trị' : user.vaiTro}
+              {user.vaiTro === 'Admin' ? 'Quản trị' : user.vaiTro === 'TruongBoMon' ? 'Trưởng bộ môn' : user.vaiTro}
+              {user.tenBoMon ? ` (${user.tenBoMon})` : ''}
             </span>
 
             <div className="btn-group ms-2">

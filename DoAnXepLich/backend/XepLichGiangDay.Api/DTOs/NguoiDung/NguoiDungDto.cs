@@ -9,5 +9,7 @@ public class NguoiDungDto
     public string VaiTro { get; set; } = string.Empty;
     public int? MaGiangVien { get; set; }
     public string? TenGiangVien { get; set; }
+    public int? MaBoMon { get; set; }
+    public string? TenBoMon { get; set; }
     public string TrangThai { get; set; } = string.Empty;
 }
