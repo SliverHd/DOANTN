@@ -41,26 +41,6 @@ function tenThuHienThi(thu: number) {
   return thu === 8 ? 'Chủ nhật' : `Thứ ${thu}`
 }
 
-function LockIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="me-1"
-      style={{ verticalAlign: '-2px' }}
-    >
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  )
-}
-
 function QuanLyLichSeminar() {
   const { user } = useAuth()
   const laTruongBoMon = user?.vaiTro === 'TruongBoMon' || user?.vaiTro === 'Admin'
@@ -273,18 +253,18 @@ function QuanLyLichSeminar() {
       setThongBao(res.data.thongDiep)
       await taiDanhSachLichBan(maHocKy, maBoMon)
     } catch {
-      setLoi('Không thể tạo lịch Seminar khóa cứng. Vui lòng kiểm tra lại dữ liệu.')
+      setLoi('Không thể lưu lịch Seminar. Vui lòng kiểm tra lại dữ liệu.')
     } finally {
       setDangLuu(false)
     }
   }
 
-  // Gỡ 1 giảng viên khỏi lịch Seminar (hoặc lịch bận cứng khác)
+  // Gỡ 1 giảng viên khỏi lịch Seminar (hoặc lịch bận cố định khác)
   const handleXoaMotBanGhi = async (item: LichBan) => {
     const tenGv = item.tenGiangVien || `GV #${item.maGiangVien}`
     if (
       !window.confirm(
-        `Gỡ lịch khóa cứng "${item.lyDo || 'Lịch bận'}" vào ${tenThuHienThi(item.thu)} (Tiết ${item.tietBatDau}-${item.tietKetThuc}) của ${tenGv}?`
+        `Gỡ lịch "${item.lyDo || 'Lịch bận'}" vào ${tenThuHienThi(item.thu)} (Tiết ${item.tietBatDau}-${item.tietKetThuc}) của ${tenGv}?`
       )
     ) {
       return
@@ -294,10 +274,10 @@ function QuanLyLichSeminar() {
       setLoi('')
       setThongBao('')
       await nguyenVongApi.xoaLichBan(item.maLichBan)
-      setThongBao(`Đã gỡ lịch khóa cứng cho ${tenGv}.`)
+      setThongBao(`Đã gỡ lịch của ${tenGv}.`)
       await taiDanhSachLichBan(maHocKy, maBoMon)
     } catch {
-      setLoi('Không thể gỡ lịch khóa cứng này.')
+      setLoi('Không thể gỡ lịch này.')
     }
   }
 
@@ -335,15 +315,11 @@ function QuanLyLichSeminar() {
       {/* Header */}
       <div className="mb-3 d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
-          <h2 className="h4 mb-1 d-flex align-items-center text-dark">
-            <span className="badge bg-danger me-2">
-              <LockIcon size={14} /> KHÓA CỨNG
-            </span>
+          <h2 className="h4 mb-1 text-dark">
             Quản lý Lịch Seminar Khoa / Bộ môn
           </h2>
           <p className="text-muted small mb-0">
-            Lịch Seminar được <strong>khóa chết cứng 100% (Ràng buộc cứng H3)</strong>: bất kỳ giảng viên nào có lịch Seminar vào khung giờ này
-            <strong> chắc chắn sẽ không bao giờ bị phân công dạy</strong> (áp dụng tuyệt đối ở GA, CP-SAT, phân công thủ công và Import Excel).
+            Thiết lập lịch Seminar cố định theo học kỳ để hệ thống không xếp lịch giảng dạy trùng vào các khung giờ này.
           </p>
         </div>
       </div>
@@ -386,12 +362,12 @@ function QuanLyLichSeminar() {
         </div>
 
         <div className="col text-end small text-muted">
-          Buổi Seminar: <strong className="text-danger">{cacNhomSeminar.length}</strong> | Lượt GV khóa Seminar:{' '}
+          Buổi Seminar: <strong className="text-primary">{cacNhomSeminar.length}</strong> | Lượt GV tham gia:{' '}
           <strong className="text-dark">{dsSeminar.length}</strong>
           {dsLichBanKhac.length > 0 && (
             <>
               {' '}
-              | Lịch bận cứng khác: <strong className="text-secondary">{dsLichBanKhac.length}</strong>
+              | Lịch bận cố định khác: <strong className="text-secondary">{dsLichBanKhac.length}</strong>
             </>
           )}
         </div>
@@ -401,7 +377,7 @@ function QuanLyLichSeminar() {
       {ketQuaTao && ketQuaTao.soLopBiGo > 0 && (
         <div className="alert alert-warning border-warning shadow-sm py-2 px-3 mb-3 small">
           <div className="fw-bold text-dark mb-1">
-            Đã tự động gỡ phân công {ketQuaTao.soLopBiGo} lớp học phần bị trùng giờ Seminar (bao gồm cả lớp đã khóa trước đó):
+            Đã tự động gỡ phân công {ketQuaTao.soLopBiGo} lớp học phần bị trùng giờ Seminar:
           </div>
           <ul className="mb-0 ps-3">
             {ketQuaTao.danhSachLopBiGo.map((dong, idx) => (
@@ -430,10 +406,10 @@ function QuanLyLichSeminar() {
         <div className="card border shadow-sm mb-4">
           <div className="card-header bg-white py-2 d-flex justify-content-between align-items-center">
             <span className="fw-bold text-dark">
-              <LockIcon size={15} /> Thiết lập & Khóa cứng Lịch Seminar mới
+              Thêm lịch Seminar mới
             </span>
-            <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
-              Áp dụng ngay — Tự động gỡ lớp trùng
+            <span className="small text-muted">
+              Tự động gỡ phân công các lớp trùng giờ khi lưu
             </span>
           </div>
           <div className="card-body">
@@ -505,10 +481,10 @@ function QuanLyLichSeminar() {
                 <div className="col-md-2 d-flex align-items-end">
                   <button
                     type="submit"
-                    className="btn btn-danger btn-sm w-100 fw-semibold"
+                    className="btn btn-primary btn-sm w-100 fw-semibold"
                     disabled={dangLuu || dsGvDaChon.length === 0}
                   >
-                    {dangLuu ? 'Đang khóa...' : `Khóa cứng (${dsGvDaChon.length} GV)`}
+                    {dangLuu ? 'Đang lưu...' : `Lưu lịch (${dsGvDaChon.length} GV)`}
                   </button>
                 </div>
               </div>
@@ -539,7 +515,7 @@ function QuanLyLichSeminar() {
                 <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                   <div className="small fw-semibold text-dark">
                     Chọn giảng viên tham gia Seminar (Đã chọn:{' '}
-                    <span className="text-danger">{dsGvDaChon.length}</span> / {dsGvTrongBoMon.length} GV)
+                    <span className="text-primary">{dsGvDaChon.length}</span> / {dsGvTrongBoMon.length} GV)
                   </div>
                   <div className="d-flex flex-wrap align-items-center gap-2">
                     <input
@@ -586,7 +562,7 @@ function QuanLyLichSeminar() {
                           <label
                             className={`d-flex align-items-start gap-2 p-2 rounded border h-100 ${
                               daChon
-                                ? 'border-danger bg-white shadow-sm'
+                                ? 'border-primary bg-white shadow-sm'
                                 : 'border-secondary-subtle bg-white'
                             }`}
                             style={{ cursor: 'pointer', fontSize: '13px' }}
@@ -629,11 +605,11 @@ function QuanLyLichSeminar() {
         </div>
       )}
 
-      {/* Danh sách các nhóm Lịch Seminar đang khóa chết cứng */}
+      {/* Danh sách các nhóm Lịch Seminar */}
       <div className="card border bg-white shadow-sm mb-4">
         <div className="card-header bg-light py-2 d-flex justify-content-between align-items-center">
           <div className="fw-bold text-dark">
-            Danh sách Lịch Seminar đang khóa cứng ({cacNhomSeminar.length} buổi)
+            Danh sách Lịch Seminar ({cacNhomSeminar.length} buổi)
             {maBoMon > 0 && (
               <span className="badge bg-primary ms-2">
                 {danhSachBoMon.find((b) => b.maBoMon === maBoMon)?.tenBoMon}
@@ -642,7 +618,7 @@ function QuanLyLichSeminar() {
           </div>
           {laGiangVien && (
             <span className="small text-muted">
-              Các khung giờ dưới đây được khóa cứng không xếp lịch giảng dạy
+              Các khung giờ dưới đây sẽ không xếp lịch giảng dạy
             </span>
           )}
         </div>
@@ -652,7 +628,7 @@ function QuanLyLichSeminar() {
             <Loading />
           ) : cacNhomSeminar.length === 0 ? (
             <div className="text-center text-muted py-4 small">
-              Chưa có lịch Seminar nào được khóa cứng cho bộ môn / học kỳ đang chọn.
+              Chưa có lịch Seminar nào cho bộ môn / học kỳ đang chọn.
             </div>
           ) : (
             <div className="d-flex flex-column gap-3">
@@ -671,9 +647,6 @@ function QuanLyLichSeminar() {
                   >
                     <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 pb-2 border-bottom">
                       <div className="d-flex flex-wrap align-items-center gap-2">
-                        <span className="badge bg-danger">
-                          <LockIcon size={12} /> KHÓA CỨNG
-                        </span>
                         <span className="fw-bold text-dark fs-6">{nhom.tenSeminar}</span>
                         <span className="badge bg-dark">
                           {tenThuHienThi(nhom.thu)} • Tiết {nhom.tietBatDau} - {nhom.tietKetThuc}
@@ -739,11 +712,11 @@ function QuanLyLichSeminar() {
         </div>
       </div>
 
-      {/* Bảng phụ: Lịch bận cứng khác từ đơn xin nghỉ đã duyệt */}
+      {/* Bảng phụ: Lịch bận cố định khác từ đơn xin nghỉ đã duyệt */}
       {dsLichBanKhac.length > 0 && (
         <div className="card border bg-white">
           <div className="card-header bg-light py-2 fw-semibold text-secondary small">
-            Các lịch bận cứng khác đã được kích hoạt trong học kỳ ({dsLichBanKhac.length})
+            Lịch bận cố định khác trong học kỳ ({dsLichBanKhac.length})
           </div>
           <div className="table-responsive">
             <table className="table table-bordered table-sm table-hover mb-0 small">
@@ -752,7 +725,7 @@ function QuanLyLichSeminar() {
                   <th style={{ width: '45px' }}>STT</th>
                   <th>Giảng viên</th>
                   <th>Bộ môn</th>
-                  <th>Khung giờ khóa</th>
+                  <th>Khung giờ</th>
                   <th>Lý do</th>
                   {laTruongBoMon && <th style={{ width: '80px' }}>Thao tác</th>}
                 </tr>

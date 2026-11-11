@@ -177,7 +177,7 @@ public class NguyenVongService(AppDbContext context)
         await context.SaveChangesAsync(cancellationToken);
 
         string thuStr = req.Thu == 8 ? "Chủ nhật" : $"Thứ {req.Thu}";
-        string thongDiep = $"Đã khóa chết cứng lịch {lyDoChuan} vào {thuStr} (Tiết {req.TietBatDau}-{req.TietKetThuc}) cho {soDaKhoa} giảng viên" +
+        string thongDiep = $"Đã lưu lịch {lyDoChuan} vào {thuStr} (Tiết {req.TietBatDau}-{req.TietKetThuc}) cho {soDaKhoa} giảng viên" +
             (soDaTonTai > 0 ? $" (cập nhật {soDaTonTai} giảng viên đã có lịch này trước đó)" : "") +
             (danhSachLopBiGo.Count > 0 ? $". Đã tự động gỡ phân công {danhSachLopBiGo.Count} lớp học phần trùng giờ Seminar." : ".");
 

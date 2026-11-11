@@ -251,7 +251,7 @@ public class XepLichService(
                 var lyDo = new List<string>();
                 if (vuongSeminar)
                 {
-                    lyDo.Add($"Khóa cứng Seminar ({tenSeminarTrung})");
+                    lyDo.Add($"Trùng lịch Seminar ({tenSeminarTrung})");
                 }
                 else if (vuongLb)
                 {
@@ -401,13 +401,13 @@ public class XepLichService(
         }
 
 
-        // Khóa chết cứng lịch Seminar: KHÔNG BAO GIỜ cho phép ép gán (kể cả BoQuaCanhBao = true)
+        // Lịch Seminar là bắt buộc cố định: không cho phép ép gán (kể cả BoQuaCanhBao = true)
         if (coViPhamSeminar)
         {
             return new KetQuaPhanCongThuCongDto
             {
                 ThanhCong = false,
-                ThongBao = $"KHÔNG THỂ PHÂN CÔNG: Giảng viên {gv.HoTen} đã bị khóa chết cứng lịch Seminar trùng giờ với lớp học phần này.",
+                ThongBao = $"KHÔNG THỂ PHÂN CÔNG: Giảng viên {gv.HoTen} đang có lịch Seminar trùng giờ với lớp học phần này.",
                 DanhSachViPham = viPham,
                 CanXacNhan = false
             };

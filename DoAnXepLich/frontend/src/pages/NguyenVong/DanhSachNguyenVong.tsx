@@ -330,14 +330,13 @@ function DanhSachNguyenVong() {
         )}
       </div>
 
-      {/* Ghi chú tách riêng Lịch Seminar khóa cứng */}
+      {/* Ghi chú mục Lịch Seminar */}
       <div className="alert alert-info py-2 px-3 small mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-          <strong>Lưu ý về Lịch Seminar:</strong> Lịch Seminar được tách sang mục riêng và{' '}
-          <strong className="text-danger">khóa chết cứng 100%</strong> (giảng viên có lịch Seminar chắc chắn không bị xếp lớp trùng giờ ở mọi thuật toán &amp; phân công thủ công).
+          <strong>Lưu ý về Lịch Seminar:</strong> Lịch Seminar được quản lý tại mục riêng; giảng viên tham gia lịch Seminar sẽ không bị xếp lịch giảng dạy trùng giờ.
         </div>
         <Link to="/seminar" className="btn btn-outline-primary btn-sm text-nowrap">
-          Đi tới Lịch Seminar (Khóa cứng) &rarr;
+          Đi tới Lịch Seminar &rarr;
         </Link>
       </div>
 

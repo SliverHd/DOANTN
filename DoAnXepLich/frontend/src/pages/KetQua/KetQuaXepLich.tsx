@@ -1043,7 +1043,7 @@ function KetQuaXepLich() {
                                   let nhan = uv.hoTen
                                   if (uv.chucDanh) nhan += ` (${uv.chucDanh})`
                                   if (uv.biKhoaCungSeminar) {
-                                    nhan += ` [Khóa cứng Seminar]`
+                                    nhan += ` [Trùng lịch Seminar]`
                                   } else if (uv.hopLe) {
                                     nhan += ' [Hợp lệ]'
                                   } else {

@@ -25,7 +25,7 @@ const truongBoMonMenuItems: MenuItem[] = [
   { path: '/giang-vien', label: 'Quản lý giảng viên', icon: 'users' },
   { path: '/hoc-phan', label: 'Quản lý học phần', icon: 'book' },
   { path: '/thoi-khoa-bieu', label: 'Thời khóa biểu', icon: 'table' },
-  { path: '/seminar', label: 'Lịch Seminar (Khóa cứng)', icon: 'lock' },
+  { path: '/seminar', label: 'Lịch Seminar', icon: 'calendar' },
   { path: '/nguyen-vong', label: 'Lịch bận & Nguyện vọng', icon: 'clock' },
   { path: '/rang-buoc', label: 'Cấu hình ràng buộc', icon: 'sliders' },
   { path: '/xep-lich', label: 'Xếp lịch tự động', icon: 'cpu' },
@@ -34,7 +34,7 @@ const truongBoMonMenuItems: MenuItem[] = [
 
 const giangVienMenuItems: MenuItem[] = [
   { path: '/thoi-khoa-bieu', label: 'Thời khóa biểu', icon: 'table' },
-  { path: '/seminar', label: 'Lịch Seminar (Khóa cứng)', icon: 'lock' },
+  { path: '/seminar', label: 'Lịch Seminar', icon: 'calendar' },
   { path: '/nguyen-vong', label: 'Nguyện vọng', icon: 'clock' },
   { path: '/ket-qua', label: 'Kết quả xếp lịch', icon: 'check-square' },
 ]

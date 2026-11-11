@@ -54,7 +54,7 @@ public class NguyenVongController(NguyenVongService service) : ControllerBase
         {
             return NotFound("Không tìm thấy lịch bận / Seminar cần xóa.");
         }
-        return Ok(new { Message = "Đã xóa lịch khóa cứng thành công." });
+        return Ok(new { Message = "Đã xóa lịch thành công." });
     }
 
     [Authorize(Roles = "Admin,TruongBoMon")]
