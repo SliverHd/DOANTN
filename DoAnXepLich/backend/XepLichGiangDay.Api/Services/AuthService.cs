@@ -26,7 +26,6 @@ public class AuthService(AppDbContext context, JwtTokenService? jwtTokenService 
             return null;
         }
 
-<<<<<<< HEAD
         if (!XacThucMatKhau(user, dto.MatKhau, out var canCapNhatHash))
         {
             return null;

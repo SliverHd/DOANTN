@@ -7,9 +7,22 @@ namespace XepLichGiangDay.Api.Services;
 
 public class HocPhanService(AppDbContext context)
 {
-    public async Task<List<HocPhanDto>> GetAllAsync()
+    public async Task<List<HocPhanDto>> GetAllAsync(int? maBoMon = null, int? maHocKy = null)
     {
-        return await (from hp in context.HocPhan
+        var query = context.HocPhan.AsQueryable();
+
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            query = query.Where(x => x.MaBoMon == maBoMon.Value);
+        }
+
+        if (maHocKy.HasValue && maHocKy.Value > 0)
+        {
+            // Chỉ lấy các học phần có lớp học phần mở trong học kỳ này
+            query = query.Where(hp => context.LopHocPhan.Any(l => l.MaHocKy == maHocKy.Value && l.MaHocPhan == hp.MaHocPhan));
+        }
+
+        return await (from hp in query
                       join bm in context.BoMon on hp.MaBoMon equals bm.MaBoMon into bmGroup
                       from bm in bmGroup.DefaultIfEmpty()
                       select new HocPhanDto

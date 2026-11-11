@@ -824,4 +824,13 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
 
         return dsGiangVien.FirstOrDefault(x => BoDauTiengViet(x.HoTen) == targetNoAccent);
     }
+
+    public async Task<bool> XoaLichSuImportAsync(int maLichSu)
+    {
+        var item = await context.LichSuImport.FindAsync(maLichSu);
+        if (item == null) return false;
+        context.LichSuImport.Remove(item);
+        await context.SaveChangesAsync();
+        return true;
+    }
 }

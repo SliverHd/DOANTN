@@ -159,11 +159,7 @@ public class BoDanhGiaPhuongAn
                                          ct1.Thu == ct2.Thu &&
                                          ct1.TietBatDau == ct2.TietBatDau &&
                                          ct1.TietKetThuc == ct2.TietKetThuc &&
-                                         ct1.TuTuan == ct2.TuTuan &&
-                                         ct1.DenTuan == ct2.DenTuan &&
-                                         !string.IsNullOrWhiteSpace(ct1.PhongHoc) &&
-                                         string.Equals(ct1.PhongHoc?.Trim(), ct2.PhongHoc?.Trim(), StringComparison.OrdinalIgnoreCase);
-
+                                         ct1.TietKetThuc == ct2.TietKetThuc;
                         if (!laLopGhep)
                         {
                             ketQua.SoViPhamTrungLich++;
