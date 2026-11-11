@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { hocKyApi } from '../../api/hocKyApi'
 import { boMonApi } from '../../api/boMonApi'
@@ -84,6 +84,9 @@ function ChayXepLich() {
       const data = errorObj.response?.data
       if (typeof data === 'string') {
         setLoi(data)
+      } else if (data && typeof data === 'object') {
+        const obj = data as { detail?: string; thongDiep?: string; title?: string }
+        setLoi(obj.detail || obj.thongDiep || obj.title || 'Lỗi khi chạy thuật toán xếp lịch.')
       } else {
         setLoi('Lỗi khi chạy thuật toán xếp lịch.')
       }

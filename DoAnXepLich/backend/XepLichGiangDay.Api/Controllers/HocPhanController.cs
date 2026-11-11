@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.HocPhan;
 using XepLichGiangDay.Api.Services;
@@ -6,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/hoc-phan")]
+[Authorize]
 public class HocPhanController(HocPhanService service) : ControllerBase
 {
     [HttpGet]
@@ -21,6 +23,7 @@ public class HocPhanController(HocPhanService service) : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPost]
     public async Task<ActionResult<HocPhanDto>> Create(TaoHocPhanDto dto)
     {
@@ -28,6 +31,7 @@ public class HocPhanController(HocPhanService service) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created.MaHocPhan }, created);
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, TaoHocPhanDto dto)
     {
@@ -35,6 +39,7 @@ public class HocPhanController(HocPhanService service) : ControllerBase
         return success ? NoContent() : NotFound();
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -45,5 +50,4 @@ public class HocPhanController(HocPhanService service) : ControllerBase
         }
         return NoContent();
     }
-
 }

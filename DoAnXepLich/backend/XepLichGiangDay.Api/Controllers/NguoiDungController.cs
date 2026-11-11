@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.NguoiDung;
 using XepLichGiangDay.Api.Services;
@@ -6,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/nguoi-dung")]
+[Authorize(Roles = "Admin")]
 public class NguoiDungController(NguoiDungService service) : ControllerBase
 {
     [HttpGet]

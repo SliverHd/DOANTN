@@ -1,6 +1,9 @@
- using System.Globalization;
+using System.Globalization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using XepLichGiangDay.Api.Data;
+using XepLichGiangDay.Api.Security;
 using XepLichGiangDay.Api.Services;
 using XepLichGiangDay.Api.Services.RangBuoc;
 using XepLichGiangDay.Api.Services.ThuatToan;
@@ -17,7 +20,37 @@ const string corsPolicy = "ReactFrontend";
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Nhap JWT token theo dinh dang: Bearer {token}"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+builder.Services.AddSingleton<JwtTokenService>();
+builder.Services.AddAuthentication(JwtAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, JwtAuthenticationHandler>(JwtAuthenticationHandler.SchemeName, null);
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
@@ -69,6 +102,7 @@ app.UseCors(corsPolicy);
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapFallbackToFile("index.html");

@@ -1,6 +1,22 @@
 # Script Dong bo tu dong 1-Click len SmarterASP qua FTP
 $ErrorActionPreference = "Stop"
 
+# Nap bien moi truong tu file .env.deploy.ps1 (khong track tren Git) neu co
+$envDeployPath = Join-Path $PSScriptRoot ".env.deploy.ps1"
+if (Test-Path $envDeployPath) {
+    . $envDeployPath
+}
+
+$prodConnStr = $env:XEPLICH_PROD_CONN_STR
+$prodJwtSecret = $env:XEPLICH_PROD_JWT_SECRET
+$ftpBase = $env:XEPLICH_FTP_BASE
+$ftpUser = $env:XEPLICH_FTP_USER
+$ftpPass = $env:XEPLICH_FTP_PASS
+
+if ([string]::IsNullOrWhiteSpace($prodConnStr) -or [string]::IsNullOrWhiteSpace($ftpBase) -or [string]::IsNullOrWhiteSpace($ftpUser) -or [string]::IsNullOrWhiteSpace($ftpPass)) {
+    throw "Thieu bien moi truong deploy (XEPLICH_PROD_CONN_STR, XEPLICH_FTP_BASE, XEPLICH_FTP_USER, XEPLICH_FTP_PASS). Vui long cau hinh trong bien moi truong he thong hoac file .env.deploy.ps1."
+}
+
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host " [1/4] DANG BUILD FRONTEND (REACT + VITE)...            " -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
@@ -28,16 +44,18 @@ dotnet publish "d:\doanxeptkb\DoAnXepLich\backend\XepLichGiangDay.Api\XepLichGia
 
 $appsettingsPath = "$publishDir\appsettings.json"
 $appsettings = Get-Content $appsettingsPath -Raw | ConvertFrom-Json
-$appsettings.ConnectionStrings.DefaultConnection = "Server=sql8005.site4now.net;Database=db_ad0add_xeptkb;User Id=db_ad0add_xeptkb_admin;Password=Admin@123456;TrustServerCertificate=True;Encrypt=False;"
+$appsettings.ConnectionStrings.DefaultConnection = $prodConnStr
+if (-not [string]::IsNullOrWhiteSpace($prodJwtSecret)) {
+    if ($null -eq $appsettings.Jwt) {
+        $appsettings | Add-Member -NotePropertyName "Jwt" -NotePropertyValue ([pscustomobject]@{})
+    }
+    $appsettings.Jwt.SecretKey = $prodJwtSecret
+}
 $appsettings | ConvertTo-Json -Depth 10 | Set-Content $appsettingsPath
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
 Write-Host " [3/4] DANG KET NOI FTP VA DONG BO LEN SMARTERASP...     " -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
-
-$ftpBase = "ftp://win8082.site4now.net/site1"
-$ftpUser = "hung130903-001"
-$ftpPass = "Admin@123456"
 
 function Upload-FtpBytes($remoteRelPath, [byte[]]$bytes) {
     $uri = "$ftpBase/$remoteRelPath"

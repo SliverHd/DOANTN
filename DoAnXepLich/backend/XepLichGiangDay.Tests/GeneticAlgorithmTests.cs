@@ -953,6 +953,110 @@ public class GeneticAlgorithmTests
         Assert.Equal(20, pcDb.MaGiangVien);
     }
 
+    [Fact]
+    public async Task Test_29_BoDanhGia_TaoBoiCanhAsync_ChiNapNguyenVongDaDuyet_VaTinhDiemSc01CaTuan()
+    {
+        var db = TaoInMemoryDbContext(nameof(Test_29_BoDanhGia_TaoBoiCanhAsync_ChiNapNguyenVongDaDuyet_VaTinhDiemSc01CaTuan));
+
+        db.GiangVien.Add(new GiangVien { MaGiangVien = 25, HoTen = "Ngô Quang Hùng", TrangThai = "DangLamViec" });
+        db.LopHocPhan.Add(new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "390121_71HK2" });
+        db.ChiTietThoiKhoaBieu.AddRange(
+            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 3, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15 },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 1, Thu = 5, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 }
+        );
+        db.NguyenVongGiangVien.AddRange(
+            new NguyenVongGiangVien
+            {
+                MaHocKy = 1,
+                MaGiangVien = 25,
+                LoaiNguyenVong = "SC01",
+                Thu = null, // Cả tuần
+                TietBatDau = 1,
+                TietKetThuc = 3,
+                TrongSoPhat = 6,
+                TrangThai = "DaDuyet"
+            },
+            new NguyenVongGiangVien
+            {
+                MaHocKy = 1,
+                MaGiangVien = 25,
+                LoaiNguyenVong = "SC01",
+                Thu = 3,
+                TietBatDau = 4,
+                TietKetThuc = 6,
+                TrongSoPhat = 15,
+                TrangThai = "ChoDuyet" // Phải bị bỏ qua
+            },
+            new NguyenVongGiangVien
+            {
+                MaHocKy = 1,
+                MaGiangVien = 25,
+                LoaiNguyenVong = "SC02",
+                Thu = null,
+                TietBatDau = 10,
+                TietKetThuc = 15,
+                TrongSoPhat = 10,
+                TrangThai = "TuChoi" // Phải bị bỏ qua
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var boDanhGia = new BoDanhGiaPhuongAn(db, new BoKiemTraRangBuoc());
+        var boiCanh = await boDanhGia.TaoBoiCanhAsync(1);
+
+        Assert.Single(boiCanh.NguyenVongTheoGv[25]);
+
+        double diem = boDanhGia.TinhDiemNguyenVong(25, 1, boiCanh, out var canhBao);
+        Assert.Equal(6.0, diem);
+        Assert.Contains("Thứ 5, tiết 1-3", canhBao);
+    }
+
+    [Fact]
+    public void Test_30_BoDanhGia_SC06_TinhDungTheoNgayTuanVaKhuLopGhep()
+    {
+        var boiCanh = TaoBoiCanhCoBan();
+        boiCanh.GiangVienTheoMa[19] = new GiangVien { MaGiangVien = 19, HoTen = "Trần Thị Liễu" };
+        boiCanh.NguyenVongTheoGv[19] =
+        [
+            new NguyenVongGiangVien
+            {
+                MaGiangVien = 19,
+                LoaiNguyenVong = "SC06",
+                Thu = null,
+                TietBatDau = 1,
+                TietKetThuc = 6, // Tối đa 6 tiết/ngày
+                TrongSoPhat = 10,
+                TrangThai = "DaDuyet"
+            }
+        ];
+
+        // 3 lớp vào Thứ 2 nhưng:
+        // Lớp 1 (w1-10, 1-3, P.101) & Lớp 2 (w1-10, 1-3, P.101, cùng MaHocPhan=101) là lớp ghép -> chỉ tính 3 tiết
+        // Lớp 3 (w1-10, 4-6, P.202) -> +3 = 6 tiết (vừa đủ 6, chưa vượt)
+        // Lớp 4 (w11-20, 7-9, P.303) -> học nửa kỳ sau, không giao tuần với w1-10 -> max vẫn là 6
+        boiCanh.LopTheoMa[1] = new LopHocPhan { MaLopHocPhan = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L1" };
+        boiCanh.LopTheoMa[2] = new LopHocPhan { MaLopHocPhan = 2, MaHocPhan = 101, MaLopHocPhanTruong = "L2" };
+        boiCanh.LopTheoMa[3] = new LopHocPhan { MaLopHocPhan = 3, MaHocPhan = 102, MaLopHocPhanTruong = "L3" };
+        boiCanh.LopTheoMa[4] = new LopHocPhan { MaLopHocPhan = 4, MaHocPhan = 103, MaLopHocPhanTruong = "L4" };
+
+        boiCanh.ChiTietTheoLop[1] = [new ChiTietThoiKhoaBieu { MaLopHocPhan = 1, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10, PhongHoc = "101.H1" }];
+        boiCanh.ChiTietTheoLop[2] = [new ChiTietThoiKhoaBieu { MaLopHocPhan = 2, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10, PhongHoc = "101.H1" }];
+        boiCanh.ChiTietTheoLop[3] = [new ChiTietThoiKhoaBieu { MaLopHocPhan = 3, Thu = 2, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 10, PhongHoc = "202.H1" }];
+        boiCanh.ChiTietTheoLop[4] = [new ChiTietThoiKhoaBieu { MaLopHocPhan = 4, Thu = 2, TietBatDau = 7, TietKetThuc = 9, TuTuan = 11, DenTuan = 20, PhongHoc = "303.H1" }];
+
+        double khongVuot = _boDanhGia.TinhDiemGioiHanTietNgay(19, [1, 2, 3, 4], boiCanh, out var cb0);
+        Assert.Equal(0.0, khongVuot);
+        Assert.Empty(cb0);
+
+        // Thêm Lớp 5 (w1-10, Thứ 2, tiết 7-9) giao tuần với Lớp 1+3 -> 9 tiết trong 1 ngày (vượt 3 tiết * 10 = 30)
+        boiCanh.LopTheoMa[5] = new LopHocPhan { MaLopHocPhan = 5, MaHocPhan = 104, MaLopHocPhanTruong = "L5" };
+        boiCanh.ChiTietTheoLop[5] = [new ChiTietThoiKhoaBieu { MaLopHocPhan = 5, Thu = 2, TietBatDau = 7, TietKetThuc = 9, TuTuan = 5, DenTuan = 12, PhongHoc = "404.H1" }];
+
+        double vuot = _boDanhGia.TinhDiemGioiHanTietNgay(19, [1, 2, 3, 4, 5], boiCanh, out var cb1);
+        Assert.Equal(30.0, vuot);
+        Assert.Contains("9/6 tiết vào Thứ 2", cb1);
+    }
+
     private static AppDbContext TaoInMemoryDbContext(string dbName)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

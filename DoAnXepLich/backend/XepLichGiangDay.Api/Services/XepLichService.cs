@@ -531,11 +531,16 @@ public class XepLichService(
         var dsChiTiet = await context.ChiTietThoiKhoaBieu
             .Where(x => dsMaLop.Contains(x.MaLopHocPhan))
             .ToListAsync(cancellationToken);
-        var chiTietTheoLop = dsChiTiet.GroupBy(x => x.MaLopHocPhan).ToDictionary(g => g.Key, g => g.FirstOrDefault());
+        var chiTietTheoLop = dsChiTiet
+            .GroupBy(x => x.MaLopHocPhan)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-        var dsDinhMuc = await context.DinhMucGiangVien
+        var dsDinhMucRaw = await context.DinhMucGiangVien
             .Where(x => x.MaHocKy == maHocKy && (string.IsNullOrEmpty(x.TrangThai) || x.TrangThai == "DangApDung"))
-            .ToDictionaryAsync(x => x.MaGiangVien, cancellationToken);
+            .ToListAsync(cancellationToken);
+        var dsDinhMuc = dsDinhMucRaw
+            .GroupBy(x => x.MaGiangVien)
+            .ToDictionary(g => g.Key, g => g.First());
 
         var phanCongTheoGv = dsPhanCong.GroupBy(x => x.MaGiangVien).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -557,9 +562,12 @@ public class XepLichService(
                 item.SoTietToiDa = dm.SoTietToiDa;
             }
 
+            int maxTietTuan = 0;
+
             if (phanCongTheoGv.TryGetValue(gv.MaGiangVien, out var cacPhanCong))
             {
                 item.SoLopPhanCong = cacPhanCong.Count;
+                var cacBuoiHocRaw = new List<ChiTietThoiKhoaBieu>();
 
                 foreach (var pc in cacPhanCong)
                 {
@@ -568,15 +576,58 @@ public class XepLichService(
                         item.TongSoTinChi += hp.SoTinChi;
                     }
 
-                    if (chiTietTheoLop.TryGetValue(pc.MaLopHocPhan, out var ct) && ct != null)
+                    if (chiTietTheoLop.TryGetValue(pc.MaLopHocPhan, out var dsCtLop))
                     {
-                        int soTietLop = ct.TietKetThuc >= ct.TietBatDau ? (ct.TietKetThuc - ct.TietBatDau + 1) : 0;
-                        item.TongSoTietTuan += soTietLop;
+                        cacBuoiHocRaw.AddRange(dsCtLop);
+                    }
+                }
+
+                // Khử trùng lặp lớp ghép học chung môn, cùng thứ/tiết/tuần/phòng học
+                var cacBuoiHoc = cacBuoiHocRaw
+                    .GroupBy(b => (
+                        b.Thu,
+                        b.TietBatDau,
+                        b.TietKetThuc,
+                        b.TuTuan,
+                        b.DenTuan,
+                        MaHp: dsLop.TryGetValue(b.MaLopHocPhan, out var l) ? l.MaHocPhan : b.MaLopHocPhan,
+                        Phong: !string.IsNullOrWhiteSpace(b.PhongHoc)
+                            ? b.PhongHoc.Trim().ToUpperInvariant()
+                            : $"_LOP_{b.MaLopHocPhan}"
+                    ))
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (cacBuoiHoc.Count > 0)
+                {
+                    int minTuanHk = cacBuoiHoc.Min(b => b.TuTuan > 0 ? b.TuTuan : 1);
+                    int maxTuanHk = cacBuoiHoc.Max(b => b.DenTuan > 0 ? b.DenTuan : 15);
+                    if (maxTuanHk < minTuanHk) maxTuanHk = minTuanHk;
+
+                    for (int w = minTuanHk; w <= maxTuanHk; w++)
+                    {
+                        int soTietTuanW = 0;
+                        foreach (var b in cacBuoiHoc)
+                        {
+                            int tu = b.TuTuan > 0 ? b.TuTuan : 1;
+                            int den = b.DenTuan > 0 ? Math.Max(tu, b.DenTuan) : maxTuanHk;
+                            if (w >= tu && w <= den && b.TietKetThuc >= b.TietBatDau)
+                            {
+                                soTietTuanW += b.TietKetThuc - b.TietBatDau + 1;
+                            }
+                        }
+
+                        if (soTietTuanW > maxTietTuan)
+                        {
+                            maxTietTuan = soTietTuanW;
+                        }
                     }
                 }
             }
 
-            // Đánh giá trạng thái tải so với định mức cả học kỳ (mặc định 60 - 120 tiết)
+            item.TongSoTietTuan = maxTietTuan;
+
+            // Đánh giá trạng thái tải tuần so với định mức chuẩn
             bool isThinhGiang = (gv.ChucDanh != null && gv.ChucDanh.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase)) ||
                                 gv.HoTen.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase);
             bool isTroGiang = (gv.ChucDanh != null && gv.ChucDanh.Contains("trợ giảng", StringComparison.OrdinalIgnoreCase)) ||
@@ -584,7 +635,16 @@ public class XepLichService(
             int maxTuanChuan = isTroGiang ? 12 : (isThinhGiang ? 16 : 25);
             int minTuanChuan = isTroGiang ? 0 : (isThinhGiang ? 3 : 6);
             int maxTietTuanGv = (item.SoTietToiDa > 0 && item.SoTietToiDa <= maxTuanChuan) ? item.SoTietToiDa : maxTuanChuan;
-            int minTietTuanGv = item.SoTietToiThieu > 0 ? (item.SoTietToiThieu <= 30 ? item.SoTietToiThieu : (int)Math.Ceiling(item.SoTietToiThieu / 15.0)) : minTuanChuan;
+            int minTietTuanGv = minTuanChuan;
+            if (dsDinhMuc.ContainsKey(gv.MaGiangVien))
+            {
+                if (item.SoTietToiThieu >= 0 && (!isTroGiang || item.SoTietToiThieu > 0))
+                {
+                    minTietTuanGv = item.SoTietToiThieu > 30
+                        ? (int)Math.Ceiling(item.SoTietToiThieu / 15.0)
+                        : item.SoTietToiThieu;
+                }
+            }
             item.SoTietToiThieu = minTietTuanGv;
             item.SoTietToiDa = maxTietTuanGv;
 

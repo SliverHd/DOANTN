@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.NamHoc;
 using XepLichGiangDay.Api.Services;
@@ -6,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/nam-hoc")]
+[Authorize]
 public class NamHocController(NamHocService service) : ControllerBase
 {
     [HttpGet]
@@ -21,6 +23,7 @@ public class NamHocController(NamHocService service) : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(TaoNamHocDto dto)
     {
@@ -32,6 +35,7 @@ public class NamHocController(NamHocService service) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created!.MaNamHoc }, created);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, TaoNamHocDto dto)
     {
@@ -44,6 +48,7 @@ public class NamHocController(NamHocService service) : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

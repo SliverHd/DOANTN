@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.Services;
 
@@ -5,6 +6,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/thoi-khoa-bieu")]
+[Authorize]
 public class ThoiKhoaBieuController(ThoiKhoaBieuService service) : ControllerBase
 {
     [HttpGet]
@@ -14,6 +16,7 @@ public class ThoiKhoaBieuController(ThoiKhoaBieuService service) : ControllerBas
         return Ok(list);
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

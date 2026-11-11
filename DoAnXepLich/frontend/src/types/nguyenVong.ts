@@ -57,6 +57,7 @@ export interface NguyenVong {
   tenRangBuocMem: string
   loaiNguyenVong: string
   mucDo: number
+  khoaCungLichBan?: boolean
   thu?: number
   tietBatDau?: number
   tietKetThuc?: number
@@ -89,6 +90,7 @@ export interface ThemNguyenVongRequest {
   denTuan?: number
   trongSoPhat: number
   lyDo?: string
+  khoaCungLichBan?: boolean
 }
 
 export interface TaoNguyenVongDto {

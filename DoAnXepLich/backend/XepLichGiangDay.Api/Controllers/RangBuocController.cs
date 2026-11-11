@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.RangBuoc;
 using XepLichGiangDay.Api.Services;
@@ -6,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/rang-buoc")]
+[Authorize]
 public class RangBuocController(RangBuocService service) : ControllerBase
 {
     [HttpGet]
@@ -22,6 +24,7 @@ public class RangBuocController(RangBuocService service) : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> CapNhatTrongSo(int id, [FromBody] CapNhatRangBuocDto dto)
     {
@@ -51,6 +54,7 @@ public class RangBuocController(RangBuocService service) : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPost("dinh-muc")]
     public async Task<IActionResult> CapNhatDinhMuc([FromBody] CapNhatDinhMucDto dto)
     {
@@ -65,6 +69,7 @@ public class RangBuocController(RangBuocService service) : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPost("dinh-muc/ap-dung-chung")]
     public async Task<IActionResult> ApDungChung([FromBody] ApDungDinhMucChungDto dto)
     {
@@ -121,4 +126,3 @@ public class RangBuocController(RangBuocService service) : ControllerBase
         }
     }
 }
-

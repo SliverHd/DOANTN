@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.GiangVien;
 using XepLichGiangDay.Api.Services;
@@ -6,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/giang-vien")]
+[Authorize]
 public class GiangVienController(GiangVienService service) : ControllerBase
 {
     [HttpGet]
@@ -21,6 +23,7 @@ public class GiangVienController(GiangVienService service) : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPost]
     public async Task<ActionResult<GiangVienDto>> Create(TaoGiangVienDto dto)
     {
@@ -28,6 +31,7 @@ public class GiangVienController(GiangVienService service) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created.MaGiangVien }, created);
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, TaoGiangVienDto dto)
     {
@@ -35,6 +39,7 @@ public class GiangVienController(GiangVienService service) : ControllerBase
         return success ? NoContent() : NotFound();
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -46,13 +51,13 @@ public class GiangVienController(GiangVienService service) : ControllerBase
         return NoContent();
     }
 
-
     [HttpGet("{id:int}/nang-luc")]
     public async Task<ActionResult<List<NangLucGiangDayDto>>> GetNangLuc(int id)
     {
         return Ok(await service.LayNangLucAsync(id));
     }
 
+    [Authorize(Roles = "Admin,TruongBoMon")]
     [HttpPut("{id:int}/nang-luc")]
     public async Task<IActionResult> CapNhatNangLuc(int id, [FromBody] CapNhatNangLucDto dto)
     {

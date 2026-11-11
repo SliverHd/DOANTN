@@ -254,6 +254,10 @@ public class NguyenVongService(AppDbContext context)
         }
 
         var danhSach = await query.ToListAsync();
+        var dsLichBanNonSeminar = await context.LichBanGiangVien
+            .AsNoTracking()
+            .Where(x => x.MaHocKy == maHocKy && (x.LyDo == null || !x.LyDo.Contains("Seminar")))
+            .ToListAsync();
         var dsGvId = danhSach.Select(x => x.MaGiangVien).Distinct().ToList();
         var dsGiangVien = await context.GiangVien
             .Where(x => dsGvId.Contains(x.MaGiangVien))
@@ -269,6 +273,8 @@ public class NguyenVongService(AppDbContext context)
                 tenBm = bm.TenBoMon;
             }
             var (maRb, tenRb) = PhanTichMaRangBuoc(x.LoaiNguyenVong, x.NoiDungGoc);
+            var trangThai = string.IsNullOrEmpty(x.TrangThai) ? "ChoDuyet" : x.TrangThai;
+            bool khoaCungLichBan = KiemTraKhoaCungLichBan(x, trangThai, dsLichBanNonSeminar);
             return new NguyenVongDto
             {
                 MaNguyenVong = x.MaNguyenVong,
@@ -281,13 +287,14 @@ public class NguyenVongService(AppDbContext context)
                 TenRangBuocMem = tenRb,
                 LoaiNguyenVong = x.LoaiNguyenVong,
                 MucDo = x.MucDo,
+                KhoaCungLichBan = khoaCungLichBan,
                 Thu = x.Thu,
                 TietBatDau = x.TietBatDau,
                 TietKetThuc = x.TietKetThuc,
                 TrongSoPhat = x.TrongSoPhat,
                 NoiDungGoc = x.NoiDungGoc,
                 LyDo = x.NoiDungGoc,
-                TrangThai = string.IsNullOrEmpty(x.TrangThai) ? "ChoDuyet" : x.TrangThai,
+                TrangThai = trangThai,
                 NgayTao = x.NgayTao,
                 NgayDuyet = x.NgayDuyet,
                 GhiChuDuyet = x.GhiChuDuyet
@@ -298,6 +305,9 @@ public class NguyenVongService(AppDbContext context)
     public async Task<NguyenVongDto?> ThemNguyenVongAsync(ThemNguyenVongDto dto)
     {
         if (dto.MaHocKy <= 0 || dto.MaGiangVien <= 0) return null;
+
+        string loaiNv = string.IsNullOrWhiteSpace(dto.MaRangBuocMem) ? "SC01" : dto.MaRangBuocMem.Trim();
+        bool khoaCungLichBan = LaLoaiTranhGio(loaiNv) && dto.KhoaCungLichBan;
 
         string noiDung = dto.LyDo?.Trim() ?? string.Empty;
         if (dto.TuTuan.HasValue && dto.DenTuan.HasValue)
@@ -324,8 +334,8 @@ public class NguyenVongService(AppDbContext context)
         {
             MaGiangVien = dto.MaGiangVien,
             MaHocKy = dto.MaHocKy,
-            LoaiNguyenVong = string.IsNullOrWhiteSpace(dto.MaRangBuocMem) ? "SC01" : dto.MaRangBuocMem.Trim(),
-            MucDo = 1,
+            LoaiNguyenVong = loaiNv,
+            MucDo = khoaCungLichBan ? 2 : 1,
             Thu = dto.Thu.HasValue && dto.Thu.Value > 0 ? dto.Thu.Value : null,
             TietBatDau = dto.TietBatDau,
             TietKetThuc = dto.TietKetThuc,
@@ -359,6 +369,7 @@ public class NguyenVongService(AppDbContext context)
             TenRangBuocMem = tenRb,
             LoaiNguyenVong = entity.LoaiNguyenVong,
             MucDo = entity.MucDo,
+            KhoaCungLichBan = khoaCungLichBan,
             Thu = entity.Thu,
             TietBatDau = entity.TietBatDau,
             TietKetThuc = entity.TietKetThuc,
@@ -393,16 +404,9 @@ public class NguyenVongService(AppDbContext context)
 
         var danhSachLopBiHuy = new List<string>();
 
-        bool laNghiCaHocKy = !string.IsNullOrWhiteSpace(nv.NoiDungGoc) && (
-            nv.NoiDungGoc.Contains("Cả học kỳ", StringComparison.OrdinalIgnoreCase) ||
-            nv.NoiDungGoc.Contains("Tuần 1-20", StringComparison.OrdinalIgnoreCase) ||
-            nv.NoiDungGoc.Contains("cả kỳ", StringComparison.OrdinalIgnoreCase));
-
         bool laNguyenVongNghiDay =
-            (nv.LoaiNguyenVong == "SC01" ||
-             nv.LoaiNguyenVong == "TranhDay" ||
-             nv.LoaiNguyenVong == "XinNghi") &&
-            laNghiCaHocKy;
+            LaLoaiTranhGio(nv.LoaiNguyenVong) &&
+            (nv.MucDo >= 2 || (nv.MucDo == 0 && LaNoiDungCaHocKy(nv.NoiDungGoc)));
 
         if (laNguyenVongNghiDay && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
         {
@@ -479,9 +483,19 @@ public class NguyenVongService(AppDbContext context)
             tenBm = bm?.TenBoMon;
         }
 
-        string thongDiep = danhSachLopBiHuy.Count > 0
-            ? $"Đã duyệt đơn xin nghỉ của {tenGv}. Đã hủy phân công của giảng viên tại {danhSachLopBiHuy.Count} lớp trùng ca: {string.Join(", ", danhSachLopBiHuy)}. Các lớp này hiện ở trạng thái Chưa phân công để xếp giảng viên khác."
-            : $"Đã duyệt đơn xin nghỉ của {tenGv} thành công. (Giảng viên chưa có lớp nào được phân công trùng vào ca này).";
+        string thongDiep;
+        if (!laNguyenVongNghiDay)
+        {
+            thongDiep = $"Đã duyệt nguyện vọng mềm của {tenGv} thành công (áp dụng điểm phạt khi xếp lịch, không khóa cứng lịch bận).";
+        }
+        else if (danhSachLopBiHuy.Count > 0)
+        {
+            thongDiep = $"Đã duyệt và khóa cứng lịch bận của {tenGv}. Đã hủy phân công của giảng viên tại {danhSachLopBiHuy.Count} lớp trùng ca: {string.Join(", ", danhSachLopBiHuy)}. Các lớp này hiện ở trạng thái Chưa phân công để xếp giảng viên khác.";
+        }
+        else
+        {
+            thongDiep = $"Đã duyệt và khóa cứng lịch bận của {tenGv} thành công. (Giảng viên chưa có lớp nào được phân công trùng vào ca này).";
+        }
 
         var (maRb, tenRb) = PhanTichMaRangBuoc(nv.LoaiNguyenVong, nv.NoiDungGoc);
 
@@ -503,6 +517,7 @@ public class NguyenVongService(AppDbContext context)
                 TenRangBuocMem = tenRb,
                 LoaiNguyenVong = nv.LoaiNguyenVong,
                 MucDo = nv.MucDo,
+                KhoaCungLichBan = laNguyenVongNghiDay,
                 Thu = nv.Thu,
                 TietBatDau = nv.TietBatDau,
                 TietKetThuc = nv.TietKetThuc,
@@ -536,7 +551,10 @@ public class NguyenVongService(AppDbContext context)
             nv.GhiChuDuyet = ghiChu.Trim();
         }
 
-        if (nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
+        bool coTheCoLichBanCung = LaLoaiTranhGio(nv.LoaiNguyenVong) &&
+            (nv.MucDo >= 2 || (nv.MucDo == 0 && LaNoiDungCaHocKy(nv.NoiDungGoc)));
+
+        if (coTheCoLichBanCung && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
         {
             var cacThuCanXoa = (nv.Thu.HasValue && nv.Thu.Value > 0)
                 ? new List<int> { nv.Thu.Value }
@@ -569,12 +587,21 @@ public class NguyenVongService(AppDbContext context)
         };
     }
 
+    public async Task<int?> LayMaGiangVienCuaNguyenVongAsync(int maNguyenVong)
+    {
+        return await context.NguyenVongGiangVien
+            .AsNoTracking()
+            .Where(x => x.MaNguyenVong == maNguyenVong)
+            .Select(x => (int?)x.MaGiangVien)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<bool> XoaNguyenVongAsync(int maNguyenVong)
     {
         var item = await context.NguyenVongGiangVien.FindAsync(maNguyenVong);
         if (item is null) return false;
 
-        if (item.TietBatDau.HasValue && item.TietKetThuc.HasValue)
+        if (LaLoaiTranhGio(item.LoaiNguyenVong) && item.TietBatDau.HasValue && item.TietKetThuc.HasValue)
         {
             var cacThuCanXoa = (item.Thu.HasValue && item.Thu.Value > 0)
                 ? new List<int> { item.Thu.Value }
@@ -587,15 +614,59 @@ public class NguyenVongService(AppDbContext context)
                 x.TietBatDau == item.TietBatDau.Value &&
                 x.TietKetThuc == item.TietKetThuc.Value &&
                 (x.LyDo == null || !x.LyDo.Contains("Seminar"))).ToListAsync();
-            if (dsLbCu.Count > 0)
+
+            var dsLbCanXoa = (item.MucDo >= 2 || item.MucDo == 0)
+                ? dsLbCu
+                : dsLbCu.Where(x => !string.IsNullOrWhiteSpace(item.NoiDungGoc) &&
+                                    !string.IsNullOrWhiteSpace(x.LyDo) &&
+                                    x.LyDo.Contains(item.NoiDungGoc)).ToList();
+
+            if (dsLbCanXoa.Count > 0)
             {
-                context.LichBanGiangVien.RemoveRange(dsLbCu);
+                context.LichBanGiangVien.RemoveRange(dsLbCanXoa);
             }
         }
 
         context.NguyenVongGiangVien.Remove(item);
         await context.SaveChangesAsync();
         return true;
+    }
+
+    private static bool LaLoaiTranhGio(string? loai)
+    {
+        var ma = loai?.Trim();
+        return ma == "SC01" || ma == "TranhDay" || ma == "XinNghi";
+    }
+
+    private static bool LaNoiDungCaHocKy(string? noiDung)
+    {
+        return !string.IsNullOrWhiteSpace(noiDung) && (
+            noiDung.Contains("Cả học kỳ", StringComparison.OrdinalIgnoreCase) ||
+            noiDung.Contains("Tuần 1-20", StringComparison.OrdinalIgnoreCase) ||
+            noiDung.Contains("cả kỳ", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool KiemTraKhoaCungLichBan(
+        NguyenVongGiangVien nv,
+        string trangThai,
+        List<LichBanGiangVien> dsLichBanNonSeminar)
+    {
+        if (!LaLoaiTranhGio(nv.LoaiNguyenVong)) return false;
+
+        if (trangThai == "DaDuyet" && nv.TietBatDau.HasValue && nv.TietKetThuc.HasValue)
+        {
+            var cacThuApDung = (nv.Thu.HasValue && nv.Thu.Value > 0)
+                ? new[] { nv.Thu.Value }
+                : new[] { 2, 3, 4, 5, 6, 7, 8 };
+
+            return cacThuApDung.All(thu => dsLichBanNonSeminar.Any(lb =>
+                lb.MaGiangVien == nv.MaGiangVien &&
+                lb.Thu == thu &&
+                lb.TietBatDau == nv.TietBatDau.Value &&
+                lb.TietKetThuc == nv.TietKetThuc.Value));
+        }
+
+        return nv.MucDo >= 2 || (nv.MucDo == 0 && LaNoiDungCaHocKy(nv.NoiDungGoc));
     }
 
     public static (string MaRb, string TenRb) PhanTichMaRangBuoc(string? loai, string? noiDung)
@@ -605,7 +676,7 @@ public class NguyenVongService(AppDbContext context)
         return loai.Trim() switch
         {
             "SC01" or "TranhDay" => ("SC01", "Tránh khung giờ / tiết bận cụ thể"),
-            "SC02" => ("SC02", "Tránh dạy ca tối (Tiết 10 - 12)"),
+            "SC02" => ("SC02", "Tránh dạy ca tối (Tiết 10 - 15)"),
             "SC03" => ("SC03", "Tránh dạy ngày Thứ Bảy / Chủ Nhật"),
             "SC04" or "ThichDay" => ("SC04", "Ưu tiên dạy buổi sáng (Tiết 1 - 6)"),
             "SC05" => ("SC05", "Ưu tiên dạy buổi chiều (Tiết 7 - 12)"),

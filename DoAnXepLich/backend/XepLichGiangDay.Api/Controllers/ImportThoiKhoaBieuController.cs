@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.Import;
 using XepLichGiangDay.Api.Services;
@@ -13,6 +14,7 @@ public class ImportThoiKhoaBieuRequest
 
 [ApiController]
 [Route("api/import-thoi-khoa-bieu")]
+[Authorize(Roles = "Admin,TruongBoMon")]
 public class ImportThoiKhoaBieuController(ImportThoiKhoaBieuService importService) : ControllerBase
 {
     [HttpPost("preview")]

@@ -1,9 +1,13 @@
 using ClosedXML.Excel;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using XepLichGiangDay.Api.Controllers;
 using XepLichGiangDay.Api.Data;
+using XepLichGiangDay.Api.DTOs.XepLich;
 using XepLichGiangDay.Api.Models.Entities;
 using XepLichGiangDay.Api.Services;
 using XepLichGiangDay.Api.Services.RangBuoc;
+using XepLichGiangDay.Api.Services.ThuatToan;
 
 namespace XepLichGiangDay.Tests;
 
@@ -133,5 +137,145 @@ public class XepLichServiceTests
         Assert.Equal(6, lop.DanhSachBuoiHoc[1].Thu);
         Assert.True(lop.CoLichTamNghi);
         Assert.Equal("18", lop.TuanTamNghi);
+    }
+
+    [Fact]
+    public async Task LayThongKeTaiAsync_DemDuNhieuBuoiHoc_KhuLopGhep_VaTinhTaiTuanCaoDiem()
+    {
+        using var db = TaoInMemoryDb(nameof(LayThongKeTaiAsync_DemDuNhieuBuoiHoc_KhuLopGhep_VaTinhTaiTuanCaoDiem));
+        db.HocKy.Add(new HocKy { MaHocKy = 8, MaNamHoc = 1, TenHocKy = "HK8" });
+        db.HocPhan.AddRange(
+            new HocPhan { MaHocPhan = 17, TenHocPhan = "Giải tích 1", SoTinChi = 3 },
+            new HocPhan { MaHocPhan = 19, TenHocPhan = "Giải tích ứng dụng", SoTinChi = 3 }
+        );
+        db.GiangVien.AddRange(
+            new GiangVien { MaGiangVien = 19, HoTen = "Trần Thị Liễu", Email = "lieu@huce.edu.vn", TrangThai = "DangLamViec" },
+            new GiangVien { MaGiangVien = 22, HoTen = "Vũ Thị Thủy", Email = "thuy@huce.edu.vn", TrangThai = "DangLamViec" }
+        );
+
+        // GV 19 dạy 1 lớp có 2 buổi (3t + 3t = 6 tiết/tuần -> đạt tối thiểu 6 tiết, BinhThuong)
+        db.LopHocPhan.Add(new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 8, MaHocPhan = 19, MaLopHocPhanTruong = "398803_71CS1" });
+        db.ChiTietThoiKhoaBieu.AddRange(
+            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 2, TietBatDau = 4, TietKetThuc = 6, PhongHoc = "H3.67", TuTuan = 6, DenTuan = 15 },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 1, Thu = 4, TietBatDau = 1, TietKetThuc = 3, PhongHoc = "H3.61", TuTuan = 6, DenTuan = 14 }
+        );
+        db.PhanCongGiangDay.Add(new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 1, MaGiangVien = 19, TrangThai = "DuKien" });
+
+        // GV 22 dạy 2 lớp ghép cùng giờ/phòng (6t thực tế) + các lớp khác lên tới 26 tiết ở tuần 6 (QuaTai > 25),
+        // và thêm 1 lớp ở tuần 18-25 (không cộng dồn sang tuần 6)
+        db.LopHocPhan.AddRange(
+            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 8, MaHocPhan = 17, MaLopHocPhanTruong = "GHEP_1" },
+            new LopHocPhan { MaLopHocPhan = 3, MaHocKy = 8, MaHocPhan = 17, MaLopHocPhanTruong = "GHEP_2" },
+            new LopHocPhan { MaLopHocPhan = 4, MaHocKy = 8, MaHocPhan = 19, MaLopHocPhanTruong = "LOP_A" },
+            new LopHocPhan { MaLopHocPhan = 5, MaHocKy = 8, MaHocPhan = 19, MaLopHocPhanTruong = "LOP_B" },
+            new LopHocPhan { MaLopHocPhan = 6, MaHocKy = 8, MaHocPhan = 19, MaLopHocPhanTruong = "LOP_KY_SAU" }
+        );
+        db.ChiTietThoiKhoaBieu.AddRange(
+            // GHEP_1 và GHEP_2 cùng môn 17, cùng phòng 501.H1, tuần 6-15 -> chỉ tính 6 tiết
+            new ChiTietThoiKhoaBieu { MaChiTiet = 3, MaLopHocPhan = 2, Thu = 2, TietBatDau = 1, TietKetThuc = 6, PhongHoc = "501.H1", TuTuan = 6, DenTuan = 15 },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 4, MaLopHocPhan = 3, Thu = 2, TietBatDau = 1, TietKetThuc = 6, PhongHoc = "501.H1", TuTuan = 6, DenTuan = 15 },
+            // LOP_A: Thứ 3 (10 tiết) tuần 6-15
+            new ChiTietThoiKhoaBieu { MaChiTiet = 5, MaLopHocPhan = 4, Thu = 3, TietBatDau = 1, TietKetThuc = 5, PhongHoc = "601.H1", TuTuan = 6, DenTuan = 15 },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 6, MaLopHocPhan = 4, Thu = 3, TietBatDau = 7, TietKetThuc = 11, PhongHoc = "601.H1", TuTuan = 6, DenTuan = 15 },
+            // LOP_B: Thứ 5 (10 tiết) tuần 6-15 => Tổng tuần 6 = 6 + 10 + 10 = 26 tiết (> 25)
+            new ChiTietThoiKhoaBieu { MaChiTiet = 7, MaLopHocPhan = 5, Thu = 5, TietBatDau = 1, TietKetThuc = 5, PhongHoc = "602.H1", TuTuan = 6, DenTuan = 15 },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 8, MaLopHocPhan = 5, Thu = 5, TietBatDau = 7, TietKetThuc = 11, PhongHoc = "602.H1", TuTuan = 6, DenTuan = 15 },
+            // LOP_KY_SAU: Tuần 18-25 (6 tiết) - không cộng vào tuần 6
+            new ChiTietThoiKhoaBieu { MaChiTiet = 9, MaLopHocPhan = 6, Thu = 4, TietBatDau = 1, TietKetThuc = 6, PhongHoc = "603.H1", TuTuan = 18, DenTuan = 25 }
+        );
+        db.PhanCongGiangDay.AddRange(
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 2, MaGiangVien = 22, TrangThai = "DuKien" },
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 3, MaGiangVien = 22, TrangThai = "DuKien" },
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 4, MaGiangVien = 22, TrangThai = "DuKien" },
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 5, MaGiangVien = 22, TrangThai = "DuKien" },
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 6, MaGiangVien = 22, TrangThai = "DuKien" }
+        );
+        await db.SaveChangesAsync();
+
+        var service = new XepLichService(db, new BoKiemTraRangBuoc());
+        var ds = await service.LayThongKeTaiAsync(8);
+
+        var lieu = ds.First(x => x.MaGiangVien == 19);
+        Assert.Equal(6, lieu.TongSoTietTuan);
+        Assert.Equal("BinhThuong", lieu.TrangThaiTai);
+
+        var thuy = ds.First(x => x.MaGiangVien == 22);
+        Assert.Equal(26, thuy.TongSoTietTuan);
+        Assert.Equal("QuaTai", thuy.TrangThaiTai);
+    }
+
+    private sealed class FakeSchedulingAlgorithm(
+        string tenThuatToan,
+        Func<DuLieuXepLichDto, Task<KetQuaXepLichDto>> handler) : ISchedulingAlgorithm
+    {
+        public string TenThuatToan => tenThuatToan;
+        public Task<KetQuaXepLichDto> ChayAsync(DuLieuXepLichDto duLieu, CancellationToken cancellationToken = default)
+            => handler(duLieu);
+    }
+
+    [Fact]
+    public async Task XepLichController_SoSanhThuatToan_VanTraVeKetQuaGa_KhiCpSatLoiNativeOrTools()
+    {
+        using var db = TaoInMemoryDb(nameof(XepLichController_SoSanhThuatToan_VanTraVeKetQuaGa_KhiCpSatLoiNativeOrTools));
+        db.HocKy.Add(new HocKy { MaHocKy = 8, MaNamHoc = 1, TenHocKy = "Học kỳ 8" });
+        await db.SaveChangesAsync();
+
+        var algorithms = new ISchedulingAlgorithm[]
+        {
+            new FakeSchedulingAlgorithm("CP_SAT", _ => throw new TypeInitializationException(
+                "Google.OrTools.Sat.CpModel",
+                new DllNotFoundException("Unable to load DLL 'google-ortools-native'"))),
+            new FakeSchedulingAlgorithm("GA", _ => Task.FromResult(new KetQuaXepLichDto
+            {
+                ThuatToan = "GA",
+                TrangThai = "ThanhCong",
+                TongDiemPhat = 12.5,
+                SoViPhamCung = 0
+            }))
+        };
+        var lockService = new HocKyLockService();
+        var controller = new XepLichController(
+            algorithms,
+            new XepLichService(db, new BoKiemTraRangBuoc()),
+            lockService);
+
+        var actionResult = await controller.SoSanhThuatToan(new YeuCauXepLichDto { MaHocKy = 8 }, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(actionResult.Result);
+        var dto = Assert.IsType<SoSanhThuatToanDto>(ok.Value);
+        Assert.Equal("KhongHoTroMoiTruong", dto.KetQuaCpSat.TrangThai);
+        Assert.Contains("CP-SAT", dto.KetQuaCpSat.ThongDiep);
+        Assert.Equal("ThanhCong", dto.KetQuaGa.TrangThai);
+        Assert.Equal(12.5, dto.KetQuaGa.TongDiemPhat);
+        Assert.False(lockService.DangChay(8));
+    }
+
+    [Fact]
+    public async Task XepLichController_ChayXepLich_TraVeBadRequest_KhiCpSatLoiNativeOrTools()
+    {
+        using var db = TaoInMemoryDb(nameof(XepLichController_ChayXepLich_TraVeBadRequest_KhiCpSatLoiNativeOrTools));
+        var algorithms = new ISchedulingAlgorithm[]
+        {
+            new FakeSchedulingAlgorithm("CP_SAT", _ => throw new TypeInitializationException(
+                "Google.OrTools.Sat.CpModel",
+                new BadImageFormatException("32-bit/64-bit mismatch")))
+        };
+        var lockService = new HocKyLockService();
+        var controller = new XepLichController(
+            algorithms,
+            new XepLichService(db, new BoKiemTraRangBuoc()),
+            lockService);
+
+        var actionResult = await controller.ChayXepLich(new YeuCauXepLichDto
+        {
+            MaHocKy = 8,
+            ThuatToan = "CP_SAT"
+        }, CancellationToken.None);
+
+        var badReq = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
+        var problem = Assert.IsType<ProblemDetails>(badReq.Value);
+        Assert.Contains("CP-SAT", problem.Detail ?? string.Empty);
+        Assert.Contains("GA", problem.Detail ?? string.Empty);
+        Assert.False(lockService.DangChay(8));
     }
 }

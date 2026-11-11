@@ -82,17 +82,12 @@ function Login() {
 
           <button
             type="submit"
-            className="btn btn-primary w-100 mb-3"
+            className="btn btn-primary w-100"
             disabled={dangXuLy}
           >
             {dangXuLy ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
-
-        <div className="border-top pt-3 text-muted small">
-          <div>Tài khoản quản trị mặc định:</div>
-          <div className="fw-semibold text-dark">admin / admin123</div>
-        </div>
       </div>
     </div>
   )

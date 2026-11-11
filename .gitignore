@@ -34,3 +34,4 @@ PROJECT_OVERVIEW.md
 publish_site/
 deploy.zip
 **/wwwroot/
+.env.deploy.ps1

@@ -46,9 +46,14 @@ function Dashboard() {
       })
       setKetQuaSoSanh(res.data)
     } catch (err: unknown) {
+      const data = (err as { response?: { data?: unknown } })?.response?.data
       const errorMsg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        'Có lỗi xảy ra trong quá trình chạy thử nghiệm thuật toán.'
+        typeof data === 'string'
+          ? data
+          : (data as { detail?: string; thongDiep?: string; title?: string })?.detail ||
+            (data as { detail?: string; thongDiep?: string; title?: string })?.thongDiep ||
+            (data as { detail?: string; thongDiep?: string; title?: string })?.title ||
+            'Có lỗi xảy ra trong quá trình chạy thử nghiệm thuật toán.'
       setLoi(errorMsg)
     } finally {
       setDangChay(false)
@@ -57,6 +62,12 @@ function Dashboard() {
 
   const cpSat = ketQuaSoSanh?.ketQuaCpSat
   const ga = ketQuaSoSanh?.ketQuaGa
+  const cpSatKhaDung =
+    !!cpSat &&
+    cpSat.trangThai !== 'KhongHoTroMoiTruong' &&
+    cpSat.trangThai !== 'VoNghiem' &&
+    cpSat.trangThai !== 'KhongTimThay' &&
+    cpSat.trangThai !== 'KhongCoLop'
 
   return (
     <section>
@@ -81,7 +92,11 @@ function Dashboard() {
             className="form-select form-select-sm"
             style={{ width: 'auto', minWidth: '180px' }}
             value={maHocKy}
-            onChange={(e) => setMaHocKy(Number(e.target.value))}
+            onChange={(e) => {
+              setMaHocKy(Number(e.target.value))
+              setKetQuaSoSanh(null)
+              setLoi('')
+            }}
             disabled={dangChay}
           >
             {danhSachHocKy.map((hk) => (
@@ -150,6 +165,12 @@ function Dashboard() {
             <span className="badge bg-secondary">Cùng ngữ cảnh & cấu hình học kỳ</span>
           </div>
 
+          {cpSat.trangThai === 'KhongHoTroMoiTruong' && cpSat.thongDiep && (
+            <div className="alert alert-warning rounded-0 mb-0 border-0 border-bottom small">
+              <strong>⚠️ Lưu ý môi trường máy chủ:</strong> {cpSat.thongDiep}
+            </div>
+          )}
+
           <div className="card-body p-0 table-responsive">
             <table className="table table-bordered table-hover align-middle mb-0">
               <thead className="table-light text-center small">
@@ -175,11 +196,17 @@ function Dashboard() {
                     <div className="text-muted small">Tốc độ tìm ra phương án tối ưu</div>
                   </td>
                   <td className="text-center">
-                    <span className="badge bg-primary-subtle text-primary fs-6 px-3 py-2">
-                      {cpSat.thoiGianChayGiay ?? (cpSat.thoiGianChayMiligiay ? (cpSat.thoiGianChayMiligiay / 1000).toFixed(2) : '0')} giây
-                    </span>
-                    {(cpSat.thoiGianChayMiligiay ?? 0) <= (ga.thoiGianChayMiligiay ?? 0) && (
-                      <span className="badge bg-success ms-2 small">Nhanh hơn</span>
+                    {cpSat.trangThai === 'KhongHoTroMoiTruong' ? (
+                      <span className="badge bg-secondary-subtle text-secondary px-3 py-2">N/A</span>
+                    ) : (
+                      <>
+                        <span className="badge bg-primary-subtle text-primary fs-6 px-3 py-2">
+                          {cpSat.thoiGianChayGiay ?? (cpSat.thoiGianChayMiligiay ? (cpSat.thoiGianChayMiligiay / 1000).toFixed(2) : '0')} giây
+                        </span>
+                        {cpSatKhaDung && (cpSat.thoiGianChayMiligiay ?? 0) <= (ga.thoiGianChayMiligiay ?? 0) && (
+                          <span className="badge bg-success ms-2 small">Nhanh hơn</span>
+                        )}
+                      </>
                     )}
                   </td>
                   <td className="text-center">
@@ -202,6 +229,8 @@ function Dashboard() {
                           ? 'bg-success'
                           : cpSat.trangThai === 'KhaThi' || cpSat.trangThai === 'KhaThiMotPhan'
                           ? 'bg-info text-dark'
+                          : cpSat.trangThai === 'KhongHoTroMoiTruong'
+                          ? 'bg-warning text-dark'
                           : 'bg-danger'
                       } px-3 py-1`}
                     >
@@ -209,6 +238,8 @@ function Dashboard() {
                         ? 'Tối ưu toàn cục (Optimal)'
                         : cpSat.trangThai === 'KhaThiMotPhan'
                         ? 'Khả thi một phần'
+                        : cpSat.trangThai === 'KhongHoTroMoiTruong'
+                        ? 'Không hỗ trợ máy chủ (32-bit)'
                         : cpSat.trangThai}
                     </span>
                   </td>
@@ -226,13 +257,17 @@ function Dashboard() {
                     <div className="text-muted small">Trùng lịch, sai chuyên môn, lịch bận</div>
                   </td>
                   <td className="text-center">
-                    <span
-                      className={`badge fs-6 ${
-                        (cpSat.soViPhamCung ?? 0) === 0 ? 'bg-success' : 'bg-danger'
-                      }`}
-                    >
-                      {cpSat.soViPhamCung ?? 0} vi phạm
-                    </span>
+                    {cpSat.trangThai === 'KhongHoTroMoiTruong' ? (
+                      <span className="text-muted">N/A</span>
+                    ) : (
+                      <span
+                        className={`badge fs-6 ${
+                          (cpSat.soViPhamCung ?? 0) === 0 ? 'bg-success' : 'bg-danger'
+                        }`}
+                      >
+                        {cpSat.soViPhamCung ?? 0} vi phạm
+                      </span>
+                    )}
                   </td>
                   <td className="text-center">
                     <span
@@ -252,9 +287,15 @@ function Dashboard() {
                     <div className="text-muted small">Càng thấp phương án càng tối ưu</div>
                   </td>
                   <td className="text-center fw-bold fs-6 text-primary">
-                    {Math.round(cpSat.tongDiemPhat)} điểm
-                    {cpSat.tongDiemPhat <= ga.tongDiemPhat && (
-                      <span className="badge bg-success ms-2 small">Tối ưu hơn</span>
+                    {cpSat.trangThai === 'KhongHoTroMoiTruong' ? (
+                      <span className="text-muted fw-normal">N/A</span>
+                    ) : (
+                      <>
+                        {Math.round(cpSat.tongDiemPhat)} điểm
+                        {cpSatKhaDung && cpSat.tongDiemPhat <= ga.tongDiemPhat && (
+                          <span className="badge bg-success ms-2 small">Tối ưu hơn</span>
+                        )}
+                      </>
                     )}
                   </td>
                   <td className="text-center fw-bold fs-6 text-secondary">
@@ -268,7 +309,7 @@ function Dashboard() {
                     - Điểm phạt nguyện vọng giáo viên
                     <div className="text-muted small">Tránh ca tối, cuối tuần, đúng ca sáng/chiều</div>
                   </td>
-                  <td className="text-center">{Math.round(cpSat.diemPhatNguyenVong ?? 0)}</td>
+                  <td className="text-center">{cpSat.trangThai === 'KhongHoTroMoiTruong' ? 'N/A' : Math.round(cpSat.diemPhatNguyenVong ?? 0)}</td>
                   <td className="text-center">{Math.round(ga.diemPhatNguyenVong ?? 0)}</td>
                 </tr>
 
@@ -278,7 +319,7 @@ function Dashboard() {
                     - Điểm phạt cân bằng tải tuần
                     <div className="text-muted small">Quá tải tuần (&gt;25 tiết) &amp; thiếu tải</div>
                   </td>
-                  <td className="text-center">{Math.round(cpSat.diemPhatCanBangTai ?? 0)}</td>
+                  <td className="text-center">{cpSat.trangThai === 'KhongHoTroMoiTruong' ? 'N/A' : Math.round(cpSat.diemPhatCanBangTai ?? 0)}</td>
                   <td className="text-center">{Math.round(ga.diemPhatCanBangTai ?? 0)}</td>
                 </tr>
 
@@ -288,7 +329,7 @@ function Dashboard() {
                     - Điểm phạt gom lịch dạy
                     <div className="text-muted small">Tránh tiết trống giữa ca &amp; rải ngày</div>
                   </td>
-                  <td className="text-center">{Math.round(cpSat.diemPhatGomLich ?? 0)}</td>
+                  <td className="text-center">{cpSat.trangThai === 'KhongHoTroMoiTruong' ? 'N/A' : Math.round(cpSat.diemPhatGomLich ?? 0)}</td>
                   <td className="text-center">{Math.round(ga.diemPhatGomLich ?? 0)}</td>
                 </tr>
 
@@ -298,10 +339,16 @@ function Dashboard() {
                     📋 Số lớp đã phân công / Chưa phân công
                   </td>
                   <td className="text-center">
-                    <span className="text-success fw-bold">
-                      {cpSat.danhSachPhanCong?.length ?? 0}
-                    </span>{' '}
-                    / {cpSat.soLopChuaPhanCong ?? 0} lớp chưa phân
+                    {cpSat.trangThai === 'KhongHoTroMoiTruong' ? (
+                      <span className="text-muted">N/A</span>
+                    ) : (
+                      <>
+                        <span className="text-success fw-bold">
+                          {cpSat.danhSachPhanCong?.length ?? 0}
+                        </span>{' '}
+                        / {cpSat.soLopChuaPhanCong ?? 0} lớp chưa phân
+                      </>
+                    )}
                   </td>
                   <td className="text-center">
                     <span className="text-success fw-bold">
@@ -315,7 +362,15 @@ function Dashboard() {
           </div>
 
           <div className="card-footer bg-light p-3 small">
-            <strong>💡 Kết luận khoa học:</strong> Bộ giải <strong>CP-SAT (Google OR-Tools)</strong> cho tốc độ thực thi nhanh vượt trội, đảm bảo 100% không vi phạm ràng buộc cứng và luôn tìm ra nghiệm tối ưu toàn cục (Optimal Bound). Giải thuật Di truyền (GA) mang tính ngẫu nhiên tiếp cận tiệm cận qua nhiều thế hệ tiến hóa.
+            {cpSat.trangThai === 'KhongHoTroMoiTruong' ? (
+              <>
+                <strong>💡 Thông tin thực nghiệm:</strong> Môi trường máy chủ web 32-bit không tải được native <strong>CP-SAT (Google OR-Tools)</strong>, hệ thống đã tự động hoàn thành chạy kiểm thử với <strong>Genetic Algorithm (GA)</strong> mà không gây gián đoạn.
+              </>
+            ) : (
+              <>
+                <strong>💡 Kết luận khoa học:</strong> Bộ giải <strong>CP-SAT (Google OR-Tools)</strong> cho tốc độ thực thi nhanh vượt trội, đảm bảo 100% không vi phạm ràng buộc cứng và luôn tìm ra nghiệm tối ưu toàn cục (Optimal Bound). Giải thuật Di truyền (GA) mang tính ngẫu nhiên tiếp cận tiệm cận qua nhiều thế hệ tiến hóa.
+              </>
+            )}
           </div>
         </div>
       )}

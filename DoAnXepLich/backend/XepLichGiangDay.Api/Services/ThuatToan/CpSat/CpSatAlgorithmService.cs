@@ -370,6 +370,101 @@ public class CpSatAlgorithmService(
             objectiveTerms.Add(underloadHocKy * trongSoUnderload);
         }
 
+        // w5 * P5: Phạt vượt giới hạn số tiết tối đa / ngày theo nguyện vọng SC06
+        foreach (var (maGv, dsLopCuaGv) in lopTheoGv)
+        {
+            if (dsLopCuaGv.Count == 0) continue;
+            if (!boiCanh.NguyenVongTheoGv.TryGetValue(maGv, out var dsNvGv) || dsNvGv.Count == 0) continue;
+
+            var dsSc06 = dsNvGv
+                .Where(nv => string.Equals(nv.LoaiNguyenVong?.Trim(), "SC06", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (dsSc06.Count == 0) continue;
+
+            var buoiTheoNgayTuan = new Dictionary<int, Dictionary<int, List<(int MaLop, long SoTiet)>>>();
+            foreach (var maLop in dsLopCuaGv)
+            {
+                var dsBuoi = boiCanh.ChiTietTheoLop.GetValueOrDefault(maLop) ?? [];
+                foreach (var ct in dsBuoi)
+                {
+                    int soTiet = ct.TietKetThuc >= ct.TietBatDau ? ct.TietKetThuc - ct.TietBatDau + 1 : 0;
+                    if (soTiet <= 0 || ct.Thu < 2 || ct.Thu > 8) continue;
+
+                    int tuTuan = ct.TuTuan > 0 ? ct.TuTuan : 1;
+                    int denTuan = ct.DenTuan > 0 ? Math.Max(tuTuan, ct.DenTuan) : Math.Max(tuTuan, 15);
+
+                    if (!buoiTheoNgayTuan.TryGetValue(ct.Thu, out var theoTuan))
+                    {
+                        theoTuan = [];
+                        buoiTheoNgayTuan[ct.Thu] = theoTuan;
+                    }
+
+                    for (int w = tuTuan; w <= denTuan; w++)
+                    {
+                        if (!theoTuan.TryGetValue(w, out var list))
+                        {
+                            list = [];
+                            theoTuan[w] = list;
+                        }
+                        list.Add((maLop, soTiet));
+                    }
+                }
+            }
+
+            int sc06Idx = 0;
+            foreach (var nv in dsSc06)
+            {
+                int maxTietNgay = (nv.TietKetThuc.HasValue && nv.TietBatDau.HasValue && nv.TietKetThuc.Value >= nv.TietBatDau.Value)
+                    ? (nv.TietKetThuc.Value - nv.TietBatDau.Value + 1)
+                    : (nv.TietKetThuc is > 0 ? nv.TietKetThuc.Value : 6);
+                double trongSoNv = nv.TrongSoPhat > 0 ? nv.TrongSoPhat : boiCanh.TrongSoNguyenVong;
+                long trongSoScale = (long)Math.Round(trongSoNv * 10);
+                if (trongSoScale <= 0) continue;
+
+                IEnumerable<int> cacThuApDung = (!nv.Thu.HasValue || nv.Thu.Value == 0)
+                    ? buoiTheoNgayTuan.Keys
+                    : (buoiTheoNgayTuan.ContainsKey(nv.Thu.Value) ? [nv.Thu.Value] : []);
+
+                foreach (var thu in cacThuApDung)
+                {
+                    var theoTuan = buoiTheoNgayTuan[thu];
+                    long upperBound = 0;
+                    var bieuThucTuanVuot = new List<(BoolVar[] Vars, long[] Weights)>();
+
+                    foreach (var (_, rawList) in theoTuan)
+                    {
+                        var grouped = rawList
+                            .GroupBy(x => x.MaLop)
+                            .Select(g => (Var: xVars[(maGv, g.Key)], SoTiet: g.Sum(x => x.SoTiet)))
+                            .ToList();
+
+                        long potentialSum = grouped.Sum(x => x.SoTiet);
+                        if (potentialSum > maxTietNgay)
+                        {
+                            if (potentialSum > upperBound) upperBound = potentialSum;
+                            bieuThucTuanVuot.Add((grouped.Select(x => x.Var).ToArray(), grouped.Select(x => x.SoTiet).ToArray()));
+                        }
+                    }
+
+                    if (bieuThucTuanVuot.Count == 0) continue;
+
+                    var sigSeen = new HashSet<string>();
+                    var peakDay = model.NewIntVar(0, upperBound, $"sc06_peak_{maGv}_{thu}_{sc06Idx}");
+                    foreach (var (vars, weights) in bieuThucTuanVuot)
+                    {
+                        var sig = string.Join("|", vars.Zip(weights, (v, w) => $"{v.Name()}:{w}"));
+                        if (!sigSeen.Add(sig)) continue;
+                        model.Add(peakDay >= LinearExpr.WeightedSum(vars, weights));
+                    }
+
+                    var excessDay = model.NewIntVar(0, upperBound - maxTietNgay, $"sc06_excess_{maGv}_{thu}_{sc06Idx}");
+                    model.Add(excessDay >= peakDay - maxTietNgay);
+                    objectiveTerms.Add(excessDay * trongSoScale);
+                    sc06Idx++;
+                }
+            }
+        }
+
         // Đặt hàm mục tiêu tổng thể
         if (objectiveTerms.Count > 0)
         {
@@ -417,7 +512,7 @@ public class CpSatAlgorithmService(
                     {
                         MaLopHocPhan = maLop,
                         MaGiangVien = maGv,
-                        DiemPhat = 0
+                        DiemPhat = Math.Round(boDanhGia.TinhDiemNguyenVong(maGv, maLop, boiCanh), 1)
                     });
                 }
             }

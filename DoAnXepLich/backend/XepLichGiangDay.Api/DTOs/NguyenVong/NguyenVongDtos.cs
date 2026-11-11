@@ -65,6 +65,7 @@ public class NguyenVongDto
     public string TenRangBuocMem { get; set; } = string.Empty;
     public string LoaiNguyenVong { get; set; } = "TranhDay"; // ThichDay, TranhDay
     public int MucDo { get; set; } = 1;
+    public bool KhoaCungLichBan { get; set; }
     public int? Thu { get; set; }
     public int? TietBatDau { get; set; }
     public int? TietKetThuc { get; set; }
@@ -90,6 +91,7 @@ public class ThemNguyenVongDto
     public int? DenTuan { get; set; } = 20;
     public double TrongSoPhat { get; set; } = 10.0;
     public string? LyDo { get; set; }
+    public bool KhoaCungLichBan { get; set; } = false;
 }
 
 public class TaoNguyenVongDto

@@ -123,9 +123,10 @@ namespace XepLichGiangDay.Api.Migrations
 
                     b.HasKey("MaDinhMuc");
 
-                    b.HasIndex("MaGiangVien");
-
                     b.HasIndex("MaHocKy");
+
+                    b.HasIndex("MaGiangVien", "MaHocKy")
+                        .IsUnique();
 
                     b.ToTable("dinh_muc_giang_vien", (string)null);
                 });
@@ -405,7 +406,8 @@ namespace XepLichGiangDay.Api.Migrations
 
                     b.Property<string>("MaLopHocPhanTruong")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("ma_lop_hoc_phan_truong");
 
                     b.Property<int>("SoLuongSinhVien")
@@ -424,9 +426,11 @@ namespace XepLichGiangDay.Api.Migrations
 
                     b.HasKey("MaLopHocPhan");
 
-                    b.HasIndex("MaHocKy");
-
                     b.HasIndex("MaHocPhan");
+
+                    b.HasIndex("MaHocKy", "MaLopHocPhanTruong")
+                        .IsUnique()
+                        .HasFilter("[ma_lop_hoc_phan_truong] <> ''");
 
                     b.ToTable("lop_hoc_phan", (string)null);
                 });
@@ -491,9 +495,10 @@ namespace XepLichGiangDay.Api.Migrations
 
                     b.HasKey("MaNangLuc");
 
-                    b.HasIndex("MaGiangVien");
-
                     b.HasIndex("MaHocPhan");
+
+                    b.HasIndex("MaGiangVien", "MaHocPhan")
+                        .IsUnique();
 
                     b.ToTable("nang_luc_giang_day", (string)null);
                 });
@@ -693,7 +698,8 @@ namespace XepLichGiangDay.Api.Migrations
 
                     b.Property<string>("TenRangBuoc")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("ten_rang_buoc");
 
                     b.Property<double>("TrongSoPhat")
@@ -702,7 +708,8 @@ namespace XepLichGiangDay.Api.Migrations
 
                     b.HasKey("MaRangBuoc");
 
-                    b.HasIndex("MaHocKy");
+                    b.HasIndex("MaHocKy", "TenRangBuoc")
+                        .IsUnique();
 
                     b.ToTable("rang_buoc_hoc_ky", (string)null);
                 });

@@ -61,6 +61,7 @@ function DanhSachNguyenVong() {
     denTuan: 20,
     trongSoPhat: DANH_MUC_RANG_BUOC_MEM[0].diemPhatMacDinh,
     lyDo: '',
+    khoaCungLichBan: false,
   })
 
   const [dangTai, setDangTai] = useState(false)
@@ -166,6 +167,7 @@ function DanhSachNguyenVong() {
       thu: rbChon.thuMacDinh ?? prev.thu,
       tietBatDau: rbChon.tietBdMacDinh ?? prev.tietBatDau,
       tietKetThuc: rbChon.tietKtMacDinh ?? prev.tietKetThuc,
+      khoaCungLichBan: maRb === 'SC01' ? prev.khoaCungLichBan : false,
     }))
   }
 
@@ -196,7 +198,7 @@ function DanhSachNguyenVong() {
       })
 
       setThongBao('Đã gửi nguyện vọng / xin nghỉ thành công và đang chờ Trưởng bộ môn duyệt.')
-      setForm((prev) => ({ ...prev, lyDo: '' }))
+      setForm((prev) => ({ ...prev, lyDo: '', khoaCungLichBan: false }))
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
       await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
     } catch {
@@ -228,7 +230,9 @@ function DanhSachNguyenVong() {
       ? 'Cả tuần (Thứ 2 - CN)'
       : (CAC_THU.find((t) => t.id === item.thu)?.ten || `Thứ ${item.thu}`)
     const xacNhan = window.confirm(
-      `Bạn có chắc chắn muốn DUYỆT nguyện vọng xin nghỉ của ${tenGV} vào ${tenThu} (Tiết ${item.tietBatDau} - ${item.tietKetThuc})?\n\nLưu ý: Nếu giảng viên đang có lớp dạy vào ca này, hệ thống sẽ tự động gỡ giảng viên ra khỏi lớp học phần đó.`
+      item.khoaCungLichBan
+        ? `Bạn có chắc chắn muốn DUYỆT và KHÓA CỨNG lịch bận của ${tenGV} vào ${tenThu} (Tiết ${item.tietBatDau} - ${item.tietKetThuc})?\n\nLưu ý: Hệ thống sẽ cấm xếp lịch vào khung giờ này và tự động gỡ giảng viên khỏi các lớp học phần bị trùng.`
+        : `Bạn có chắc chắn muốn DUYỆT nguyện vọng mềm của ${tenGV} (${item.tenRangBuocMem || item.maRangBuocMem}, ${tenThu}: Tiết ${item.tietBatDau} - ${item.tietKetThuc})?\n\nLưu ý: Đây là ràng buộc mềm (tính điểm phạt khi xếp lịch), KHÔNG khóa cứng lịch bận và KHÔNG gỡ các lớp đang dạy.`
     )
     if (!xacNhan) return
 
@@ -653,6 +657,32 @@ function DanhSachNguyenVong() {
                 </button>
               </div>
             </div>
+
+            {form.maRangBuocMem === 'SC01' ? (
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top small">
+                <div className="form-check mb-0">
+                  <input
+                    id="chkKhoaCungLichBan"
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={Boolean(form.khoaCungLichBan)}
+                    onChange={(e) => setForm({ ...form, khoaCungLichBan: e.target.checked })}
+                  />
+                  <label className="form-check-label fw-semibold" htmlFor="chkKhoaCungLichBan">
+                    Khóa cứng thành lịch bận (cấm tuyệt đối — không cho xếp lớp vào khung giờ này)
+                  </label>
+                </div>
+                <span className={form.khoaCungLichBan ? 'text-danger' : 'text-muted'}>
+                  {form.khoaCungLichBan
+                    ? 'Khi duyệt sẽ khóa cứng lịch bận (H3) và tự động gỡ các lớp đang trùng giờ.'
+                    : 'Mặc định là nguyện vọng mềm: vẫn gắn [Cả học kỳ] nếu chọn T1-T20 nhưng không khóa cứng (chỉ tính điểm phạt khi xếp lịch).'}
+                </span>
+              </div>
+            ) : (
+              <div className="pt-2 border-top small text-muted">
+                Mã <strong>{form.maRangBuocMem}</strong> luôn là <strong>nguyện vọng mềm</strong> (chỉ tính điểm phạt tối ưu, không khóa cứng lịch bận khi duyệt).
+              </div>
+            )}
           </form>
         </div>
       )}
@@ -777,7 +807,18 @@ function DanhSachNguyenVong() {
                         <td className="text-center">
                           <span className="badge bg-secondary">{item.maRangBuocMem}</span>
                         </td>
-                        <td>{item.tenRangBuocMem || item.loaiNguyenVong}</td>
+                        <td>
+                          <div>{item.tenRangBuocMem || item.loaiNguyenVong}</div>
+                          {item.khoaCungLichBan ? (
+                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle mt-1">
+                              Khóa cứng (H3)
+                            </span>
+                          ) : (
+                            <span className="badge bg-light text-secondary border mt-1">
+                              Nguyện vọng mềm
+                            </span>
+                          )}
+                        </td>
                         <td className="text-center">
                           {item.tietBatDau && item.tietKetThuc ? (
                             <span>

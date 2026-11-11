@@ -1,4 +1,4 @@
-﻿using XepLichGiangDay.Api.Models.Entities;
+using XepLichGiangDay.Api.Models.Entities;
 
 namespace XepLichGiangDay.Api.Services.RangBuoc;
 
@@ -148,7 +148,10 @@ public class BoKiemTraRangBuoc
 
                         // Miá»…n trá»« náº¿u lĂ  lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n vĂ  cĂ¹ng ca/phĂ²ng
                         bool laLopGhep = lop1 != null && lop2 != null && lop1.MaHocPhan == lop2.MaHocPhan &&
-                            ct1.Thu == ct2.Thu && ct1.TietBatDau == ct2.TietBatDau && ct1.TietKetThuc == ct2.TietKetThuc;
+                            ct1.Thu == ct2.Thu && ct1.TietBatDau == ct2.TietBatDau && ct1.TietKetThuc == ct2.TietKetThuc &&
+                            ct1.TuTuan == ct2.TuTuan && ct1.DenTuan == ct2.DenTuan &&
+                            !string.IsNullOrWhiteSpace(ct1.PhongHoc) &&
+                            string.Equals(ct1.PhongHoc?.Trim(), ct2.PhongHoc?.Trim(), StringComparison.OrdinalIgnoreCase);
 
                         if (!laLopGhep)
                         {

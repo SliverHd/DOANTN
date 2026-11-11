@@ -78,6 +78,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<LopHocPhan>(b =>
         {
             b.ToTable("lop_hoc_phan").HasKey(x => x.MaLopHocPhan);
+            b.Property(x => x.MaLopHocPhanTruong).HasMaxLength(100);
+            b.HasIndex(x => new { x.MaHocKy, x.MaLopHocPhanTruong })
+             .IsUnique()
+             .HasFilter("[ma_lop_hoc_phan_truong] <> ''");
             b.HasOne<HocPhan>()
              .WithMany()
              .HasForeignKey(x => x.MaHocPhan)
@@ -102,6 +106,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<NangLucGiangDay>(b =>
         {
             b.ToTable("nang_luc_giang_day").HasKey(x => x.MaNangLuc);
+            b.HasIndex(x => new { x.MaGiangVien, x.MaHocPhan }).IsUnique();
             b.HasOne<GiangVien>()
              .WithMany()
              .HasForeignKey(x => x.MaGiangVien)
@@ -144,6 +149,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<DinhMucGiangVien>(b =>
         {
             b.ToTable("dinh_muc_giang_vien").HasKey(x => x.MaDinhMuc);
+            b.HasIndex(x => new { x.MaGiangVien, x.MaHocKy }).IsUnique();
             b.HasOne<GiangVien>()
              .WithMany()
              .HasForeignKey(x => x.MaGiangVien)
@@ -158,6 +164,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RangBuocHocKy>(b =>
         {
             b.ToTable("rang_buoc_hoc_ky").HasKey(x => x.MaRangBuoc);
+            b.Property(x => x.TenRangBuoc).HasMaxLength(100);
+            b.HasIndex(x => new { x.MaHocKy, x.TenRangBuoc }).IsUnique();
             b.HasOne<HocKy>()
              .WithMany()
              .HasForeignKey(x => x.MaHocKy)

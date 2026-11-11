@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.HocKy;
 using XepLichGiangDay.Api.Services;
@@ -6,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/hoc-ky")]
+[Authorize]
 public class HocKyController(HocKyService service) : ControllerBase
 {
     [HttpGet]
@@ -21,6 +23,7 @@ public class HocKyController(HocKyService service) : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(TaoHocKyDto dto)
     {
@@ -32,6 +35,7 @@ public class HocKyController(HocKyService service) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created!.MaHocKy }, created);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, TaoHocKyDto dto)
     {
@@ -44,6 +48,7 @@ public class HocKyController(HocKyService service) : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

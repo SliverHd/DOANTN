@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XepLichGiangDay.Api.DTOs.BoMon;
 using XepLichGiangDay.Api.Services;
@@ -6,6 +7,7 @@ namespace XepLichGiangDay.Api.Controllers;
 
 [ApiController]
 [Route("api/bo-mon")]
+[Authorize]
 public class BoMonController(BoMonService service) : ControllerBase
 {
     [HttpGet]
@@ -23,6 +25,7 @@ public class BoMonController(BoMonService service) : ControllerBase
         return Ok(item);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(TaoBoMonDto dto)
     {
@@ -34,6 +37,7 @@ public class BoMonController(BoMonService service) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created!.MaBoMon }, created);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, TaoBoMonDto dto)
     {
@@ -46,6 +50,7 @@ public class BoMonController(BoMonService service) : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
