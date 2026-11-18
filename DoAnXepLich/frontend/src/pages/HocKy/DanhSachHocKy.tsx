@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { hocKyApi } from '../../api/hocKyApi'
 import { namHocApi } from '../../api/namHocApi'
+import { IconEdit, IconTrash } from '../../components/ActionIcons'
 import type { HocKy, TaoHocKyPayload } from '../../types/hocKy'
 import type { NamHoc } from '../../types/namHoc'
 
@@ -173,8 +174,8 @@ function DanhSachHocKy() {
       {loi && <div className="alert alert-danger py-2 small">{loi}</div>}
 
       <div className="table-responsive border bg-white">
-        <table className="table table-hover table-sm mb-0">
-          <thead className="table-light">
+        <table className="table table-modern table-hover table-sm mb-0">
+          <thead>
             <tr>
               <th style={{ width: '60px' }}>STT</th>
               <th>Tên học kỳ</th>
@@ -208,26 +209,36 @@ function DanhSachHocKy() {
                   <td>{hk.ngayKetThuc ? hk.ngayKetThuc.substring(0, 10) : '-'}</td>
                   <td>
                     <span
-                      className={`badge ${
-                        hk.trangThai === 'DangApDung' ? 'bg-success' : 'bg-secondary'
+                      className={`badge-pill-status ${
+                        hk.trangThai === 'DangApDung'
+                          ? 'badge-pill-status--active'
+                          : 'badge-pill-status--inactive'
                       }`}
                     >
                       {hk.trangThai === 'DangApDung' ? 'Đang áp dụng' : 'Kết thúc'}
                     </span>
                   </td>
                   <td className="text-end">
-                    <button
-                      className="btn btn-outline-secondary btn-sm py-0 px-2 me-1"
-                      onClick={() => moModalSua(hk)}
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      className="btn btn-outline-danger btn-sm py-0 px-2"
-                      onClick={() => handleXoa(hk.maHocKy)}
-                    >
-                      Xóa
-                    </button>
+                    <div className="action-group justify-content-end">
+                      <button
+                        type="button"
+                        className="btn-action btn-action--sm"
+                        aria-label={`Sửa học kỳ ${hk.tenHocKy}`}
+                        onClick={() => moModalSua(hk)}
+                      >
+                        <IconEdit />
+                        <span>Sửa</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-action btn-action--sm btn-action--danger"
+                        aria-label={`Xóa học kỳ ${hk.tenHocKy}`}
+                        onClick={() => handleXoa(hk.maHocKy)}
+                      >
+                        <IconTrash />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

@@ -3,6 +3,16 @@ import { giangVienApi } from '../../api/giangVienApi'
 import { boMonApi } from '../../api/boMonApi'
 import { nguoiDungApi } from '../../api/nguoiDungApi'
 import Loading from '../../components/Loading'
+import {
+  IconEdit,
+  IconKey,
+  IconLock,
+  IconShield,
+  IconTrash,
+  IconUnlock,
+  IconUser,
+  IconUserCheck,
+} from '../../components/ActionIcons'
 import { useAuth } from '../../contexts/AuthContext'
 import type { GiangVien } from '../../types/giangVien'
 import type { BoMon } from '../../types/boMon'
@@ -213,11 +223,26 @@ function DanhSachNguoiDung() {
   const getVaiTroBadge = (vaiTro: string) => {
     switch (vaiTro) {
       case 'Admin':
-        return <span className="badge bg-danger">Quản trị viên</span>
+        return (
+          <span className="role-label role-label--admin">
+            <IconShield width={15} height={15} />
+            <span>Quản trị viên</span>
+          </span>
+        )
       case 'TruongBoMon':
-        return <span className="badge bg-warning text-dark">Trưởng bộ môn</span>
+        return (
+          <span className="role-label role-label--manager">
+            <IconUserCheck width={15} height={15} />
+            <span>Trưởng bộ môn</span>
+          </span>
+        )
       default:
-        return <span className="badge bg-secondary">Giảng viên</span>
+        return (
+          <span className="role-label role-label--lecturer">
+            <IconUser width={15} height={15} />
+            <span>Giảng viên</span>
+          </span>
+        )
     }
   }
 
@@ -241,9 +266,9 @@ function DanhSachNguoiDung() {
       {dangTai && <Loading />}
 
       {!dangTai && (
-        <div className="table-responsive border bg-white">
-          <table className="table table-hover table-bordered mb-0 align-middle">
-            <thead className="table-light">
+        <div className="table-responsive table-clean-wrap">
+          <table className="table table-clean table-hover mb-0 align-middle">
+            <thead>
               <tr>
                 <th style={{ width: '50px' }}>STT</th>
                 <th>Tên đăng nhập</th>
@@ -273,52 +298,89 @@ function DanhSachNguoiDung() {
                     <td>{getVaiTroBadge(u.vaiTro)}</td>
                     <td>
                       {u.tenBoMon ? (
-                        <span className="badge bg-light text-primary border">{u.tenBoMon}</span>
+                        <span
+                          style={{
+                            background: '#f1f5f9',
+                            color: '#475569',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            display: 'inline-block',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {u.tenBoMon}
+                        </span>
                       ) : (
-                        <span className="text-muted small">-</span>
+                        <span style={{ color: '#94a3b8' }}>—</span>
                       )}
                     </td>
-                    <td>{u.tenGiangVien || <span className="text-muted small">Không liên kết</span>}</td>
+                    <td>
+                      {u.tenGiangVien ? (
+                        <span style={{ color: '#0f172a' }}>{u.tenGiangVien}</span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>Không liên kết</span>
+                      )}
+                    </td>
                     <td>
                       {u.trangThai === 'KichHoat' ? (
-                        <span className="badge bg-success">Kích hoạt</span>
+                        <span className="status-dot-label" style={{ color: '#334155' }}>
+                          <span className="status-dot" style={{ backgroundColor: '#16a34a' }} />
+                          <span>Kích hoạt</span>
+                        </span>
                       ) : (
-                        <span className="badge bg-danger">Đã khóa</span>
+                        <span className="status-dot-label" style={{ color: '#b91c1c' }}>
+                          <span className="status-dot" style={{ backgroundColor: '#dc2626' }} />
+                          <span>Đã khóa</span>
+                        </span>
                       )}
                     </td>
                     <td>
-                      <div className="btn-group btn-group-sm">
+                      <div className="action-group">
                         <button
-                          className="btn btn-outline-secondary"
+                          type="button"
+                          className="btn-action btn-action--sm"
                           onClick={() => moModalSua(u)}
                           title="Sửa thông tin"
+                          aria-label={`Sửa thông tin ${u.tenDangNhap}`}
                         >
-                          Sửa
+                          <IconEdit />
+                          <span>Sửa</span>
                         </button>
                         <button
-                          className="btn btn-outline-warning"
+                          type="button"
+                          className="btn-action btn-action--sm btn-action--warning"
                           onClick={() => moModalResetMatKhau(u)}
                           title="Đặt lại mật khẩu"
+                          aria-label={`Đặt lại mật khẩu ${u.tenDangNhap}`}
                         >
-                          Mật khẩu
+                          <IconKey />
+                          <span>Mật khẩu</span>
                         </button>
                         <button
-                          className={`btn ${
+                          type="button"
+                          className={`btn-action btn-action--sm ${
                             u.trangThai === 'KichHoat'
-                              ? 'btn-outline-danger'
-                              : 'btn-outline-success'
+                              ? 'btn-action--danger'
+                              : 'btn-action--success'
                           }`}
                           onClick={() => handleToggleKhoa(u)}
                           title={u.trangThai === 'KichHoat' ? 'Khóa tài khoản' : 'Mở khóa'}
+                          aria-label={u.trangThai === 'KichHoat' ? `Khóa tài khoản ${u.tenDangNhap}` : `Mở khóa ${u.tenDangNhap}`}
                         >
-                          {u.trangThai === 'KichHoat' ? 'Khóa' : 'Mở'}
+                          {u.trangThai === 'KichHoat' ? <IconLock /> : <IconUnlock />}
+                          <span>{u.trangThai === 'KichHoat' ? 'Khóa' : 'Mở'}</span>
                         </button>
                         <button
-                          className="btn btn-outline-danger"
+                          type="button"
+                          className="btn-action btn-action--sm btn-action--danger"
                           onClick={() => handleXoa(u)}
                           title="Xóa tài khoản"
+                          aria-label={`Xóa tài khoản ${u.tenDangNhap}`}
                         >
-                          Xóa
+                          <IconTrash />
+                          <span>Xóa</span>
                         </button>
                       </div>
                     </td>

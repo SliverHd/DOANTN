@@ -3,6 +3,7 @@ import { hocPhanApi } from '../../api/hocPhanApi'
 import { boMonApi } from '../../api/boMonApi'
 import { hocKyApi } from '../../api/hocKyApi'
 import Loading from '../../components/Loading'
+import { IconEdit, IconTrash } from '../../components/ActionIcons'
 import { useAuth } from '../../contexts/AuthContext'
 import type { HocPhan, TaoHocPhanDto } from '../../types/hocPhan'
 import type { BoMon } from '../../types/boMon'
@@ -243,9 +244,10 @@ function DanhSachHocPhan() {
       ) : (
         <div className="card shadow-sm">
           <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+            <table className="table table-modern table-hover align-middle mb-0">
+              <thead>
                 <tr>
+                  <th style={{ width: '56px' }} className="text-center">STT</th>
                   <th style={{ width: '80px' }}>Mã HP</th>
                   <th>Tên học phần</th>
                   <th style={{ width: '120px' }}>Số tín chỉ</th>
@@ -255,8 +257,9 @@ function DanhSachHocPhan() {
                 </tr>
               </thead>
               <tbody>
-                {danhSachLoc.map((hp) => (
+                {danhSachLoc.map((hp, index) => (
                   <tr key={hp.maHocPhan}>
+                    <td className="text-center text-secondary">{index + 1}</td>
                     <td>
                       <span className="badge bg-light text-dark border">#{hp.maHocPhan}</span>
                     </td>
@@ -273,25 +276,34 @@ function DanhSachHocPhan() {
                     </td>
                     <td>
                       <span
-                        className={`badge ${hp.trangThai === 'DangApDung' ? 'bg-success' : 'bg-secondary'
-                          }`}
+                        className={`badge-pill-status ${
+                          hp.trangThai === 'DangApDung'
+                            ? 'badge-pill-status--active'
+                            : 'badge-pill-status--inactive'
+                        }`}
                       >
                         {hp.trangThai === 'DangApDung' ? 'Đang áp dụng' : hp.trangThai}
                       </span>
                     </td>
                     <td className="text-center">
-                      <div className="btn-group btn-group-sm">
+                      <div className="action-group">
                         <button
-                          className="btn btn-outline-secondary"
+                          type="button"
+                          className="btn-action"
+                          aria-label={`Sửa học phần ${hp.tenHocPhan}`}
                           onClick={() => handleMoModalSua(hp)}
                         >
-                          Sửa
+                          <IconEdit />
+                          <span>Sửa</span>
                         </button>
                         <button
-                          className="btn btn-outline-danger"
+                          type="button"
+                          className="btn-action btn-action--danger"
+                          aria-label={`Xóa học phần ${hp.tenHocPhan}`}
                           onClick={() => handleXoa(hp.maHocPhan, hp.tenHocPhan)}
                         >
-                          Xóa
+                          <IconTrash />
+                          <span>Xóa</span>
                         </button>
                       </div>
                     </td>
@@ -299,7 +311,7 @@ function DanhSachHocPhan() {
                 ))}
                 {danhSachLoc.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center text-secondary py-4">
+                    <td colSpan={7} className="text-center text-secondary py-4">
                       Không tìm thấy học phần nào của bộ môn trong học kỳ này.
                     </td>
                   </tr>

@@ -5,6 +5,7 @@ import { giangVienApi } from '../../api/giangVienApi'
 import { nguyenVongApi } from '../../api/nguyenVongApi'
 import { useAuth } from '../../contexts/AuthContext'
 import Loading from '../../components/Loading'
+import { IconTrash, IconX } from '../../components/ActionIcons'
 import type { HocKy } from '../../types/hocKy'
 import type { BoMon } from '../../types/boMon'
 import type { GiangVien } from '../../types/giangVien'
@@ -660,10 +661,12 @@ function QuanLyLichSeminar() {
                       {laTruongBoMon && (
                         <button
                           type="button"
-                          className="btn btn-outline-danger btn-sm py-0 px-2"
+                          className="btn-action btn-action--sm btn-action--danger"
+                          aria-label={`Xóa cả nhóm Seminar ${nhom.tenSeminar}`}
                           onClick={() => void handleXoaNhomSeminar(nhom)}
                         >
-                          Xóa cả nhóm Seminar
+                          <IconTrash />
+                          <span>Xóa cả nhóm Seminar</span>
                         </button>
                       )}
                     </div>
@@ -719,8 +722,8 @@ function QuanLyLichSeminar() {
             Lịch bận cố định khác trong học kỳ ({dsLichBanKhac.length})
           </div>
           <div className="table-responsive">
-            <table className="table table-bordered table-sm table-hover mb-0 small">
-              <thead className="table-light text-center">
+            <table className="table table-modern table-bordered table-sm table-hover mb-0 small">
+              <thead className="text-center">
                 <tr>
                   <th style={{ width: '45px' }}>STT</th>
                   <th>Giảng viên</th>
@@ -744,13 +747,17 @@ function QuanLyLichSeminar() {
                     <td>{item.lyDo || 'Lịch bận cố định'}</td>
                     {laTruongBoMon && (
                       <td className="text-center">
-                        <button
-                          type="button"
-                          className="btn btn-outline-danger btn-sm py-0 px-2"
-                          onClick={() => void handleXoaMotBanGhi(item)}
-                        >
-                          Gỡ
-                        </button>
+                        <div className="action-group">
+                          <button
+                            type="button"
+                            className="btn-action btn-action--sm btn-action--danger"
+                            aria-label={`Gỡ lịch bận của ${item.tenGiangVien}`}
+                            onClick={() => void handleXoaMotBanGhi(item)}
+                          >
+                            <IconX />
+                            <span>Gỡ</span>
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>

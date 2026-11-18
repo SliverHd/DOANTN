@@ -6,6 +6,7 @@ import { giangVienApi } from '../../api/giangVienApi'
 import { nguyenVongApi } from '../../api/nguyenVongApi'
 import { useAuth } from '../../contexts/AuthContext'
 import Loading from '../../components/Loading'
+import { IconCheck, IconTrash, IconX } from '../../components/ActionIcons'
 import type { HocKy } from '../../types/hocKy'
 import type { BoMon } from '../../types/boMon'
 import type { GiangVien } from '../../types/giangVien'
@@ -759,8 +760,8 @@ function DanhSachNguyenVong() {
           <Loading />
         ) : (
           <div className="table-responsive">
-            <table className="table table-bordered table-sm table-hover mb-0">
-              <thead className="table-light">
+            <table className="table table-modern table-bordered table-sm table-hover mb-0">
+              <thead>
                 <tr className="text-center align-middle">
                   <th style={{ width: '40px' }}>STT</th>
                   <th style={{ width: '80px' }}>Mã GV</th>
@@ -845,14 +846,14 @@ function DanhSachNguyenVong() {
                         {/* Cột trạng thái */}
                         <td className="text-center">
                           {trangThai === 'ChoDuyet' && (
-                            <span className="badge bg-warning text-dark">
-                              <i className="bi bi-clock me-1"></i>Chờ duyệt
+                            <span className="badge-pill-status badge-pill-status--warning">
+                              Chờ duyệt
                             </span>
                           )}
                           {trangThai === 'DaDuyet' && (
                             <div>
-                              <span className="badge bg-success">
-                                <i className="bi bi-check-circle me-1"></i>Đã duyệt
+                              <span className="badge-pill-status badge-pill-status--active">
+                                Đã duyệt
                               </span>
                               {item.ngayDuyet && (
                                 <div className="text-muted" style={{ fontSize: '0.72rem' }}>
@@ -863,8 +864,8 @@ function DanhSachNguyenVong() {
                           )}
                           {trangThai === 'TuChoi' && (
                             <div>
-                              <span className="badge bg-danger">
-                                <i className="bi bi-x-circle me-1"></i>Từ chối
+                              <span className="badge-pill-status badge-pill-status--danger">
+                                Từ chối
                               </span>
                               {item.ghiChuDuyet && (
                                 <div className="text-muted small" title={item.ghiChuDuyet} style={{ fontSize: '0.72rem' }}>
@@ -878,48 +879,58 @@ function DanhSachNguyenVong() {
                         {/* Cột thao tác */}
                         <td className="text-center">
                           {laTruongBoMon ? (
-                            <div className="d-flex justify-content-center gap-1">
+                            <div className="action-group">
                               {trangThai === 'ChoDuyet' ? (
                                 <>
                                   <button
                                     type="button"
-                                    className="btn btn-success btn-sm py-0 px-2"
+                                    className="btn-action btn-action--sm btn-action--success"
                                     title="Duyệt nguyện vọng & tự động gỡ giảng viên khỏi ca học này"
+                                    aria-label="Duyệt nguyện vọng"
                                     disabled={dangXuLy}
                                     onClick={() => handleDuyetNguyenVong(item)}
                                   >
-                                    {dangXuLy ? '...' : '✓ Duyệt'}
+                                    <IconCheck />
+                                    <span>{dangXuLy ? '...' : 'Duyệt'}</span>
                                   </button>
                                   <button
                                     type="button"
-                                    className="btn btn-outline-danger btn-sm py-0 px-2"
+                                    className="btn-action btn-action--sm btn-action--danger"
                                     title="Từ chối yêu cầu"
+                                    aria-label="Từ chối yêu cầu"
                                     disabled={dangXuLy}
                                     onClick={() => handleTuChoiNguyenVong(item)}
                                   >
-                                    ✕ Từ chối
+                                    <IconX />
+                                    <span>Từ chối</span>
                                   </button>
                                 </>
                               ) : (
                                 <button
                                   type="button"
-                                  className="btn btn-outline-secondary btn-sm py-0 px-2"
+                                  className="btn-action btn-action--sm btn-action--danger"
                                   title="Xóa bản ghi"
+                                  aria-label="Xóa bản ghi"
                                   onClick={() => handleXoaNguyenVong(item.maNguyenVong)}
                                 >
-                                  Xóa
+                                  <IconTrash />
+                                  <span>Xóa</span>
                                 </button>
                               )}
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              className="btn btn-outline-danger btn-sm py-0 px-2"
-                              title="Hủy/Xóa yêu cầu"
-                              onClick={() => handleXoaNguyenVong(item.maNguyenVong)}
-                            >
-                              Xóa
-                            </button>
+                            <div className="action-group">
+                              <button
+                                type="button"
+                                className="btn-action btn-action--sm btn-action--danger"
+                                title="Hủy/Xóa yêu cầu"
+                                aria-label="Hủy/Xóa yêu cầu"
+                                onClick={() => handleXoaNguyenVong(item.maNguyenVong)}
+                              >
+                                <IconTrash />
+                                <span>Xóa</span>
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>

@@ -437,7 +437,7 @@ public class CpSatAlgorithmTests
             TrangThai = "DangApDung"
         });
 
-        // 2 lớp ghép cùng môn 101, cùng ca dạy Thứ 2 tiết 1-3 tuần 1-10
+        // 2 lớp ghép cùng môn 101, cùng ca dạy Thứ 2 tiết 1-3 tuần 1-10, cùng phòng học P.101
         context.LopHocPhan.Add(new LopHocPhan
         {
             MaLopHocPhan = 1,
@@ -475,7 +475,7 @@ public class CpSatAlgorithmTests
             TietKetThuc = 3,
             TuTuan = 1,
             DenTuan = 10,
-            PhongHoc = "P.102" // Khác tên phòng học vẫn là lớp ghép
+            PhongHoc = "p.101" // Cùng phòng học (không phân biệt hoa thường) -> được ghép
         });
 
         await context.SaveChangesAsync();
@@ -492,5 +492,56 @@ public class CpSatAlgorithmTests
         Assert.Equal(0, result.SoLopChuaPhanCong);
         Assert.Equal(2, result.DanhSachPhanCong.Count);
         Assert.All(result.DanhSachPhanCong, pc => Assert.Equal(maGv, pc.MaGiangVien));
+    }
+
+    [Fact]
+    public async Task Test_CpSat_KhacPhongHoc_KhongDuocGhep_XepChoHaiGiangVienKhacNhau()
+    {
+        var dbName = "CpSat_KhacPhong_" + Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: dbName)
+            .Options;
+
+        using var context = new AppDbContext(options);
+        var boKiemTra = new BoKiemTraRangBuoc();
+        var boDanhGia = new BoDanhGiaPhuongAn(context, boKiemTra);
+        var luuKetQuaService = new LuuKetQuaXepLichService(context, boDanhGia);
+        var cpSatService = new CpSatAlgorithmService(context, boDanhGia, boKiemTra, luuKetQuaService);
+
+        int maHocKy = 1;
+        int maHp = 101;
+
+        context.GiangVien.AddRange(
+            new GiangVien { MaGiangVien = 10, HoTen = "GV A" },
+            new GiangVien { MaGiangVien = 11, HoTen = "GV B" }
+        );
+        context.NangLucGiangDay.AddRange(
+            new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = maHp, TrangThai = "DangApDung" },
+            new NangLucGiangDay { MaGiangVien = 11, MaHocPhan = maHp, TrangThai = "DangApDung" }
+        );
+
+        // 2 lớp cùng môn, cùng thứ, tiết, tuần nhưng KHÁC phòng học (P.101 vs P.102) -> KHÔNG được ghép
+        context.LopHocPhan.AddRange(
+            new LopHocPhan { MaLopHocPhan = 1, MaHocKy = maHocKy, MaHocPhan = maHp, MaLopHocPhanTruong = "LHP01" },
+            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = maHocKy, MaHocPhan = maHp, MaLopHocPhanTruong = "LHP02" }
+        );
+        context.ChiTietThoiKhoaBieu.AddRange(
+            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10, PhongHoc = "P.101" },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10, PhongHoc = "P.102" }
+        );
+
+        await context.SaveChangesAsync();
+
+        var result = await cpSatService.ChayAsync(new DuLieuXepLichDto
+        {
+            MaHocKy = maHocKy,
+            ThoiGianChayToiDa = 5.0
+        });
+
+        Assert.True(result.TrangThai == "ToiUuToanCuc" || result.TrangThai == "KhaThi");
+        Assert.Equal(0, result.SoViPhamCung);
+        Assert.Equal(2, result.DanhSachPhanCong.Count);
+        var dsGv = result.DanhSachPhanCong.Select(x => x.MaGiangVien).Distinct().ToList();
+        Assert.Equal(2, dsGv.Count); // Bắt buộc chia cho 2 giảng viên khác nhau
     }
 }

@@ -3,6 +3,7 @@ import { giangVienApi } from '../../api/giangVienApi'
 import { boMonApi } from '../../api/boMonApi'
 import { hocPhanApi } from '../../api/hocPhanApi'
 import Loading from '../../components/Loading'
+import { IconBook, IconEdit, IconTrash } from '../../components/ActionIcons'
 import { useAuth } from '../../contexts/AuthContext'
 import type { GiangVien, TaoGiangVienDto } from '../../types/giangVien'
 import type { BoMon } from '../../types/boMon'
@@ -213,10 +214,10 @@ function DanhSachGiangVien() {
       {loi && <div className="alert alert-warning">{loi}</div>}
 
       {!dangTai && !loi && (
-        <div className="card shadow-sm">
+        <div className="card table-clean-card">
           <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+            <table className="table table-clean table-hover align-middle mb-0">
+              <thead>
                 <tr>
                   <th style={{ width: '50px' }}>STT</th>
                   <th>Họ và tên</th>
@@ -231,9 +232,9 @@ function DanhSachGiangVien() {
               <tbody>
                 {danhSachLoc.map((gv, idx) => (
                   <tr key={gv.maGiangVien}>
-                    <td>{idx + 1}</td>
-                    <td>
-                      <strong>{gv.hoTen}</strong>
+                    <td style={{ color: '#64748b' }}>{idx + 1}</td>
+                    <td style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                      {gv.hoTen}
                     </td>
                     <td>
                       <div>{gv.email}</div>
@@ -242,22 +243,48 @@ function DanhSachGiangVien() {
                     <td>{gv.chucDanh || 'Giảng viên'}</td>
                     <td>
                       {gv.tenBoMon ? (
-                        <span className="badge bg-secondary">{gv.tenBoMon}</span>
+                        <span style={{ color: '#334155', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                          {gv.tenBoMon}
+                        </span>
                       ) : (
                         <span className="text-muted small">Chưa gán</span>
                       )}
                     </td>
                     <td>
                       {gv.danhSachNangLuc && gv.danhSachNangLuc.length > 0 ? (
-                        <div className="d-flex flex-wrap gap-1">
-                          {gv.danhSachNangLuc.slice(0, 3).map((nl) => (
-                            <span key={nl.maNangLuc} className="badge bg-info text-dark">
+                        <div className="d-flex flex-wrap gap-1 align-items-center">
+                          {gv.danhSachNangLuc.slice(0, 2).map((nl) => (
+                            <span
+                              key={nl.maNangLuc}
+                              style={{
+                                background: '#f1f5f9',
+                                color: '#475569',
+                                borderRadius: '6px',
+                                padding: '3px 9px',
+                                fontSize: '12.5px',
+                                fontWeight: 500,
+                                border: 'none',
+                              }}
+                            >
                               {nl.tenHocPhan}
                             </span>
                           ))}
-                          {gv.danhSachNangLuc.length > 3 && (
-                            <span className="badge bg-light text-muted border">
-                              +{gv.danhSachNangLuc.length - 3} môn khác
+                          {gv.danhSachNangLuc.length > 2 && (
+                            <span
+                              title={gv.danhSachNangLuc
+                                .slice(2)
+                                .map((m) => m.tenHocPhan)
+                                .join(', ')}
+                              style={{
+                                color: '#64748b',
+                                background: '#f8fafc',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '12.5px',
+                                fontWeight: 500,
+                              }}
+                            >
+                              +{gv.danhSachNangLuc.length - 2}
                             </span>
                           )}
                         </div>
@@ -266,38 +293,49 @@ function DanhSachGiangVien() {
                       )}
                     </td>
                     <td>
-                      <span
-                        className={`badge ${
-                          gv.trangThai === 'DangLamViec' || gv.trangThai === 'DangHoatDong'
-                            ? 'bg-success'
-                            : 'bg-warning text-dark'
-                        }`}
-                      >
-                        {gv.trangThai === 'DangLamViec' ? 'Đang làm việc' : gv.trangThai}
-                      </span>
+                      {gv.trangThai === 'DangLamViec' || gv.trangThai === 'DangHoatDong' ? (
+                        <span className="status-dot-label" style={{ color: '#334155' }}>
+                          <span className="status-dot" style={{ backgroundColor: '#16a34a' }} />
+                          <span>{gv.trangThai === 'DangLamViec' ? 'Đang làm việc' : gv.trangThai}</span>
+                        </span>
+                      ) : (
+                        <span className="status-dot-label" style={{ color: '#64748b' }}>
+                          <span className="status-dot" style={{ backgroundColor: '#64748b' }} />
+                          <span>{gv.trangThai}</span>
+                        </span>
+                      )}
                     </td>
                     <td className="text-center">
-                      <div className="btn-group btn-group-sm">
+                      <div className="action-group">
                         <button
-                          className="btn btn-outline-info"
+                          type="button"
+                          className="btn-action"
                           title="Gán năng lực môn dạy"
+                          aria-label={`Gán năng lực môn dạy cho ${gv.hoTen}`}
                           onClick={() => handleMoModalNangLuc(gv)}
                         >
-                          Môn dạy
+                          <IconBook />
+                          <span>Môn dạy</span>
                         </button>
                         <button
-                          className="btn btn-outline-secondary"
+                          type="button"
+                          className="btn-action"
                           title="Sửa thông tin"
+                          aria-label={`Sửa thông tin ${gv.hoTen}`}
                           onClick={() => handleMoModalSua(gv)}
                         >
-                          Sửa
+                          <IconEdit />
+                          <span>Sửa</span>
                         </button>
                         <button
-                          className="btn btn-outline-danger"
+                          type="button"
+                          className="btn-action btn-action--danger"
                           title="Xóa giảng viên"
+                          aria-label={`Xóa giảng viên ${gv.hoTen}`}
                           onClick={() => handleXoaGiangVien(gv.maGiangVien, gv.hoTen)}
                         >
-                          Xóa
+                          <IconTrash />
+                          <span>Xóa</span>
                         </button>
                       </div>
                     </td>

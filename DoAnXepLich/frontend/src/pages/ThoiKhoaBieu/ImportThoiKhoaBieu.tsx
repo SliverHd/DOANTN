@@ -3,6 +3,7 @@ import { hocKyApi } from '../../api/hocKyApi'
 import { boMonApi } from '../../api/boMonApi'
 import { importTkbApi } from '../../api/importTkbApi'
 import { useAuth } from '../../contexts/AuthContext'
+import { IconTrash } from '../../components/ActionIcons'
 import type { HocKy } from '../../types/hocKy'
 import type { BoMon } from '../../types/boMon'
 import type { KetQuaPreviewImport, LichSuImport } from '../../types/importTkb'
@@ -371,8 +372,8 @@ function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Pro
           <p className="text-muted small mb-0">Chưa có lịch sử import cho học kỳ này.</p>
         ) : (
           <div className="table-responsive border">
-            <table className="table table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
-              <thead className="table-light">
+            <table className="table table-modern table-sm table-hover mb-0" style={{ fontSize: '0.85rem' }}>
+              <thead>
                 <tr>
                   <th>Thời gian</th>
                   <th>Tên file</th>
@@ -397,25 +398,30 @@ function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Pro
                     </td>
                     <td>
                       <span
-                        className={`badge ${
+                        className={`badge-pill-status ${
                           ls.trangThai === 'ThanhCong'
-                            ? 'bg-success'
+                            ? 'badge-pill-status--active'
                             : ls.trangThai === 'MotPhan'
-                            ? 'bg-warning text-dark'
-                            : 'bg-danger'
+                            ? 'badge-pill-status--warning'
+                            : 'badge-pill-status--danger'
                         }`}
                       >
                         {ls.trangThai === 'ThanhCong' ? 'Thành công' : ls.trangThai === 'MotPhan' ? 'Một phần' : 'Thất bại'}
                       </span>
                     </td>
                     <td className="text-center">
-                      <button
-                        className="btn btn-outline-danger btn-sm py-0 px-2"
-                        title="Xóa lịch sử"
-                        onClick={() => handleXoaLichSu(ls.maLichSu)}
-                      >
-                        Xóa
-                      </button>
+                      <div className="action-group">
+                        <button
+                          type="button"
+                          className="btn-action btn-action--sm btn-action--danger"
+                          title="Xóa lịch sử"
+                          aria-label={`Xóa lịch sử import ${ls.tenFile}`}
+                          onClick={() => handleXoaLichSu(ls.maLichSu)}
+                        >
+                          <IconTrash />
+                          <span>Xóa</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

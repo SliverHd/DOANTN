@@ -589,20 +589,7 @@ public class XepLichService(
                 }
 
                 // Khử trùng lặp lớp ghép học chung môn, cùng thứ/tiết/tuần/phòng học
-                var cacBuoiHoc = cacBuoiHocRaw
-                    .GroupBy(b => (
-                        b.Thu,
-                        b.TietBatDau,
-                        b.TietKetThuc,
-                        b.TuTuan,
-                        b.DenTuan,
-                        MaHp: dsLop.TryGetValue(b.MaLopHocPhan, out var l) ? l.MaHocPhan : b.MaLopHocPhan,
-                        Phong: !string.IsNullOrWhiteSpace(b.PhongHoc)
-                            ? b.PhongHoc.Trim().ToUpperInvariant()
-                            : $"_LOP_{b.MaLopHocPhan}"
-                    ))
-                    .Select(g => g.First())
-                    .ToList();
+                var cacBuoiHoc = BoKiemTraRangBuoc.KhuTrungLopGhep(cacBuoiHocRaw, dsLop);
 
                 if (cacBuoiHoc.Count > 0)
                 {
@@ -658,7 +645,7 @@ public class XepLichService(
             {
                 item.TrangThaiTai = "QuaTai";
             }
-            else if (item.SoLopPhanCong > 0 && item.TongSoTietTuan < minTietTuanGv)
+            else if (item.TongSoTietTuan < minTietTuanGv)
             {
                 item.TrangThaiTai = "ThieuTai";
             }

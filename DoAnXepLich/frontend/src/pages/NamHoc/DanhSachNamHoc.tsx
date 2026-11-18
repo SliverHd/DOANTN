@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { namHocApi } from '../../api/namHocApi'
+import { IconEdit, IconTrash } from '../../components/ActionIcons'
 import type { NamHoc, TaoNamHocPayload } from '../../types/namHoc'
 
 function DanhSachNamHoc() {
@@ -132,8 +133,8 @@ function DanhSachNamHoc() {
       {loi && <div className="alert alert-danger py-2 small">{loi}</div>}
 
       <div className="table-responsive border bg-white">
-        <table className="table table-hover table-sm mb-0">
-          <thead className="table-light">
+        <table className="table table-modern table-hover table-sm mb-0">
+          <thead>
             <tr>
               <th style={{ width: '60px' }}>STT</th>
               <th>Tên năm học</th>
@@ -165,26 +166,36 @@ function DanhSachNamHoc() {
                   <td>{nh.ngayKetThuc ? nh.ngayKetThuc.substring(0, 10) : '-'}</td>
                   <td>
                     <span
-                      className={`badge ${
-                        nh.trangThai === 'DangApDung' ? 'bg-success' : 'bg-secondary'
+                      className={`badge-pill-status ${
+                        nh.trangThai === 'DangApDung'
+                          ? 'badge-pill-status--active'
+                          : 'badge-pill-status--inactive'
                       }`}
                     >
                       {nh.trangThai === 'DangApDung' ? 'Đang áp dụng' : 'Kết thúc'}
                     </span>
                   </td>
                   <td className="text-end">
-                    <button
-                      className="btn btn-outline-secondary btn-sm py-0 px-2 me-1"
-                      onClick={() => moModalSua(nh)}
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      className="btn btn-outline-danger btn-sm py-0 px-2"
-                      onClick={() => handleXoa(nh.maNamHoc)}
-                    >
-                      Xóa
-                    </button>
+                    <div className="action-group justify-content-end">
+                      <button
+                        type="button"
+                        className="btn-action btn-action--sm"
+                        aria-label={`Sửa năm học ${nh.tenNamHoc}`}
+                        onClick={() => moModalSua(nh)}
+                      >
+                        <IconEdit />
+                        <span>Sửa</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-action btn-action--sm btn-action--danger"
+                        aria-label={`Xóa năm học ${nh.tenNamHoc}`}
+                        onClick={() => handleXoa(nh.maNamHoc)}
+                      >
+                        <IconTrash />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

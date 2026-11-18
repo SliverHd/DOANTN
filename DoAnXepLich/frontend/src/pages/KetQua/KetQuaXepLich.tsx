@@ -3,6 +3,7 @@ import { hocKyApi } from '../../api/hocKyApi'
 import { boMonApi } from '../../api/boMonApi'
 import { xepLichApi } from '../../api/xepLichApi'
 import { useAuth } from '../../contexts/AuthContext'
+import { IconPin, IconX } from '../../components/ActionIcons'
 import type { HocKy } from '../../types/hocKy'
 import type { BoMon } from '../../types/boMon'
 import type {
@@ -933,8 +934,8 @@ function KetQuaXepLich() {
             </div>
           ) : (
             <div className="table-responsive border rounded">
-              <table className="table table-bordered table-hover table-sm align-middle mb-0">
-                <thead className="table-light">
+              <table className="table table-modern table-bordered table-hover table-sm align-middle mb-0">
+                <thead>
                   <tr className="text-nowrap text-center">
                     <th style={{ width: '45px' }}>STT</th>
                     <th style={{ width: '110px' }}>Mã lớp HP</th>
@@ -1104,40 +1105,53 @@ function KetQuaXepLich() {
                         <td className="text-center text-nowrap">
                           <div className="d-flex flex-column gap-1 align-items-center">
                             {lop.daKhoa ? (
-                              <span className="badge bg-primary">Đã khóa</span>
+                              <span
+                                className="badge-pill-status"
+                                style={{ background: '#dbeafe', color: '#1d4ed8' }}
+                              >
+                                Đã khóa
+                              </span>
                             ) : daPhanCong ? (
-                              <span className="badge bg-success">Dự kiến</span>
+                              <span className="badge-pill-status badge-pill-status--active">Dự kiến</span>
                             ) : (
-                              <span className="badge bg-secondary">Chưa phân</span>
+                              <span className="badge-pill-status badge-pill-status--inactive">Chưa phân</span>
                             )}
 
                           </div>
                         </td>
                         {laTruongBoMon && (
                           <td className="text-center text-nowrap no-print">
-                            <div className="btn-group btn-group-sm">
+                            <div className="action-group">
                               {/* Nút Khóa / Mở khóa */}
                               <button
                                 type="button"
-                                className={`btn ${
-                                  lop.daKhoa ? 'btn-outline-primary' : 'btn-outline-secondary'
+                                className={`btn-action btn-action--sm ${
+                                  lop.daKhoa ? 'btn-action--pinned' : ''
                                 }`}
                                 title={lop.daKhoa ? 'Mở khóa phân công' : 'Khóa / Ghim phân công'}
+                                aria-label={
+                                  lop.daKhoa
+                                    ? `Mở khóa phân công lớp ${lop.maLopHocPhanTruong}`
+                                    : `Khóa / Ghim phân công lớp ${lop.maLopHocPhanTruong}`
+                                }
                                 onClick={() => handleDoiKhoa(lop)}
                                 disabled={dangXuLy || !daPhanCong}
                               >
-                                {lop.daKhoa ? 'Mở khóa' : 'Khóa'}
+                                <IconPin />
+                                <span>{lop.daKhoa ? 'Mở khóa' : 'Khóa'}</span>
                               </button>
 
                               {/* Nút Hủy phân công */}
                               <button
                                 type="button"
-                                className="btn btn-outline-danger"
+                                className="btn-action btn-action--sm btn-action--danger"
                                 title="Hủy phân công về trống"
+                                aria-label={`Hủy phân công lớp ${lop.maLopHocPhanTruong}`}
                                 onClick={() => handleHuyPhanCong(lop)}
                                 disabled={dangXuLy || !daPhanCong || lop.daKhoa}
                               >
-                                Hủy
+                                <IconX />
+                                <span>Hủy</span>
                               </button>
                             </div>
                           </td>
@@ -1250,8 +1264,8 @@ function KetQuaXepLich() {
             </div>
           ) : (
             <div className="table-responsive border rounded">
-              <table className="table table-bordered table-hover table-sm align-middle mb-0">
-                <thead className="table-light">
+              <table className="table table-modern table-bordered table-hover table-sm align-middle mb-0">
+                <thead>
                   <tr className="text-nowrap text-center">
                     <th style={{ width: '45px' }}>STT</th>
                     <th>Họ và tên</th>
@@ -1265,13 +1279,13 @@ function KetQuaXepLich() {
                 </thead>
                 <tbody>
                   {thongKeTai.map((gv, idx) => {
-                    let badgeClass = 'bg-success'
+                    let badgeClass = 'badge-pill-status--active'
                     let tenTrangThai = 'Đạt định mức'
                     if (gv.trangThaiTai === 'ThieuTai') {
-                      badgeClass = 'bg-warning text-dark'
+                      badgeClass = 'badge-pill-status--warning'
                       tenTrangThai = 'Thiếu tải'
                     } else if (gv.trangThaiTai === 'QuaTai') {
-                      badgeClass = 'bg-danger'
+                      badgeClass = 'badge-pill-status--danger'
                       tenTrangThai = 'Quá tải'
                     }
 
@@ -1292,7 +1306,7 @@ function KetQuaXepLich() {
                             : 'Chưa cài đặt'}
                         </td>
                         <td className="text-center">
-                          <span className={`badge ${badgeClass}`}>{tenTrangThai}</span>
+                          <span className={`badge-pill-status ${badgeClass}`}>{tenTrangThai}</span>
                         </td>
                       </tr>
                     )
@@ -1514,12 +1528,12 @@ function KetQuaXepLich() {
                 <span>
                   Trạng thái:{' '}
                   <span
-                    className={`badge ${
+                    className={`badge-pill-status ${
                       thongTinGvChon.trangThaiTai === 'QuaTai'
-                        ? 'bg-danger'
+                        ? 'badge-pill-status--danger'
                         : thongTinGvChon.trangThaiTai === 'ThieuTai'
-                        ? 'bg-warning text-dark'
-                        : 'bg-success'
+                        ? 'badge-pill-status--warning'
+                        : 'badge-pill-status--active'
                     }`}
                   >
                     {thongTinGvChon.trangThaiTai === 'QuaTai'

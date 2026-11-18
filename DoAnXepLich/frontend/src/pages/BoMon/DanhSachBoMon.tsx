@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { boMonApi } from '../../api/boMonApi'
+import { IconEdit, IconTrash } from '../../components/ActionIcons'
 import type { BoMon, TaoBoMonPayload } from '../../types/boMon'
 
 function DanhSachBoMon() {
@@ -115,8 +116,8 @@ function DanhSachBoMon() {
       {loi && <div className="alert alert-danger py-2 small">{loi}</div>}
 
       <div className="table-responsive border bg-white">
-        <table className="table table-hover table-sm mb-0">
-          <thead className="table-light">
+        <table className="table table-modern table-hover table-sm mb-0">
+          <thead>
             <tr>
               <th style={{ width: '60px' }}>STT</th>
               <th>Tên bộ môn</th>
@@ -144,18 +145,26 @@ function DanhSachBoMon() {
                   <td>{bm.tenBoMon}</td>
                   <td>{bm.tenKhoa || <span className="text-muted">Chưa có</span>}</td>
                   <td className="text-end">
-                    <button
-                      className="btn btn-outline-secondary btn-sm py-0 px-2 me-1"
-                      onClick={() => moModalSua(bm)}
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      className="btn btn-outline-danger btn-sm py-0 px-2"
-                      onClick={() => handleXoa(bm.maBoMon)}
-                    >
-                      Xóa
-                    </button>
+                    <div className="action-group justify-content-end">
+                      <button
+                        type="button"
+                        className="btn-action btn-action--sm"
+                        aria-label={`Sửa bộ môn ${bm.tenBoMon}`}
+                        onClick={() => moModalSua(bm)}
+                      >
+                        <IconEdit />
+                        <span>Sửa</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-action btn-action--sm btn-action--danger"
+                        aria-label={`Xóa bộ môn ${bm.tenBoMon}`}
+                        onClick={() => handleXoa(bm.maBoMon)}
+                      >
+                        <IconTrash />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

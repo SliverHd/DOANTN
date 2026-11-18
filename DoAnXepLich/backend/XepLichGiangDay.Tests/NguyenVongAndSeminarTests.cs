@@ -207,7 +207,7 @@ public class NguyenVongAndSeminarTests
         var lop2 = new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "396602_71KT6" };
 
         var ct1 = new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 4, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15, PhongHoc = "507.H1" };
-        var ct2 = new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 4, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15, PhongHoc = "H3.43" };
+        var ct2 = new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 4, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15, PhongHoc = "507.H1" };
 
         var boiCanh = new BoiCanhDanhGia
         {
@@ -247,6 +247,52 @@ public class NguyenVongAndSeminarTests
         Assert.Equal(0, kq.SoViPhamCung);
         Assert.True(kq.DiemPhatNguyenVong >= 300.0); // 2 lớp * 50 * 3.0
         Assert.Contains(kq.DanhSachCanhBaoMem, w => w.Contains("xin nghỉ đột xuất"));
+    }
+
+    [Fact]
+    public void Test_LopGhep_PhaiTrungDongThoi_MaHp_Thu_Tiet_Tuan_Va_PhongHoc()
+    {
+        var boKiemTra = new BoKiemTraRangBuoc();
+        var boDanhGia = new BoDanhGiaPhuongAn(null!, boKiemTra);
+
+        var gv = new GiangVien { MaGiangVien = 10, HoTen = "GV Test", TrangThai = "DangLamViec" };
+        var lop1 = new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L1" };
+        var lop2 = new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L2" };
+
+        // Trường hợp 1: Khác phòng học (507.H1 vs H3.43) -> KHÔNG phải lớp ghép -> cả 2 bộ kiểm tra đều phải báo trùng lịch
+        var ct1KhacPhong = new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 4, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15, PhongHoc = "507.H1" };
+        var ct2KhacPhong = new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 4, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15, PhongHoc = "H3.43" };
+
+        var boiCanh = new BoiCanhDanhGia
+        {
+            MaHocKy = 1,
+            DanhSachLop = [lop1, lop2],
+            LopTheoMa = new Dictionary<int, LopHocPhan> { [1] = lop1, [2] = lop2 },
+            ChiTietTheoLop = new Dictionary<int, List<ChiTietThoiKhoaBieu>> { [1] = [ct1KhacPhong], [2] = [ct2KhacPhong] },
+            GiangVienTheoMa = new Dictionary<int, GiangVien> { [10] = gv },
+            NangLucTheoGv = new Dictionary<int, HashSet<int>> { [10] = [101] }
+        };
+
+        var phanCong = new Dictionary<int, int?> { [1] = 10, [2] = 10 };
+        var kqDanhGia = boDanhGia.DanhGia(phanCong, boiCanh);
+        var kqKiemTra = boKiemTra.KiemTraToanBoPhuongAn(phanCong, [lop1, lop2], [ct1KhacPhong, ct2KhacPhong], [new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = 101 }], [], [gv]);
+
+        Assert.Equal(1, kqDanhGia.SoViPhamTrungLich);
+        Assert.Equal(1, kqKiemTra.SoViPhamTrungLich);
+
+        // Trường hợp 2: Cùng môn, thứ, tiết, tuần nhưng phòng học rỗng -> KHÔNG được ghép
+        ct1KhacPhong.PhongHoc = "";
+        ct2KhacPhong.PhongHoc = "";
+        Assert.False(BoKiemTraRangBuoc.LaHaiBuoiLopGhep(lop1, ct1KhacPhong, lop2, ct2KhacPhong));
+
+        // Trường hợp 3: Trùng cả 5 yếu tố (cùng phòng học dù khác hoa/thường/khoảng trắng) -> ĐƯỢC ghép
+        ct1KhacPhong.PhongHoc = " 507.H1 ";
+        ct2KhacPhong.PhongHoc = "507.h1";
+        Assert.True(BoKiemTraRangBuoc.LaHaiBuoiLopGhep(lop1, ct1KhacPhong, lop2, ct2KhacPhong));
+        Assert.Equal(
+            BoKiemTraRangBuoc.TaoChuKyLopGhep(1, 101, [ct1KhacPhong]),
+            BoKiemTraRangBuoc.TaoChuKyLopGhep(2, 101, [ct2KhacPhong])
+        );
     }
 
     [Fact]

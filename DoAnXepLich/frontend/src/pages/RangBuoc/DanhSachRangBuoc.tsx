@@ -3,6 +3,7 @@ import { hocKyApi } from '../../api/hocKyApi'
 import { rangBuocApi } from '../../api/rangBuocApi'
 import type { HocKy } from '../../types/hocKy'
 import type { RangBuocHocKy, DinhMucGiangVien, KetQuaKiemTraRangBuoc } from '../../types/rangBuoc'
+import { IconEdit } from '../../components/ActionIcons'
 
 function DanhSachRangBuoc() {
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
@@ -203,8 +204,8 @@ function DanhSachRangBuoc() {
 
       {tabHienTai === 'rangBuoc' && (
         <div className="table-responsive border bg-white">
-          <table className="table table-hover table-sm mb-0">
-            <thead className="table-light">
+          <table className="table table-modern table-hover table-sm mb-0">
+            <thead>
               <tr>
                 <th style={{ width: '60px' }}>STT</th>
                 <th>Tên ràng buộc</th>
@@ -268,15 +269,20 @@ function DanhSachRangBuoc() {
                     <td className="text-muted small">{rb.moTa || '-'}</td>
                     <td className="text-end">
                       {dangSuaRbId !== rb.maRangBuoc && (
-                        <button
-                          className="btn btn-outline-secondary btn-sm py-0 px-2"
-                          onClick={() => {
-                            setDangSuaRbId(rb.maRangBuoc)
-                            setTrongSoTam(rb.trongSoPhat)
-                          }}
-                        >
-                          Sửa
-                        </button>
+                        <div className="action-group justify-content-end">
+                          <button
+                            type="button"
+                            className="btn-action btn-action--sm"
+                            aria-label={`Sửa trọng số ${rb.tenRangBuoc}`}
+                            onClick={() => {
+                              setDangSuaRbId(rb.maRangBuoc)
+                              setTrongSoTam(rb.trongSoPhat)
+                            }}
+                          >
+                            <IconEdit />
+                            <span>Sửa</span>
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -322,8 +328,8 @@ function DanhSachRangBuoc() {
           </div>
 
           <div className="table-responsive border bg-white">
-            <table className="table table-hover table-sm mb-0">
-              <thead className="table-light">
+            <table className="table table-modern table-hover table-sm mb-0">
+              <thead>
                 <tr>
                   <th style={{ width: '60px' }}>STT</th>
                   <th>Họ và tên giảng viên</th>
@@ -359,16 +365,21 @@ function DanhSachRangBuoc() {
                         <span className="badge bg-primary">{dm.soTietToiDa} tiết</span>
                       </td>
                       <td className="text-end">
-                        <button
-                          className="btn btn-outline-secondary btn-sm py-0 px-2"
-                          onClick={() => {
-                            setGvDangSua(dm)
-                            setGvToiThieu(dm.soTietToiThieu)
-                            setGvToiDa(dm.soTietToiDa)
-                          }}
-                        >
-                          Sửa
-                        </button>
+                        <div className="action-group justify-content-end">
+                          <button
+                            type="button"
+                            className="btn-action btn-action--sm"
+                            aria-label={`Sửa định mức ${dm.tenGiangVien}`}
+                            onClick={() => {
+                              setGvDangSua(dm)
+                              setGvToiThieu(dm.soTietToiThieu)
+                              setGvToiDa(dm.soTietToiDa)
+                            }}
+                          >
+                            <IconEdit />
+                            <span>Sửa</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

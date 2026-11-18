@@ -17,6 +17,71 @@ public class KetQuaKiemTraRangBuoc
 public class BoKiemTraRangBuoc
 {
     /// <summary>
+    /// Kiểm tra 2 buổi học của 2 lớp có phải là lớp ghép hợp lệ hay không:
+    /// phải trùng đồng thời mã học phần, thứ, tiết, tuần và phòng học (không rỗng).
+    /// </summary>
+    public static bool LaHaiBuoiLopGhep(
+        LopHocPhan? lop1, ChiTietThoiKhoaBieu ct1,
+        LopHocPhan? lop2, ChiTietThoiKhoaBieu ct2)
+    {
+        if (lop1 == null || lop2 == null || lop1.MaHocPhan != lop2.MaHocPhan) return false;
+        if (ct1.Thu != ct2.Thu || ct1.TietBatDau != ct2.TietBatDau || ct1.TietKetThuc != ct2.TietKetThuc) return false;
+        if (ct1.TuTuan != ct2.TuTuan || ct1.DenTuan != ct2.DenTuan) return false;
+        if (string.IsNullOrWhiteSpace(ct1.PhongHoc) || string.IsNullOrWhiteSpace(ct2.PhongHoc)) return false;
+
+        return string.Equals(ct1.PhongHoc.Trim(), ct2.PhongHoc.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Tạo chữ ký định danh cụm lớp ghép theo đủ 5 tiêu chí:
+    /// mã học phần, thứ, tiết, tuần và phòng học (không rỗng).
+    /// </summary>
+    public static string TaoChuKyLopGhep(
+        int maLop,
+        int maHocPhan,
+        IReadOnlyCollection<ChiTietThoiKhoaBieu>? dsCt)
+    {
+        if (dsCt == null || dsCt.Count == 0 || dsCt.Any(c => string.IsNullOrWhiteSpace(c.PhongHoc)))
+        {
+            return $"HP_{maHocPhan}_LOP_{maLop}";
+        }
+
+        var chuoiBuoi = string.Join("|", dsCt
+            .OrderBy(c => c.Thu)
+            .ThenBy(c => c.TietBatDau)
+            .ThenBy(c => c.TietKetThuc)
+            .ThenBy(c => c.TuTuan)
+            .ThenBy(c => c.DenTuan)
+            .ThenBy(c => c.PhongHoc.Trim().ToUpperInvariant())
+            .Select(c => $"{c.Thu}_{c.TietBatDau}_{c.TietKetThuc}_{c.TuTuan}_{c.DenTuan}_{c.PhongHoc.Trim().ToUpperInvariant()}"));
+
+        return $"HP_{maHocPhan}:{chuoiBuoi}";
+    }
+
+    /// <summary>
+    /// Khử trùng lặp các buổi học của cụm lớp ghép (cùng môn, thứ, tiết, tuần và phòng học).
+    /// </summary>
+    public static List<ChiTietThoiKhoaBieu> KhuTrungLopGhep(
+        IEnumerable<ChiTietThoiKhoaBieu> dsBuoiHocRaw,
+        IDictionary<int, LopHocPhan> lopTheoMa)
+    {
+        return dsBuoiHocRaw
+            .GroupBy(b => (
+                b.Thu,
+                b.TietBatDau,
+                b.TietKetThuc,
+                b.TuTuan,
+                b.DenTuan,
+                MaHp: lopTheoMa.TryGetValue(b.MaLopHocPhan, out var l) ? l.MaHocPhan : b.MaLopHocPhan,
+                Phong: !string.IsNullOrWhiteSpace(b.PhongHoc)
+                    ? b.PhongHoc.Trim().ToUpperInvariant()
+                    : $"_LOP_{b.MaLopHocPhan}"
+            ))
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    /// <summary>
     /// Kiểm tra 2 khoảng thời gian học có bị trùng lịch nhau không (cùng thứ, giao nhau về tuần và tiết).
     /// </summary>
     public bool CoTrungLich(
@@ -147,11 +212,7 @@ public class BoKiemTraRangBuoc
                         var lop2 = dsLop.FirstOrDefault(x => x.MaLopHocPhan == ct2.MaLopHocPhan);
 
                         // Miá»…n trá»« náº¿u lĂ  lá»›p ghĂ©p há»c chung cĂ¹ng mĂ´n vĂ  cĂ¹ng ca/phĂ²ng
-                        bool laLopGhep = lop1 != null && lop2 != null && lop1.MaHocPhan == lop2.MaHocPhan &&
-                            ct1.Thu == ct2.Thu && ct1.TietBatDau == ct2.TietBatDau && ct1.TietKetThuc == ct2.TietKetThuc &&
-                            ct1.TuTuan == ct2.TuTuan && ct1.DenTuan == ct2.DenTuan &&
-                            !string.IsNullOrWhiteSpace(ct1.PhongHoc) &&
-                            string.Equals(ct1.PhongHoc?.Trim(), ct2.PhongHoc?.Trim(), StringComparison.OrdinalIgnoreCase);
+                        bool laLopGhep = LaHaiBuoiLopGhep(lop1, ct1, lop2, ct2);
 
                         if (!laLopGhep)
                         {

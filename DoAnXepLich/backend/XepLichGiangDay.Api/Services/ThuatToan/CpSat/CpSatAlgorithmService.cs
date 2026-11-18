@@ -40,23 +40,12 @@ public class CpSatAlgorithmService(
             .ToDictionary(g => g.Key, g => g.First().MaGiangVien);
 
         // 2. XỬ LÝ GỘP CỤM LỚP GHÉP (Merged Classes / Joint Sessions Pre-processing)
-        // Gom các lớp học phần học chung cùng môn, cùng ca dạy (thứ, tiết, tuần) thành 1 cụm lớp ghép
-        string TaoChuKyBuoiHoc(int maLop, int maHocPhan)
-        {
-            if (!boiCanh.ChiTietTheoLop.TryGetValue(maLop, out var dsCt) || dsCt.Count == 0)
-            {
-                return $"HP_{maHocPhan}_LOP_{maLop}";
-            }
-            var chuoiBuoi = string.Join("|", dsCt
-                .OrderBy(c => c.Thu)
-                .ThenBy(c => c.TietBatDau)
-                .ThenBy(c => c.TuTuan)
-                .Select(c => $"{c.Thu}_{c.TietBatDau}_{c.TietKetThuc}_{c.TuTuan}_{c.DenTuan}"));
-            return $"HP_{maHocPhan}:{chuoiBuoi}";
-        }
-
+        // Gom các lớp học phần học chung đồng thời: mã học phần, thứ, tiết, tuần và phòng học
         var nhomLopGhep = boiCanh.DanhSachLop
-            .GroupBy(lop => TaoChuKyBuoiHoc(lop.MaLopHocPhan, lop.MaHocPhan))
+            .GroupBy(lop => BoKiemTraRangBuoc.TaoChuKyLopGhep(
+                lop.MaLopHocPhan,
+                lop.MaHocPhan,
+                boiCanh.ChiTietTheoLop.GetValueOrDefault(lop.MaLopHocPhan)))
             .ToList();
 
         // Ánh xạ lớp -> lớp đại diện của cụm

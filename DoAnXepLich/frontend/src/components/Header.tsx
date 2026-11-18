@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -34,6 +34,32 @@ function Header({ onToggleSidebar }: HeaderProps) {
   const [matKhauMoi, setMatKhauMoi] = useState('')
   const [loi, setLoi] = useState('')
   const [thongBao, setThongBao] = useState('')
+  const [moMenu, setMoMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!moMenu) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMoMenu(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMoMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [moMenu])
 
   const handleDangXuat = () => {
     dangXuat()
@@ -72,6 +98,19 @@ function Header({ onToggleSidebar }: HeaderProps) {
 
   const tieuDeTrangHienTai = pageTitles[location.pathname] || 'Phân công giảng dạy'
 
+  const tenHienThi = user ? hienThiHoTen(user.hoTen) : ''
+  const cacTuTen = tenHienThi.trim() ? tenHienThi.trim().split(/\s+/) : []
+  const chuCaiDau = cacTuTen.length > 0 ? cacTuTen[cacTuTen.length - 1].charAt(0).toUpperCase() : '?'
+  const vaiTroHienThi = user
+    ? `${
+        user.vaiTro === 'Admin'
+          ? 'Quản trị'
+          : user.vaiTro === 'TruongBoMon'
+            ? 'Trưởng bộ môn'
+            : user.vaiTro
+      }${user.tenBoMon ? ` (${user.tenBoMon})` : ''}`
+    : ''
+
   return (
     <header className="header-bar">
       {/* Góc trái: Nút thu gọn Sidebar và Tiêu đề chức năng hiện tại */}
@@ -95,37 +134,142 @@ function Header({ onToggleSidebar }: HeaderProps) {
         </span>
       </div>
 
-      {/* Góc phải: Lời chào và Tài khoản cá nhân */}
+      {/* Góc phải: Menu tài khoản cá nhân */}
       <div className="d-flex align-items-center gap-2">
         {user ? (
-          <>
-            <span style={{ fontSize: '13px', color: '#475569' }}>
-              Xin chào, <strong style={{ color: '#0f172a' }}>{hienThiHoTen(user.hoTen)}</strong>
-            </span>
-            <span className="badge bg-light text-secondary border" style={{ fontSize: '11px' }}>
-              {user.vaiTro === 'Admin' ? 'Quản trị' : user.vaiTro === 'TruongBoMon' ? 'Trưởng bộ môn' : user.vaiTro}
-              {user.tenBoMon ? ` (${user.tenBoMon})` : ''}
-            </span>
-
-            <div className="btn-group ms-2">
-              <button
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => {
-                  setLoi('')
-                  setThongBao('')
-                  setHienModalDoiMk(true)
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="header-account-trigger"
+              aria-haspopup="menu"
+              aria-expanded={moMenu}
+              onClick={() => setMoMenu((prev) => !prev)}
+            >
+              <span
+                style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  backgroundColor: '#111827',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
-                Đổi MK
-              </button>
-              <button
-                className="btn btn-outline-danger btn-sm"
-                onClick={handleDangXuat}
+                {chuCaiDau}
+              </span>
+
+              <span style={{ fontSize: '14px', color: '#334155', whiteSpace: 'nowrap' }}>
+                {tenHienThi}
+              </span>
+
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  color: '#64748b',
+                  transform: moMenu ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                  flexShrink: 0,
+                }}
               >
-                Đăng xuất
-              </button>
-            </div>
-          </>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {moMenu && (
+              <div
+                role="menu"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 8px)',
+                  width: '260px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04)',
+                  padding: '6px',
+                  zIndex: 1050,
+                }}
+              >
+                <div style={{ padding: '8px 12px 10px' }}>
+                  <div style={{ fontSize: '15px', fontWeight: 500, color: '#0f172a', lineHeight: 1.35 }}>
+                    {tenHienThi}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px', lineHeight: 1.35 }}>
+                    {vaiTroHienThi}
+                  </div>
+                </div>
+
+                <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '2px 0 6px' }} />
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="header-account-item"
+                  onClick={() => {
+                    setMoMenu(false)
+                    setLoi('')
+                    setThongBao('')
+                    setHienModalDoiMk(true)
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                  </svg>
+                  <span>Đổi mật khẩu</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="header-account-item header-account-item-danger"
+                  onClick={() => {
+                    setMoMenu(false)
+                    handleDangXuat()
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <button
             className="btn btn-primary btn-sm"

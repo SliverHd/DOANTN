@@ -3,6 +3,7 @@ import { hocKyApi } from '../../api/hocKyApi'
 import { boMonApi } from '../../api/boMonApi'
 import { thoiKhoaBieuApi } from '../../api/thoiKhoaBieuApi'
 import { useAuth } from '../../contexts/AuthContext'
+import { IconTrash } from '../../components/ActionIcons'
 import type { HocKy } from '../../types/hocKy'
 import type { BoMon } from '../../types/boMon'
 import type { LopHocPhan } from '../../types/lopHocPhan'
@@ -160,8 +161,8 @@ function DanhSachLopHocPhan() {
           </div>
 
           <div className="table-responsive border bg-white shadow-sm">
-            <table className="table table-hover table-sm mb-0" style={{ fontSize: '0.88rem' }}>
-              <thead className="table-light">
+            <table className="table table-modern table-hover table-sm mb-0" style={{ fontSize: '0.88rem' }}>
+              <thead>
                 <tr>
                   <th style={{ width: '45px' }}>STT</th>
                   <th>Mã lớp HP</th>
@@ -227,12 +228,17 @@ function DanhSachLopHocPhan() {
                       </td>
                       {isAdmin && (
                         <td className="text-end no-print">
-                          <button
-                            className="btn btn-outline-danger btn-sm py-0 px-2"
-                            onClick={() => handleXoa(lop.maLopHocPhan)}
-                          >
-                            Xóa
-                          </button>
+                          <div className="action-group justify-content-end">
+                            <button
+                              type="button"
+                              className="btn-action btn-action--sm btn-action--danger"
+                              aria-label={`Xóa lớp học phần ${lop.maLopHocPhanTruong}`}
+                              onClick={() => handleXoa(lop.maLopHocPhan)}
+                            >
+                              <IconTrash />
+                              <span>Xóa</span>
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
