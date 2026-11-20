@@ -94,6 +94,13 @@ public class RangBuocService(
         return dsGiangVien.Select(gv =>
         {
             var dm = dsDinhMuc.FirstOrDefault(x => x.MaGiangVien == gv.MaGiangVien);
+            bool isThinhGiang = (gv.ChucDanh != null && gv.ChucDanh.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase)) ||
+                                gv.HoTen.Contains("Thỉnh giảng", StringComparison.OrdinalIgnoreCase);
+            bool isTroGiang = (gv.ChucDanh != null && gv.ChucDanh.Contains("trợ giảng", StringComparison.OrdinalIgnoreCase)) ||
+                              gv.HoTen.Contains("Trợ giảng", StringComparison.OrdinalIgnoreCase);
+            int minMacDinh = isTroGiang ? 0 : (isThinhGiang ? 3 : 6);
+            int maxMacDinh = isTroGiang ? 12 : (isThinhGiang ? 16 : 25);
+
             return new DinhMucGiangVienDto
             {
                 MaDinhMuc = dm?.MaDinhMuc ?? 0,
@@ -101,8 +108,8 @@ public class RangBuocService(
                 TenGiangVien = gv.HoTen,
                 Email = gv.Email,
                 MaHocKy = maHocKy,
-                SoTietToiThieu = dm?.SoTietToiThieu ?? 60,
-                SoTietToiDa = dm?.SoTietToiDa ?? 120
+                SoTietToiThieu = dm?.SoTietToiThieu ?? minMacDinh,
+                SoTietToiDa = dm?.SoTietToiDa ?? maxMacDinh
             };
         }).ToList();
     }

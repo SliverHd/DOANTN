@@ -17,13 +17,13 @@ function DanhSachRangBuoc() {
 
   // Dữ liệu Định mức
   const [danhSachDinhMuc, setDanhSachDinhMuc] = useState<DinhMucGiangVien[]>([])
-  const [dmChungToiThieu, setDmChungToiThieu] = useState<number>(60)
-  const [dmChungToiDa, setDmChungToiDa] = useState<number>(120)
+  const [dmChungToiThieu, setDmChungToiThieu] = useState<number>(6)
+  const [dmChungToiDa, setDmChungToiDa] = useState<number>(25)
 
   // Modal sửa định mức từng GV
   const [gvDangSua, setGvDangSua] = useState<DinhMucGiangVien | null>(null)
-  const [gvToiThieu, setGvToiThieu] = useState<number>(60)
-  const [gvToiDa, setGvToiDa] = useState<number>(120)
+  const [gvToiThieu, setGvToiThieu] = useState<number>(6)
+  const [gvToiDa, setGvToiDa] = useState<number>(25)
 
   // Dữ liệu Kiểm tra ràng buộc cứng
   const [ketQuaKiemTra, setKetQuaKiemTra] = useState<KetQuaKiemTraRangBuoc | null>(null)
@@ -297,10 +297,13 @@ function DanhSachRangBuoc() {
         <div>
           {/* Form áp dụng nhanh định mức chung */}
           <div className="card border p-3 bg-light mb-3">
-            <h3 className="h6 fw-bold mb-2">Thiết lập định mức chung cho tất cả giảng viên</h3>
+            <h3 className="h6 fw-bold mb-1">Thiết lập định mức giờ giảng chung theo tuần</h3>
+            <p className="text-muted small mb-2">
+              Đơn vị tính theo <strong>tiết/tuần</strong>. Quy chế mặc định: Cơ hữu <strong>6–25</strong>, Thỉnh giảng <strong>3–16</strong>, Trợ giảng <strong>0–12 tiết/tuần</strong>.
+            </p>
             <div className="row g-2 align-items-end">
               <div className="col-md-3">
-                <label className="form-label small fw-semibold">Số tiết tối thiểu</label>
+                <label className="form-label small fw-semibold">Số tiết tối thiểu / tuần</label>
                 <input
                   type="number"
                   className="form-control form-control-sm"
@@ -310,7 +313,7 @@ function DanhSachRangBuoc() {
                 />
               </div>
               <div className="col-md-3">
-                <label className="form-label small fw-semibold">Số tiết tối đa</label>
+                <label className="form-label small fw-semibold">Số tiết tối đa / tuần</label>
                 <input
                   type="number"
                   className="form-control form-control-sm"
@@ -334,8 +337,8 @@ function DanhSachRangBuoc() {
                   <th style={{ width: '60px' }}>STT</th>
                   <th>Họ và tên giảng viên</th>
                   <th>Email</th>
-                  <th>Số tiết tối thiểu</th>
-                  <th>Số tiết tối đa</th>
+                  <th>Số tiết tối thiểu / tuần</th>
+                  <th>Số tiết tối đa / tuần</th>
                   <th style={{ width: '100px' }} className="text-end">Thao tác</th>
                 </tr>
               </thead>
@@ -359,10 +362,10 @@ function DanhSachRangBuoc() {
                       <td className="fw-semibold">{dm.tenGiangVien}</td>
                       <td className="text-muted">{dm.email}</td>
                       <td>
-                        <span className="badge bg-secondary">{dm.soTietToiThieu} tiết</span>
+                        <span className="badge bg-secondary">{dm.soTietToiThieu} tiết/tuần</span>
                       </td>
                       <td>
-                        <span className="badge bg-primary">{dm.soTietToiDa} tiết</span>
+                        <span className="badge bg-primary">{dm.soTietToiDa} tiết/tuần</span>
                       </td>
                       <td className="text-end">
                         <div className="action-group justify-content-end">
@@ -405,7 +408,7 @@ function DanhSachRangBuoc() {
                     <p className="small mb-2 fw-semibold">{gvDangSua.tenGiangVien}</p>
 
                     <div className="mb-2">
-                      <label className="form-label small fw-semibold">Số tiết tối thiểu</label>
+                      <label className="form-label small fw-semibold">Số tiết tối thiểu / tuần</label>
                       <input
                         type="number"
                         className="form-control form-control-sm"
@@ -415,7 +418,7 @@ function DanhSachRangBuoc() {
                       />
                     </div>
                     <div className="mb-2">
-                      <label className="form-label small fw-semibold">Số tiết tối đa</label>
+                      <label className="form-label small fw-semibold">Số tiết tối đa / tuần</label>
                       <input
                         type="number"
                         className="form-control form-control-sm"
@@ -423,6 +426,9 @@ function DanhSachRangBuoc() {
                         onChange={(e) => setGvToiDa(Number(e.target.value))}
                         min={0}
                       />
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '12px' }}>
+                      Quy chế: Cơ hữu 6–25, Thỉnh giảng 3–16, Trợ giảng 0–12 tiết/tuần.
                     </div>
                   </div>
                   <div className="modal-footer py-2">
