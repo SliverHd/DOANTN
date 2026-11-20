@@ -713,57 +713,6 @@ public class ImportThoiKhoaBieuService(AppDbContext context)
             .ToListAsync();
     }
 
-    public byte[] TaoFileMauExcel()
-    {
-        using var workbook = new XLWorkbook();
-        var ws = workbook.Worksheets.Add("ThoiKhoaBieu");
-
-        // Tiêu đề cột
-        ws.Cell(1, 1).Value = "Mã lớp HP";
-        ws.Cell(1, 2).Value = "Tên lớp";
-        ws.Cell(1, 3).Value = "Mã môn học";
-        ws.Cell(1, 4).Value = "Tên môn học";
-        ws.Cell(1, 5).Value = "Số lượng SV";
-        ws.Cell(1, 6).Value = "Thứ";
-        ws.Cell(1, 7).Value = "Tiết bắt đầu";
-        ws.Cell(1, 8).Value = "Tiết kết thúc";
-        ws.Cell(1, 9).Value = "Phòng học";
-        ws.Cell(1, 10).Value = "Từ tuần";
-        ws.Cell(1, 11).Value = "Đến tuần";
-
-        // Dữ liệu mẫu dòng 1
-        ws.Cell(2, 1).Value = "IT101_01";
-        ws.Cell(2, 2).Value = "Lập trình C# - K20A";
-        ws.Cell(2, 3).Value = "1";
-        ws.Cell(2, 4).Value = "Nhập môn lập trình";
-        ws.Cell(2, 5).Value = 45;
-        ws.Cell(2, 6).Value = 2;
-        ws.Cell(2, 7).Value = 1;
-        ws.Cell(2, 8).Value = 3;
-        ws.Cell(2, 9).Value = "A101";
-        ws.Cell(2, 10).Value = 1;
-        ws.Cell(2, 11).Value = 15;
-
-        // Dữ liệu mẫu dòng 2
-        ws.Cell(3, 1).Value = "IT102_01";
-        ws.Cell(3, 2).Value = "Cơ sở dữ liệu - K20B";
-        ws.Cell(3, 3).Value = "2";
-        ws.Cell(3, 4).Value = "Cơ sở dữ liệu";
-        ws.Cell(3, 5).Value = 40;
-        ws.Cell(3, 6).Value = 4;
-        ws.Cell(3, 7).Value = 4;
-        ws.Cell(3, 8).Value = 6;
-        ws.Cell(3, 9).Value = "B202";
-        ws.Cell(3, 10).Value = 1;
-        ws.Cell(3, 11).Value = 15;
-
-        ws.Columns().AdjustToContents();
-
-        using var memoryStream = new MemoryStream();
-        workbook.SaveAs(memoryStream);
-        return memoryStream.ToArray();
-    }
-
     private static string LamSachTenGiangVien(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return string.Empty;

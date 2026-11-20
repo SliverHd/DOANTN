@@ -26,7 +26,6 @@ function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Pro
 
   const [dangPreview, setDangPreview] = useState(false)
   const [dangImport, setDangImport] = useState(false)
-  const [dangTaiMau, setDangTaiMau] = useState(false)
   const [ketQuaPreview, setKetQuaPreview] = useState<KetQuaPreviewImport | null>(null)
   const [lichSu, setLichSu] = useState<LichSuImport[]>([])
   const [thongBao, setThongBao] = useState('')
@@ -77,29 +76,6 @@ function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Pro
       }
     } catch {
       alert('Không thể xóa bản ghi lịch sử này.')
-    }
-  }
-
-  const handleTaiFileMau = async () => {
-    try {
-      setDangTaiMau(true)
-      setLoi('')
-      const res = await importTkbApi.taiFileMau()
-      const blob = new Blob([res.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = 'Mau_ThoiKhoaBieu.xlsx'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-    } catch {
-      setLoi('Không thể tải file mẫu Excel. Vui lòng thử lại.')
-    } finally {
-      setDangTaiMau(false)
     }
   }
 
@@ -196,21 +172,11 @@ function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Pro
 
   return (
     <div className="card border p-3 bg-white mt-3">
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div>
-          <h3 className="h6 mb-0 fw-bold">Import thời khóa biểu từ Excel theo Bộ môn</h3>
-          <p className="text-muted small mb-0">
-            Mỗi bộ môn có thời khóa biểu riêng. Các lớp đã có sẵn tên giảng viên trong file Excel sẽ được <strong>nhận diện và khóa cứng tự động</strong>.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleTaiFileMau}
-          disabled={dangTaiMau}
-          className="btn btn-outline-secondary btn-sm"
-        >
-          {dangTaiMau ? 'Đang tải mẫu...' : 'Tải file mẫu Excel (.xlsx)'}
-        </button>
+      <div className="mb-3">
+        <h3 className="h6 mb-0 fw-bold">Import thời khóa biểu từ Excel theo Bộ môn</h3>
+        <p className="text-muted small mb-0">
+          Mỗi bộ môn có thời khóa biểu riêng. Các lớp đã có sẵn tên giảng viên trong file Excel sẽ được <strong>nhận diện và khóa cứng tự động</strong>.
+        </p>
       </div>
 
       {loi && <div className="alert alert-danger py-2 small">{loi}</div>}

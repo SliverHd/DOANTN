@@ -30,11 +30,4 @@ export const importTkbApi = {
   xoaLichSu: (id: number) => {
     return axiosClient.delete(`/import-thoi-khoa-bieu/lich-su/${id}`)
   },
-
-  taiFileMau: () =>
-    axiosClient.get<Blob>('/import-thoi-khoa-bieu/file-mau', {
-      responseType: 'blob',
-    }),
-
-  downloadFileMauUrl: '/api/import-thoi-khoa-bieu/file-mau',
 }

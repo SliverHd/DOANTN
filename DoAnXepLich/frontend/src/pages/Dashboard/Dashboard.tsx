@@ -117,7 +117,7 @@ function Dashboard() {
                 Đang chạy thực nghiệm...
               </>
             ) : (
-              '⚡ Chạy đối đầu CP-SAT vs GA'
+              'So sánh hiệu năng thuật toán (GA vs CP-SAT)'
             )}
           </button>
         </div>
@@ -383,7 +383,7 @@ function Dashboard() {
             <h5 className="fw-bold">Chưa có dữ liệu đối sánh thực nghiệm</h5>
             <p className="text-muted small mb-3">
               Chọn học kỳ ở góc trên bên phải và bấm nút{' '}
-              <strong>"⚡ Chạy đối đầu CP-SAT vs GA"</strong> để hệ thống tự động kích hoạt cả hai giải thuật và trích xuất bảng so sánh chi tiết.
+              <strong>"So sánh hiệu năng thuật toán (GA vs CP-SAT)"</strong> để hệ thống tự động kích hoạt cả hai giải thuật và trích xuất bảng so sánh chi tiết.
             </p>
           </div>
         </div>

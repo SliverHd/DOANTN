@@ -683,6 +683,7 @@ public class NguyenVongService(AppDbContext context)
             "SC06" => ("SC06", "Giới hạn số tiết tối đa / ngày"),
             "SC07" => ("SC07", "Hạn chế số ngày dạy trong tuần (gom lịch)"),
             "SC08" or "NGHI_DOT_XUAT" or "XinNghiDotXuat" or "TamNghi" => ("SC08", "Xin nghỉ đột xuất / Tạm hoãn giảng dạy (theo tuần)"),
+            "SC09" => ("SC09", "Ưu tiên dạy khung giờ tùy chọn"),
             "SEMINAR" => ("SEMINAR", "Seminar / Sinh hoạt chuyên môn Bộ môn"),
             _ => (loai, "Nguyện vọng giảng viên")
         };

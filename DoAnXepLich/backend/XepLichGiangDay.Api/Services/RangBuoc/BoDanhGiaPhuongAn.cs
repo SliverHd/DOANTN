@@ -315,26 +315,26 @@ public class BoDanhGiaPhuongAn
                             canhBaos.Add($"{tenGv} có nguyện vọng tránh dạy cuối tuần nhưng lớp [{maLopTruong}] xếp vào {nhanThu}.");
                         }
                     }
-                    // SC04 hoặc ThichDay sáng (Tiết 1-6)
-                    else if (maRb == "SC04" || (maRb == "THICHDAY" && (nv.TietKetThuc ?? 0) <= 6 && (!nv.Thu.HasValue || nv.Thu.Value == 0)))
+                    // SC04 (sáng), SC05 (chiều), SC09 (khung giờ tùy chọn) hoặc ThichDay không cố định thứ
+                    else if (maRb == "SC04" || maRb == "SC05" || maRb == "SC09" ||
+                             (maRb == "THICHDAY" && (!nv.Thu.HasValue || nv.Thu.Value == 0)))
                     {
-                        int tbdUuTien = nv.TietBatDau ?? 1;
-                        int tktUuTien = nv.TietKetThuc ?? 6;
+                        bool laMacDinhChieu = maRb == "SC05" || (maRb == "THICHDAY" && (nv.TietBatDau ?? 0) >= 7);
+                        int tbdUuTien = nv.TietBatDau ?? (laMacDinhChieu ? 7 : 1);
+                        int tktUuTien = nv.TietKetThuc ?? (laMacDinhChieu || maRb == "SC09" ? 12 : 6);
+
                         if (dungThu && (ct.TietBatDau < tbdUuTien || ct.TietKetThuc > tktUuTien))
                         {
+                            bool laSang = (maRb == "SC04" || maRb == "THICHDAY") && tktUuTien <= 6;
+                            bool laChieu = (maRb == "SC05" || maRb == "THICHDAY") && tbdUuTien >= 7;
+                            string nhanKhungGio = laSang
+                                ? $"ca sáng (tiết {tbdUuTien}-{tktUuTien})"
+                                : laChieu
+                                    ? $"ca chiều (tiết {tbdUuTien}-{tktUuTien})"
+                                    : $"khung tiết {tbdUuTien}-{tktUuTien}";
+
                             diemPhat += trongSoNv * 0.8;
-                            canhBaos.Add($"{tenGv} ưu tiên dạy ca sáng (tiết {tbdUuTien}-{tktUuTien}) nhưng lớp [{maLopTruong}] học tiết {ct.TietBatDau}-{ct.TietKetThuc}.");
-                        }
-                    }
-                    // SC05: Ưu tiên dạy chiều (Tiết 7-12)
-                    else if (maRb == "SC05" || (maRb == "THICHDAY" && (nv.TietBatDau ?? 0) >= 7 && (!nv.Thu.HasValue || nv.Thu.Value == 0)))
-                    {
-                        int tbdUuTien = nv.TietBatDau ?? 7;
-                        int tktUuTien = nv.TietKetThuc ?? 12;
-                        if (dungThu && (ct.TietBatDau < tbdUuTien || ct.TietKetThuc > tktUuTien))
-                        {
-                            diemPhat += trongSoNv * 0.8;
-                            canhBaos.Add($"{tenGv} ưu tiên dạy ca chiều (tiết {tbdUuTien}-{tktUuTien}) nhưng lớp [{maLopTruong}] học tiết {ct.TietBatDau}-{ct.TietKetThuc}.");
+                            canhBaos.Add($"{tenGv} ưu tiên dạy {nhanKhungGio} nhưng lớp [{maLopTruong}] học tiết {ct.TietBatDau}-{ct.TietKetThuc}.");
                         }
                     }
                     // SC08: Xin nghỉ đột xuất / Tạm hoãn giảng dạy theo tuần

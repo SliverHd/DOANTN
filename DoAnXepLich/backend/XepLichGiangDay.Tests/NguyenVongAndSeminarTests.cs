@@ -353,4 +353,70 @@ public class NguyenVongAndSeminarTests
         Assert.True(lopSc08.CoLichTamNghi);
         Assert.Equal("12", lopSc08.TuanTamNghi);
     }
+
+    [Fact]
+    public void Test_SC09_UuTienKhungGioTuyChon_Va_CanhBaoThongMinh()
+    {
+        var (maRb, tenRb) = NguyenVongService.PhanTichMaRangBuoc("SC09", null);
+        Assert.Equal("SC09", maRb);
+        Assert.Contains("khung giờ tùy chọn", tenRb, StringComparison.OrdinalIgnoreCase);
+
+        var boDanhGia = new BoDanhGiaPhuongAn();
+        var gv = new GiangVien { MaGiangVien = 10, HoTen = "GV Test SC09", TrangThai = "DangLamViec" };
+        var lopSang = new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_3_6" };
+        var lopChieu = new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_7_9" };
+        var lopSom = new LopHocPhan { MaLopHocPhan = 3, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_1_3" };
+        var lopToi = new LopHocPhan { MaLopHocPhan = 4, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_10_12" };
+
+        var boiCanh = new BoiCanhDanhGia
+        {
+            MaHocKy = 1,
+            DanhSachLop = [lopSang, lopChieu, lopSom, lopToi],
+            LopTheoMa = new Dictionary<int, LopHocPhan> { [1] = lopSang, [2] = lopChieu, [3] = lopSom, [4] = lopToi },
+            ChiTietTheoLop = new Dictionary<int, List<ChiTietThoiKhoaBieu>>
+            {
+                [1] = [new() { MaLopHocPhan = 1, Thu = 2, TietBatDau = 3, TietKetThuc = 6 }],
+                [2] = [new() { MaLopHocPhan = 2, Thu = 3, TietBatDau = 7, TietKetThuc = 9 }],
+                [3] = [new() { MaLopHocPhan = 3, Thu = 4, TietBatDau = 1, TietKetThuc = 3 }],
+                [4] = [new() { MaLopHocPhan = 4, Thu = 5, TietBatDau = 10, TietKetThuc = 12 }],
+            },
+            GiangVienTheoMa = new Dictionary<int, GiangVien> { [10] = gv },
+            NangLucTheoGv = new Dictionary<int, HashSet<int>> { [10] = [101] },
+            NguyenVongTheoGv = new Dictionary<int, List<NguyenVongGiangVien>>
+            {
+                [10] =
+                [
+                    new()
+                    {
+                        MaHocKy = 1,
+                        MaGiangVien = 10,
+                        LoaiNguyenVong = "SC09",
+                        Thu = null, // Cả tuần
+                        TietBatDau = 3,
+                        TietKetThuc = 9,
+                        TrongSoPhat = 10.0,
+                        TrangThai = "DaDuyet"
+                    }
+                ]
+            }
+        };
+
+        // Tiết 3-6 và 7-9 nằm trong khung 3-9 -> 0 vi phạm
+        Assert.Equal(0, boDanhGia.TinhDiemNguyenVong(10, 1, boiCanh, out var cb1));
+        Assert.Empty(cb1);
+        Assert.Equal(0, boDanhGia.TinhDiemNguyenVong(10, 2, boiCanh, out var cb2));
+        Assert.Empty(cb2);
+
+        // Tiết 1-3 và 10-12 nằm ngoài khung 3-9 -> bị phạt + câu cảnh báo chuẩn
+        Assert.Equal(8.0, boDanhGia.TinhDiemNguyenVong(10, 3, boiCanh, out var cb3));
+        Assert.Contains("ưu tiên dạy khung tiết 3-9", cb3);
+        Assert.Equal(8.0, boDanhGia.TinhDiemNguyenVong(10, 4, boiCanh, out var cb4));
+        Assert.Contains("ưu tiên dạy khung tiết 3-9", cb4);
+
+        // Kiểm tra thêm SC04 nếu chọn vượt quá tiết 6 (3-9) cũng tự chuyển sang "khung tiết 3-9" (không ghi "ca sáng")
+        boiCanh.NguyenVongTheoGv[10][0].LoaiNguyenVong = "SC04";
+        Assert.Equal(8.0, boDanhGia.TinhDiemNguyenVong(10, 3, boiCanh, out var cbSc04));
+        Assert.Contains("khung tiết 3-9", cbSc04);
+        Assert.DoesNotContain("ca sáng", cbSc04);
+    }
 }

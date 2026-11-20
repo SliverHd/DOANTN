@@ -92,11 +92,4 @@ public class ImportThoiKhoaBieuController(ImportThoiKhoaBieuService importServic
         var ok = await importService.XoaLichSuImportAsync(id);
         return ok ? NoContent() : NotFound();
     }
-
-    [HttpGet("file-mau")]
-    public IActionResult DownloadFileMau()
-    {
-        var bytes = importService.TaoFileMauExcel();
-        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Mau_ThoiKhoaBieu.xlsx");
-    }
 }
