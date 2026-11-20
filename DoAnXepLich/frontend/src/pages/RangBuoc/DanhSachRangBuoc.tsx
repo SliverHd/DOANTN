@@ -5,6 +5,18 @@ import type { HocKy } from '../../types/hocKy'
 import type { RangBuocHocKy, DinhMucGiangVien, KetQuaKiemTraRangBuoc } from '../../types/rangBuoc'
 import { IconEdit } from '../../components/ActionIcons'
 
+/** Chuẩn hóa chuỗi số nguyên không âm: cho phép rỗng khi đang xóa và loại bỏ số 0 dư ở đầu. */
+function chuanHoaSoNguyen(rawValue: string): string {
+  return rawValue.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+}
+
+function parseSoNguyenKhongAm(rawValue: string): number | null {
+  const trimmed = rawValue.trim()
+  if (!trimmed) return null
+  const parsed = Number(trimmed)
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null
+}
+
 function DanhSachRangBuoc() {
   const [danhSachHocKy, setDanhSachHocKy] = useState<HocKy[]>([])
   const [maHocKy, setMaHocKy] = useState<number>(0)
@@ -13,17 +25,17 @@ function DanhSachRangBuoc() {
   // Dữ liệu Ràng buộc
   const [danhSachRangBuoc, setDanhSachRangBuoc] = useState<RangBuocHocKy[]>([])
   const [dangSuaRbId, setDangSuaRbId] = useState<number | null>(null)
-  const [trongSoTam, setTrongSoTam] = useState<number>(0)
+  const [trongSoTam, setTrongSoTam] = useState<string>('0')
 
   // Dữ liệu Định mức
   const [danhSachDinhMuc, setDanhSachDinhMuc] = useState<DinhMucGiangVien[]>([])
-  const [dmChungToiThieu, setDmChungToiThieu] = useState<number>(6)
-  const [dmChungToiDa, setDmChungToiDa] = useState<number>(25)
+  const [dmChungToiThieu, setDmChungToiThieu] = useState<string>('6')
+  const [dmChungToiDa, setDmChungToiDa] = useState<string>('25')
 
   // Modal sửa định mức từng GV
   const [gvDangSua, setGvDangSua] = useState<DinhMucGiangVien | null>(null)
-  const [gvToiThieu, setGvToiThieu] = useState<number>(6)
-  const [gvToiDa, setGvToiDa] = useState<number>(25)
+  const [gvToiThieu, setGvToiThieu] = useState<string>('6')
+  const [gvToiDa, setGvToiDa] = useState<string>('25')
 
   // Dữ liệu Kiểm tra ràng buộc cứng
   const [ketQuaKiemTra, setKetQuaKiemTra] = useState<KetQuaKiemTraRangBuoc | null>(null)
@@ -69,8 +81,14 @@ function DanhSachRangBuoc() {
 
   // Lưu trọng số phạt
   const handleLuuTrongSo = async (id: number) => {
+    const trongSo = parseSoNguyenKhongAm(trongSoTam)
+    if (trongSo === null) {
+      alert('Vui lòng nhập trọng số phạt là số nguyên không âm.')
+      return
+    }
+
     try {
-      await rangBuocApi.capNhatTrongSo(id, trongSoTam)
+      await rangBuocApi.capNhatTrongSo(id, trongSo)
       setDangSuaRbId(null)
       taiDuLieu(maHocKy)
       setThongBao('Cập nhật trọng số phạt thành công!')
@@ -82,7 +100,13 @@ function DanhSachRangBuoc() {
 
   // Áp dụng định mức chung
   const handleApDungChung = async () => {
-    if (dmChungToiThieu > dmChungToiDa) {
+    const soTietToiThieu = parseSoNguyenKhongAm(dmChungToiThieu)
+    const soTietToiDa = parseSoNguyenKhongAm(dmChungToiDa)
+    if (soTietToiThieu === null || soTietToiDa === null) {
+      alert('Vui lòng nhập đầy đủ số tiết tối thiểu và tối đa hợp lệ.')
+      return
+    }
+    if (soTietToiThieu > soTietToiDa) {
       alert('Số tiết tối thiểu không được lớn hơn số tiết tối đa.')
       return
     }
@@ -90,8 +114,8 @@ function DanhSachRangBuoc() {
     try {
       await rangBuocApi.apDungDinhMucChung({
         maHocKy,
-        soTietToiThieu: dmChungToiThieu,
-        soTietToiDa: dmChungToiDa,
+        soTietToiThieu,
+        soTietToiDa,
       })
       taiDuLieu(maHocKy)
       setThongBao('Đã áp dụng định mức cho toàn bộ giảng viên!')
@@ -104,7 +128,13 @@ function DanhSachRangBuoc() {
   // Lưu định mức từng GV
   const handleLuuDinhMucGv = async () => {
     if (!gvDangSua) return
-    if (gvToiThieu > gvToiDa) {
+    const soTietToiThieu = parseSoNguyenKhongAm(gvToiThieu)
+    const soTietToiDa = parseSoNguyenKhongAm(gvToiDa)
+    if (soTietToiThieu === null || soTietToiDa === null) {
+      alert('Vui lòng nhập đầy đủ số tiết tối thiểu và tối đa hợp lệ.')
+      return
+    }
+    if (soTietToiThieu > soTietToiDa) {
       alert('Số tiết tối thiểu không được lớn hơn số tiết tối đa.')
       return
     }
@@ -113,8 +143,8 @@ function DanhSachRangBuoc() {
       await rangBuocApi.capNhatDinhMuc({
         maGiangVien: gvDangSua.maGiangVien,
         maHocKy,
-        soTietToiThieu: gvToiThieu,
-        soTietToiDa: gvToiDa,
+        soTietToiThieu,
+        soTietToiDa,
       })
       setGvDangSua(null)
       taiDuLieu(maHocKy)
@@ -242,12 +272,12 @@ function DanhSachRangBuoc() {
                       {dangSuaRbId === rb.maRangBuoc ? (
                         <div className="d-flex align-items-center gap-1">
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             className="form-control form-control-sm"
                             style={{ width: '90px' }}
                             value={trongSoTam}
-                            onChange={(e) => setTrongSoTam(Number(e.target.value))}
-                            min={0}
+                            onChange={(e) => setTrongSoTam(chuanHoaSoNguyen(e.target.value))}
                           />
                           <button
                             className="btn btn-success btn-sm py-0 px-2"
@@ -276,7 +306,7 @@ function DanhSachRangBuoc() {
                             aria-label={`Sửa trọng số ${rb.tenRangBuoc}`}
                             onClick={() => {
                               setDangSuaRbId(rb.maRangBuoc)
-                              setTrongSoTam(rb.trongSoPhat)
+                              setTrongSoTam(String(rb.trongSoPhat))
                             }}
                           >
                             <IconEdit />
@@ -305,21 +335,23 @@ function DanhSachRangBuoc() {
               <div className="col-md-3">
                 <label className="form-label small fw-semibold">Số tiết tối thiểu / tuần</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="form-control form-control-sm"
                   value={dmChungToiThieu}
-                  onChange={(e) => setDmChungToiThieu(Number(e.target.value))}
-                  min={0}
+                  onChange={(e) => setDmChungToiThieu(chuanHoaSoNguyen(e.target.value))}
+                  placeholder="VD: 6"
                 />
               </div>
               <div className="col-md-3">
                 <label className="form-label small fw-semibold">Số tiết tối đa / tuần</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="form-control form-control-sm"
                   value={dmChungToiDa}
-                  onChange={(e) => setDmChungToiDa(Number(e.target.value))}
-                  min={0}
+                  onChange={(e) => setDmChungToiDa(chuanHoaSoNguyen(e.target.value))}
+                  placeholder="VD: 25"
                 />
               </div>
               <div className="col-md-4">
@@ -375,8 +407,8 @@ function DanhSachRangBuoc() {
                             aria-label={`Sửa định mức ${dm.tenGiangVien}`}
                             onClick={() => {
                               setGvDangSua(dm)
-                              setGvToiThieu(dm.soTietToiThieu)
-                              setGvToiDa(dm.soTietToiDa)
+                              setGvToiThieu(String(dm.soTietToiThieu))
+                              setGvToiDa(String(dm.soTietToiDa))
                             }}
                           >
                             <IconEdit />
@@ -410,21 +442,23 @@ function DanhSachRangBuoc() {
                     <div className="mb-2">
                       <label className="form-label small fw-semibold">Số tiết tối thiểu / tuần</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         className="form-control form-control-sm"
                         value={gvToiThieu}
-                        onChange={(e) => setGvToiThieu(Number(e.target.value))}
-                        min={0}
+                        onChange={(e) => setGvToiThieu(chuanHoaSoNguyen(e.target.value))}
+                        placeholder="VD: 6"
                       />
                     </div>
                     <div className="mb-2">
                       <label className="form-label small fw-semibold">Số tiết tối đa / tuần</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         className="form-control form-control-sm"
                         value={gvToiDa}
-                        onChange={(e) => setGvToiDa(Number(e.target.value))}
-                        min={0}
+                        onChange={(e) => setGvToiDa(chuanHoaSoNguyen(e.target.value))}
+                        placeholder="VD: 25"
                       />
                     </div>
                     <div className="text-muted" style={{ fontSize: '12px' }}>
