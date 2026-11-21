@@ -187,8 +187,9 @@ public class CpSatAlgorithmService(
         }
 
         // 4. Thiết lập HỆ THỐNG 6 RÀNG BUỘC CỨNG (HARD CONSTRAINTS)
-        // Danh sách các term của hàm mục tiêu (khai báo sớm để dùng ngay trong ràng buộc H5 "mềm hóa")
-        var objectiveTerms = new List<LinearExpr>();
+        // Tách riêng biến bỏ trống (Pha 1) và các thành phần phạt mềm (Pha 2) để giải 2 pha chính xác
+        var dsBienBoTrong = new List<BoolVar>();
+        var softObjectiveTerms = new List<LinearExpr>();
 
         // (H5) Phủ kín lớp học phần: ưu tiên tuyệt đối mỗi lớp có đúng 1 giảng viên,
         // nhưng KHÔNG bắt buộc cứng — nếu lớp xung đột không thể giải (ví dụ nhiều lớp
@@ -203,7 +204,7 @@ public class CpSatAlgorithmService(
 
             // Sum(ứng viên) + bienBoTrong == 1: hoặc có đúng 1 GV dạy, hoặc lớp bị bỏ trống
             model.Add(LinearExpr.Sum(dsBienLop) + bienBoTrong == 1);
-            objectiveTerms.Add(bienBoTrong * TRONG_SO_BO_TRONG);
+            dsBienBoTrong.Add(bienBoTrong);
         }
 
         // (RÀNG BUỘC ĐỒNG NHẤT LỚP GHÉP): Các lớp học phần trong cùng cụm lớp ghép (cùng môn, cùng ca dạy)
@@ -340,7 +341,7 @@ public class CpSatAlgorithmService(
             if (diemPhatNv > 0)
             {
                 long trongSoNguyen = (long)Math.Round(diemPhatNv * 10);
-                objectiveTerms.Add(xVar * trongSoNguyen);
+                softObjectiveTerms.Add(xVar * trongSoNguyen);
             }
         }
 
@@ -367,7 +368,7 @@ public class CpSatAlgorithmService(
                     // dayUsed = 1 nếu GV có ít nhất 1 lớp dạy vào ngày thu
                     var dayUsed = model.NewBoolVar($"day_{maGv}_{thu}");
                     model.AddMaxEquality(dayUsed, dsBienTrongNgay);
-                    objectiveTerms.Add(dayUsed * trongSoGomLich);
+                    softObjectiveTerms.Add(dayUsed * trongSoGomLich);
                 }
             }
         }
@@ -397,7 +398,7 @@ public class CpSatAlgorithmService(
                     {
                         var penaltyHoiPhuc = model.NewBoolVar($"rest_{maGv}_{lopToi}_{lopSang}");
                         model.Add(xVars[(maGv, lopToi)] + xVars[(maGv, lopSang)] - penaltyHoiPhuc <= 1);
-                        objectiveTerms.Add(penaltyHoiPhuc * (long)Math.Round(boiCanh.TrongSoNguyenVong * 15));
+                        softObjectiveTerms.Add(penaltyHoiPhuc * (long)Math.Round(boiCanh.TrongSoNguyenVong * 15));
                     }
                 }
             }
@@ -447,7 +448,7 @@ public class CpSatAlgorithmService(
             // Phạt vượt tải (overload) khi tuần cao điểm vượt quá maxQuota (hệ số 1.5 giống BoDanhGiaPhuongAn)
             var overload = model.NewIntVar(0, 50, $"overload_{maGv}");
             model.Add(overload >= peakLoad - maxQuota);
-            objectiveTerms.Add(overload * (long)Math.Round(trongSoCanBang * 1.5));
+            softObjectiveTerms.Add(overload * (long)Math.Round(trongSoCanBang * 1.5));
 
             // Phạt thiếu tải (underload) so với minQuota
             // Quy đổi tổng tiết học kỳ về tuần (chia 15 tuần chuẩn): minSemester = minQuota * 15
@@ -462,7 +463,16 @@ public class CpSatAlgorithmService(
 
             // underloadHocKy / 15 tương đương underload tuần; nhân với trongSoCanBang
             long trongSoUnderload = (long)Math.Max(1, Math.Round(boiCanh.TrongSoCanBangTai * 10.0 / 15.0));
-            objectiveTerms.Add(underloadHocKy * trongSoUnderload);
+            softObjectiveTerms.Add(underloadHocKy * trongSoUnderload);
+
+            // Phạt nặng nếu giảng viên có định mức tối thiểu (> 0) nhưng không được xếp lớp nào (0 tiết)
+            if (minQuota > 0)
+            {
+                const long TRONG_SO_KHONG_LOP = 50_000L;
+                var zeroClass = model.NewBoolVar($"zero_class_{maGv}");
+                model.Add(LinearExpr.Sum(dsBienTatCaLop) + zeroClass >= 1);
+                softObjectiveTerms.Add(zeroClass * TRONG_SO_KHONG_LOP);
+            }
         }
 
         // w5 * P5: Phạt vượt giới hạn số tiết tối đa / ngày theo nguyện vọng SC06
@@ -554,16 +564,23 @@ public class CpSatAlgorithmService(
 
                     var excessDay = model.NewIntVar(0, upperBound - maxTietNgay, $"sc06_excess_{maGv}_{thu}_{sc06Idx}");
                     model.Add(excessDay >= peakDay - maxTietNgay);
-                    objectiveTerms.Add(excessDay * trongSoScale);
+                    softObjectiveTerms.Add(excessDay * trongSoScale);
                     sc06Idx++;
                 }
             }
         }
 
-        // Đặt hàm mục tiêu tổng thể
-        if (objectiveTerms.Count > 0)
+        // Đặt hàm mục tiêu tổng thể Pha 1 (gồm phạt bỏ trống lớp 10^7 + phạt mềm)
+        var phase1Terms = new List<LinearExpr>(dsBienBoTrong.Count + softObjectiveTerms.Count);
+        foreach (var b in dsBienBoTrong)
         {
-            model.Minimize(LinearExpr.Sum(objectiveTerms));
+            phase1Terms.Add(b * TRONG_SO_BO_TRONG);
+        }
+        phase1Terms.AddRange(softObjectiveTerms);
+
+        if (phase1Terms.Count > 0)
+        {
+            model.Minimize(LinearExpr.Sum(phase1Terms));
         }
 
         // 6. CẤU HÌNH BỘ GIẢI CP-SAT SOLVER VỚI THÔNG SỐ TỐI ƯU (Mặc định 1 luồng để đảm bảo tính tất định & nhất quán)
@@ -581,9 +598,43 @@ public class CpSatAlgorithmService(
         cancellationToken.ThrowIfCancellationRequested();
         using var registration = cancellationToken.Register(() => solver.StopSearch());
 
-        // 7. TIẾN HÀNH GIẢI BÀI TOÁN
+        // 7. TIẾN HÀNH GIẢI BÀI TOÁN (2 PHA: Pha 1 tối thiểu hóa lớp bỏ trống, Pha 2 tối ưu phạt mềm & phân bổ đều GV)
         var stopwatch = Stopwatch.StartNew();
         var status = solver.Solve(model);
+
+        if (!cancellationToken.IsCancellationRequested &&
+            (status == CpSolverStatus.Optimal || status == CpSolverStatus.Feasible) &&
+            dsBienBoTrong.Count > 0 &&
+            softObjectiveTerms.Count > 0)
+        {
+            long soLopBoTrongPha1 = dsBienBoTrong.Sum(b => solver.BooleanValue(b) ? 1L : 0L);
+            double thoiGianConLai = maxTime - stopwatch.Elapsed.TotalSeconds;
+
+            // Nếu Pha 1 có lớp bỏ trống, trọng số 10^7 làm gap 1% bị vô hiệu hóa với phần phạt mềm;
+            // khóa trần số lớp bỏ trống và giải Pha 2 chỉ trên softObjectiveTerms để tối ưu cân bằng GV.
+            if (soLopBoTrongPha1 > 0 && thoiGianConLai >= 1.0)
+            {
+                model.ClearHints();
+                foreach (var xVar in xVars.Values)
+                {
+                    model.AddHint(xVar, solver.BooleanValue(xVar) ? 1L : 0L);
+                }
+
+                model.Add(LinearExpr.Sum(dsBienBoTrong) <= soLopBoTrongPha1);
+                model.Minimize(LinearExpr.Sum(softObjectiveTerms));
+
+                solver.StringParameters = string.Create(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    $"max_time_in_seconds:{thoiGianConLai},num_search_workers:{numWorkers},relative_gap_limit:{relGap},log_search_progress:false");
+
+                var statusPha2 = solver.Solve(model);
+                if (statusPha2 == CpSolverStatus.Optimal || statusPha2 == CpSolverStatus.Feasible)
+                {
+                    status = statusPha2;
+                }
+            }
+        }
+
         stopwatch.Stop();
 
         if (cancellationToken.IsCancellationRequested)

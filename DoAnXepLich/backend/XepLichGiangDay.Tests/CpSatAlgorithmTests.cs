@@ -544,4 +544,60 @@ public class CpSatAlgorithmTests
         var dsGv = result.DanhSachPhanCong.Select(x => x.MaGiangVien).Distinct().ToList();
         Assert.Equal(2, dsGv.Count); // Bắt buộc chia cho 2 giảng viên khác nhau
     }
+
+    [Fact]
+    public async Task Test_CpSat_PhanBoDeuGiangVien_KhongDeGiangVienKhongLop_KeCaKhiCoLopBoTrong()
+    {
+        var dbName = "CpSat_ZeroClass_" + Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: dbName)
+            .Options;
+
+        using var context = new AppDbContext(options);
+        var boKiemTra = new BoKiemTraRangBuoc();
+        var boDanhGia = new BoDanhGiaPhuongAn(context, boKiemTra);
+        var luuKetQuaService = new LuuKetQuaXepLichService(context, boDanhGia);
+        var cpSatService = new CpSatAlgorithmService(context, boDanhGia, boKiemTra, luuKetQuaService);
+
+        int maHocKy = 1;
+        int maHp = 101;
+
+        context.GiangVien.AddRange(
+            new GiangVien { MaGiangVien = 10, HoTen = "GV A", ChucDanh = "Giảng viên" },
+            new GiangVien { MaGiangVien = 11, HoTen = "GV B", ChucDanh = "Giảng viên" }
+        );
+        context.NangLucGiangDay.AddRange(
+            new NangLucGiangDay { MaGiangVien = 10, MaHocPhan = maHp, TrangThai = "DangApDung" },
+            new NangLucGiangDay { MaGiangVien = 11, MaHocPhan = maHp, TrangThai = "DangApDung" }
+        );
+
+        // Lớp 1 (Thứ 2 tiết 1-3) và Lớp 2 (Thứ 3 tiết 1-3) đều có thể gán cho GV 10 hoặc GV 11;
+        // Lớp 3 trùng Thứ 2 tiết 1-3 + chỉ GV 10 có lịch bận? Không, cho cả 3 lớp cùng Thứ 2 tiết 1-3
+        // khác phòng để chắc chắn 1 lớp bị bỏ trống (kích hoạt Pha 2), vẫn phải chia đều cho cả 2 GV.
+        context.LopHocPhan.AddRange(
+            new LopHocPhan { MaLopHocPhan = 1, MaHocKy = maHocKy, MaHocPhan = maHp, MaLopHocPhanTruong = "LHP01" },
+            new LopHocPhan { MaLopHocPhan = 2, MaHocKy = maHocKy, MaHocPhan = maHp, MaLopHocPhanTruong = "LHP02" },
+            new LopHocPhan { MaLopHocPhan = 3, MaHocKy = maHocKy, MaHocPhan = maHp, MaLopHocPhanTruong = "LHP03" }
+        );
+        context.ChiTietThoiKhoaBieu.AddRange(
+            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 1, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10, PhongHoc = "P.101" },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 2, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10, PhongHoc = "P.102" },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 3, MaLopHocPhan = 3, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 10, PhongHoc = "P.103" }
+        );
+
+        await context.SaveChangesAsync();
+
+        var result = await cpSatService.ChayAsync(new DuLieuXepLichDto
+        {
+            MaHocKy = maHocKy,
+            SoLuongWorker = 8,
+            KhoangCachToiUuGap = 0.01,
+            ThoiGianChayToiDa = 10.0
+        });
+
+        Assert.Equal(1, result.SoLopChuaPhanCong);
+        Assert.Equal(2, result.DanhSachPhanCong.Count);
+        var dsGv = result.DanhSachPhanCong.Select(x => x.MaGiangVien).Distinct().ToList();
+        Assert.Equal(2, dsGv.Count); // Cả GV 10 và GV 11 đều có lớp, không ai bị 0 lớp
+    }
 }
