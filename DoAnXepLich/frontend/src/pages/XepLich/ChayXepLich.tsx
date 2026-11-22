@@ -305,7 +305,9 @@ function ChayXepLich() {
             <div className="col-md-3">
               <div className="p-2 border rounded bg-light">
                 <div className="small text-muted">Thời gian chạy</div>
-                <div className="fw-bold">{ketQua.thoiGianChayMiligiay ?? (ketQua.thoiGianChayGiay ? ketQua.thoiGianChayGiay * 1000 : 0)} ms</div>
+                <div className="fw-bold">
+                  {(ketQua.thoiGianChayGiay ?? (ketQua.thoiGianChayMiligiay ? ketQua.thoiGianChayMiligiay / 1000 : 0)).toFixed(2)} giây
+                </div>
               </div>
             </div>
             <div className="col-md-3">
