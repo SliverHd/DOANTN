@@ -419,4 +419,127 @@ public class NguyenVongAndSeminarTests
         Assert.Contains("khung tiết 3-9", cbSc04);
         Assert.DoesNotContain("ca sáng", cbSc04);
     }
+
+    [Fact]
+    public async Task Test_ThemNguyenVong_TuDongDuyetKhiKhaiBaoHo_VaChoDuyetKhiGiangVienTuGui()
+    {
+        using var context = TaoInMemoryDb("Service_AutoApproveNguyenVong_" + Guid.NewGuid());
+        var nvService = new NguyenVongService(context);
+
+        context.GiangVien.Add(new GiangVien { MaGiangVien = 15, HoTen = "GV Khai Báo Hộ", TrangThai = "DangLamViec" });
+        context.LopHocPhan.Add(new LopHocPhan { MaLopHocPhan = 21, MaHocKy = 1, MaHocPhan = 100, MaLopHocPhanTruong = "L_TRUNG_BAN", TenLop = "Lớp Trùng Bận" });
+        context.ChiTietThoiKhoaBieu.Add(new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 21, Thu = 4, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 });
+        context.PhanCongGiangDay.Add(new PhanCongGiangDay { MaHocKy = 1, MaLopHocPhan = 21, MaGiangVien = 15, TrangThai = "DaKhoa", NguonPhanCong = "ThuCong" });
+        await context.SaveChangesAsync();
+
+        // 1. Giảng viên tự khai báo -> ChoDuyet, chưa tạo lịch bận cứng
+        var nvTuGui = await nvService.ThemNguyenVongAsync(new ThemNguyenVongDto
+        {
+            MaHocKy = 1,
+            MaGiangVien = 15,
+            MaRangBuocMem = "SC04",
+            Thu = 0,
+            TietBatDau = 1,
+            TietKetThuc = 6,
+            TrongSoPhat = 8,
+            LyDo = "GV tự gửi"
+        }, tuDongDuyet: false);
+
+        Assert.NotNull(nvTuGui);
+        Assert.Equal("ChoDuyet", nvTuGui!.TrangThai);
+        Assert.Null(nvTuGui.NgayDuyet);
+        Assert.Equal("GV tự gửi", nvTuGui.NoiDungGoc);
+
+        // 2. Trưởng bộ môn khai báo hộ (bỏ trống lý do) -> DaDuyet ngay và không tự chèn "Cả học kỳ (Tuần 1-20)"
+        var nvKhaiBaoHoTrongLyDo = await nvService.ThemNguyenVongAsync(new ThemNguyenVongDto
+        {
+            MaHocKy = 1,
+            MaGiangVien = 15,
+            MaRangBuocMem = "SC05",
+            Thu = 0,
+            TietBatDau = 7,
+            TietKetThuc = 12,
+            TrongSoPhat = 8
+        }, tuDongDuyet: true);
+
+        Assert.NotNull(nvKhaiBaoHoTrongLyDo);
+        Assert.Equal("DaDuyet", nvKhaiBaoHoTrongLyDo!.TrangThai);
+        Assert.Equal(string.Empty, nvKhaiBaoHoTrongLyDo.NoiDungGoc);
+
+        // 3. Trưởng bộ môn khai báo hộ kèm khóa cứng lịch bận -> DaDuyet ngay, tạo LichBanGiangVien và gỡ lớp trùng ca
+        var nvKhaiBaoHo = await nvService.ThemNguyenVongAsync(new ThemNguyenVongDto
+        {
+            MaHocKy = 1,
+            MaGiangVien = 15,
+            MaRangBuocMem = "SC01",
+            Thu = 4,
+            TietBatDau = 1,
+            TietKetThuc = 5,
+            TrongSoPhat = 15,
+            LyDo = "TBM nhập hộ bận Thứ 4",
+            KhoaCungLichBan = true
+        }, tuDongDuyet: true);
+
+        Assert.NotNull(nvKhaiBaoHo);
+        Assert.Equal("DaDuyet", nvKhaiBaoHo!.TrangThai);
+        Assert.NotNull(nvKhaiBaoHo.NgayDuyet);
+        Assert.True(nvKhaiBaoHo.KhoaCungLichBan);
+        Assert.Equal("TBM nhập hộ bận Thứ 4", nvKhaiBaoHo.NoiDungGoc);
+        Assert.Single(await context.LichBanGiangVien.Where(x => x.MaHocKy == 1 && x.MaGiangVien == 15).ToListAsync());
+        Assert.Empty(await context.PhanCongGiangDay.Where(x => x.MaHocKy == 1 && x.MaGiangVien == 15).ToListAsync());
+    }
+
+    [Fact]
+    public void Test_SC02_VaHoiPhucSucKhoe_DungMocCaToiTiet13Den15()
+    {
+        var boDanhGia = new BoDanhGiaPhuongAn();
+        var gv = new GiangVien { MaGiangVien = 10, HoTen = "GV Test", ChucDanh = "Giảng viên" };
+        var lopChieuMuon = new LopHocPhan { MaLopHocPhan = 1, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_10_12" };
+        var lopCaToi = new LopHocPhan { MaLopHocPhan = 2, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_13_15" };
+        var lopSangHomSau = new LopHocPhan { MaLopHocPhan = 3, MaHocKy = 1, MaHocPhan = 101, MaLopHocPhanTruong = "L_1_3" };
+
+        var boiCanh = new BoiCanhDanhGia
+        {
+            MaHocKy = 1,
+            DanhSachLop = [lopChieuMuon, lopCaToi, lopSangHomSau],
+            LopTheoMa = new Dictionary<int, LopHocPhan> { [1] = lopChieuMuon, [2] = lopCaToi, [3] = lopSangHomSau },
+            ChiTietTheoLop = new Dictionary<int, List<ChiTietThoiKhoaBieu>>
+            {
+                [1] = [new() { MaLopHocPhan = 1, Thu = 2, TietBatDau = 10, TietKetThuc = 12, TuTuan = 1, DenTuan = 15 }],
+                [2] = [new() { MaLopHocPhan = 2, Thu = 2, TietBatDau = 13, TietKetThuc = 15, TuTuan = 1, DenTuan = 15 }],
+                [3] = [new() { MaLopHocPhan = 3, Thu = 3, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 }],
+            },
+            GiangVienTheoMa = new Dictionary<int, GiangVien> { [10] = gv },
+            NangLucTheoGv = new Dictionary<int, HashSet<int>> { [10] = [101] },
+            NguyenVongTheoGv = new Dictionary<int, List<NguyenVongGiangVien>>
+            {
+                [10] =
+                [
+                    new()
+                    {
+                        MaHocKy = 1,
+                        MaGiangVien = 10,
+                        LoaiNguyenVong = "SC02",
+                        Thu = null,
+                        TietBatDau = 13,
+                        TietKetThuc = 15,
+                        TrongSoPhat = 10.0,
+                        TrangThai = "DaDuyet"
+                    }
+                ]
+            }
+        };
+
+        // Tiết 10-12 thuộc ca chiều (7-12) -> KHÔNG bị phạt SC02, KHÔNG vi phạm hồi phục sức khỏe khi hôm sau dạy tiết 1-3
+        Assert.Equal(0, boDanhGia.TinhDiemNguyenVong(10, 1, boiCanh, out var cbChieu));
+        Assert.Empty(cbChieu);
+        Assert.Equal(0, boDanhGia.TinhDiemHoiPhucSucKhoe(10, [1, 3], boiCanh, out var cbHoiPhucChieu));
+        Assert.Empty(cbHoiPhucChieu);
+
+        // Tiết 13-15 thuộc ca tối -> BỊ phạt SC02 và vi phạm hồi phục sức khỏe nếu hôm sau dạy tiết 1-3
+        Assert.Equal(15.0, boDanhGia.TinhDiemNguyenVong(10, 2, boiCanh, out var cbToi));
+        Assert.Contains("tránh ca tối", cbToi);
+        Assert.True(boDanhGia.TinhDiemHoiPhucSucKhoe(10, [2, 3], boiCanh, out var cbHoiPhucToi) > 0);
+        Assert.Contains("hồi phục sức khỏe", cbHoiPhucToi);
+    }
 }

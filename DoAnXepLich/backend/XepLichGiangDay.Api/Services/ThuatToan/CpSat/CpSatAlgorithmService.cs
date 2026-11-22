@@ -390,7 +390,7 @@ public class CpSatAlgorithmService(
                     var ctSang = boiCanh.ChiTietTheoLop.GetValueOrDefault(lopSang) ?? [];
 
                     bool viPhamHoiPhuc = ctToi.Any(bt =>
-                        bt.TietKetThuc >= 10 && ctSang.Any(bs =>
+                        bt.TietKetThuc >= 13 && ctSang.Any(bs =>
                             bs.Thu == bt.Thu + 1 && bs.TietBatDau <= 2 &&
                             Math.Max(bt.TuTuan, bs.TuTuan) <= Math.Min(bt.DenTuan, bs.DenTuan)));
 

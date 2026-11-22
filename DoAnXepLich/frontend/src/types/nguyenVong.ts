@@ -144,12 +144,12 @@ export const DANH_MUC_RANG_BUOC_MEM: RangBuocMemItem[] = [
   },
   {
     maRb: 'SC02',
-    tenRb: 'Tránh dạy ca tối (Tiết 10 - 15)',
+    tenRb: 'Tránh dạy ca tối (Tiết 13 - 15)',
     diemPhatMacDinh: 10.0,
     thuMacDinh: 0,
-    tietBdMacDinh: 10,
+    tietBdMacDinh: 13,
     tietKtMacDinh: 15,
-    moTa: 'Không xếp lịch vào ca chiều muộn / tối',
+    moTa: 'Không xếp lịch vào ca tối (tiết 13 - 15)',
   },
   {
     maRb: 'SC03',

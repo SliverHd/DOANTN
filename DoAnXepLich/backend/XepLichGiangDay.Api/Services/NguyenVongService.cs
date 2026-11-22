@@ -302,7 +302,10 @@ public class NguyenVongService(AppDbContext context)
         }).OrderByDescending(x => x.NgayTao ?? DateTime.MinValue).ThenBy(x => x.TenGiangVien).ToList();
     }
 
-    public async Task<NguyenVongDto?> ThemNguyenVongAsync(ThemNguyenVongDto dto)
+    public async Task<NguyenVongDto?> ThemNguyenVongAsync(
+        ThemNguyenVongDto dto,
+        bool tuDongDuyet = false,
+        CancellationToken cancellationToken = default)
     {
         if (dto.MaHocKy <= 0 || dto.MaGiangVien <= 0) return null;
 
@@ -346,9 +349,21 @@ public class NguyenVongService(AppDbContext context)
         };
 
         context.NguyenVongGiangVien.Add(entity);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
-        var gv = await context.GiangVien.FindAsync(dto.MaGiangVien);
+        if (tuDongDuyet)
+        {
+            var kqDuyet = await DuyetNguyenVongAsync(
+                entity.MaNguyenVong,
+                "Tự động duyệt khi Trưởng bộ môn / Quản trị viên khai báo hộ.",
+                cancellationToken);
+            if (kqDuyet.NguyenVong is not null)
+            {
+                return kqDuyet.NguyenVong;
+            }
+        }
+
+        var gv = await context.GiangVien.FindAsync([dto.MaGiangVien], cancellationToken);
         string? tenBm = null;
         if (gv?.MaBoMon != null)
         {
@@ -676,7 +691,7 @@ public class NguyenVongService(AppDbContext context)
         return loai.Trim() switch
         {
             "SC01" or "TranhDay" => ("SC01", "Tránh khung giờ / tiết bận cụ thể"),
-            "SC02" => ("SC02", "Tránh dạy ca tối (Tiết 10 - 15)"),
+            "SC02" => ("SC02", "Tránh dạy ca tối (Tiết 13 - 15)"),
             "SC03" => ("SC03", "Tránh dạy ngày Thứ Bảy / Chủ Nhật"),
             "SC04" or "ThichDay" => ("SC04", "Ưu tiên dạy buổi sáng (Tiết 1 - 6)"),
             "SC05" => ("SC05", "Ưu tiên dạy buổi chiều (Tiết 7 - 12)"),

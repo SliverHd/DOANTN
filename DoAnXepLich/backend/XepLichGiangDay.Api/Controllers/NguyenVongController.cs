@@ -80,7 +80,10 @@ public class NguyenVongController(NguyenVongService service) : ControllerBase
             return Forbid();
         }
 
-        var result = await service.ThemNguyenVongAsync(dto);
+        // Trưởng bộ môn hoặc Quản trị viên khai báo hộ sẽ được tự động duyệt ngay;
+        // Giảng viên tự khai báo qua tài khoản cá nhân vẫn giữ trạng thái ChoDuyet.
+        bool tuDongDuyet = User.IsInRole("Admin") || User.IsInRole("TruongBoMon");
+        var result = await service.ThemNguyenVongAsync(dto, tuDongDuyet);
         if (result is null)
         {
             return BadRequest("Không thể thêm nguyện vọng.");

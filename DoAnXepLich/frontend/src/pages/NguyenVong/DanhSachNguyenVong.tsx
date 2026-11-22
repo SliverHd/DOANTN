@@ -193,13 +193,21 @@ function DanhSachNguyenVong() {
 
     try {
       setDangLuu(true)
-      await nguyenVongApi.themNguyenVong({
+      const res = await nguyenVongApi.themNguyenVong({
         ...form,
         maGiangVien: gvId,
         maHocKy,
       })
 
-      setThongBao('Đã gửi nguyện vọng / xin nghỉ thành công và đang chờ Trưởng bộ môn duyệt.')
+      if (res.data.trangThai === 'DaDuyet') {
+        setThongBao(
+          res.data.khoaCungLichBan
+            ? 'Đã khai báo hộ, tự động duyệt và khóa cứng lịch bận thành công (các lớp trùng giờ đã được gỡ nếu có).'
+            : 'Đã khai báo hộ và tự động duyệt nguyện vọng cho giảng viên.'
+        )
+      } else {
+        setThongBao('Đã gửi nguyện vọng / xin nghỉ thành công và đang chờ Trưởng bộ môn duyệt.')
+      }
       setForm((prev) => ({ ...prev, lyDo: '', khoaCungLichBan: false }))
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
       await taiDanhSachNguyenVong(maHocKy, gvLoc, maBoMon)
@@ -643,7 +651,7 @@ function DanhSachNguyenVong() {
                 <span className={form.khoaCungLichBan ? 'text-danger' : 'text-muted'}>
                   {form.khoaCungLichBan
                     ? 'Khi duyệt sẽ khóa cứng lịch bận (H3) và tự động gỡ các lớp đang trùng giờ.'
-                    : 'Mặc định là nguyện vọng mềm: vẫn gắn [Cả học kỳ] nếu chọn T1-T20 nhưng không khóa cứng (chỉ tính điểm phạt khi xếp lịch).'}
+                    : 'Mặc định là nguyện vọng mềm áp dụng cả học kỳ (không khóa cứng, chỉ tính điểm phạt khi xếp lịch).'}
                 </span>
               </div>
             ) : (

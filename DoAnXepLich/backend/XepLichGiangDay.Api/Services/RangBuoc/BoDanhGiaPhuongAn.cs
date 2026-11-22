@@ -296,10 +296,10 @@ public class BoDanhGiaPhuongAn
                             }
                         }
                     }
-                    // SC02: Tránh ca tối (Tiết 10-15)
+                    // SC02: Tránh ca tối (Tiết 13-15)
                     else if (maRb == "SC02")
                     {
-                        int mocToi = nv.TietBatDau ?? 10;
+                        int mocToi = nv.TietBatDau ?? 13;
                         if (dungThu && ct.TietKetThuc >= mocToi)
                         {
                             diemPhat += trongSoNv * 1.5;
@@ -675,8 +675,8 @@ public class BoDanhGiaPhuongAn
                 var bt = cacBuoiHoc[i]; // Ca tối hôm trước
                 var bs = cacBuoiHoc[j]; // Ca sáng hôm sau
 
-                // Tiết kết thúc >= 10 (21h), ca sáng hôm sau: Thu == bt.Thu + 1, bắt đầu tiết <= 2 (7h-7h50)
-                if (bt.TietKetThuc >= 10 && bs.Thu == bt.Thu + 1 && bs.TietBatDau <= 2)
+                // Ca tối kết thúc từ tiết 13-15 (~21h), ca sáng hôm sau: Thu == bt.Thu + 1, bắt đầu tiết <= 2 (7h-7h50)
+                if (bt.TietKetThuc >= 13 && bs.Thu == bt.Thu + 1 && bs.TietBatDau <= 2)
                 {
                     // Chỉ phạt nếu 2 buổi học có tuần giao nhau thực tế
                     bool giaoTuan = Math.Max(bt.TuTuan, bs.TuTuan) <= Math.Min(bt.DenTuan, bs.DenTuan);
