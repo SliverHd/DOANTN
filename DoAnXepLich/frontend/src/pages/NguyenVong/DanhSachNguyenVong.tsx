@@ -79,6 +79,8 @@ function DanhSachNguyenVong() {
   const [trongSoPhatInput, setTrongSoPhatInput] = useState<string>(
     String(RANG_BUOC_MAC_DINH.diemPhatMacDinh)
   )
+  // Chọn nhiều thứ: [0] nghĩa là Cả tuần; [2, 4, 6] nghĩa là Thứ 2, Thứ 4, Thứ 6
+  const [thuDaChon, setThuDaChon] = useState<number[]>([RANG_BUOC_MAC_DINH.thuMacDinh ?? 2])
 
   const [dangTai, setDangTai] = useState(false)
   const [dangLuu, setDangLuu] = useState(false)
@@ -175,17 +177,42 @@ function DanhSachNguyenVong() {
     const rbChon = DANH_MUC_RANG_BUOC_MEM.find((x) => x.maRb === maRb)
     if (!rbChon) return
 
+    const thuMacDinhMoi = rbChon.thuMacDinh ?? form.thu ?? 0
     setForm((prev) => ({
       ...prev,
       maRangBuocMem: rbChon.maRb,
       tenRangBuocMem: rbChon.tenRb,
       trongSoPhat: rbChon.diemPhatMacDinh,
-      thu: rbChon.thuMacDinh ?? prev.thu,
+      thu: thuMacDinhMoi,
       tietBatDau: rbChon.tietBdMacDinh ?? prev.tietBatDau,
       tietKetThuc: rbChon.tietKtMacDinh ?? prev.tietKetThuc,
       khoaCungLichBan: maRb === 'SC01' ? prev.khoaCungLichBan : false,
     }))
+    setThuDaChon([thuMacDinhMoi])
     setTrongSoPhatInput(String(rbChon.diemPhatMacDinh))
+  }
+
+  // Bật/tắt chọn nhiều thứ
+  const handleToggleThu = (thuId: number) => {
+    if (thuId === 0) {
+      setThuDaChon([0])
+      setForm((prev) => ({ ...prev, thu: 0 }))
+      return
+    }
+    setThuDaChon((prev) => {
+      const hienTai = prev.filter((x) => x !== 0)
+      const tiepTheo = hienTai.includes(thuId)
+        ? hienTai.filter((x) => x !== thuId)
+        : [...hienTai, thuId].sort((a, b) => a - b)
+
+      // Nếu bỏ chọn hết hoặc chọn đủ cả 7 ngày -> quy về Cả tuần ([0])
+      if (tiepTheo.length === 0 || tiepTheo.length === 7) {
+        setForm((f) => ({ ...f, thu: 0 }))
+        return [0]
+      }
+      setForm((f) => ({ ...f, thu: tiepTheo[0] }))
+      return tiepTheo
+    })
   }
 
   // Thêm mới nguyện vọng ràng buộc mềm
@@ -214,21 +241,42 @@ function DanhSachNguyenVong() {
 
     try {
       setDangLuu(true)
-      const res = await nguyenVongApi.themNguyenVong({
-        ...form,
-        trongSoPhat: trongSo,
-        maGiangVien: gvId,
-        maHocKy,
-      })
+      const danhSachThuGui =
+        form.maRangBuocMem === 'SC03'
+          ? [7]
+          : thuDaChon.length === 0 || thuDaChon.includes(0)
+          ? [0]
+          : [...thuDaChon].sort((a, b) => a - b)
 
-      if (res.data.trangThai === 'DaDuyet') {
+      let trangThaiCuoi = ''
+      let coKhoaCung = false
+      for (const thuGui of danhSachThuGui) {
+        const res = await nguyenVongApi.themNguyenVong({
+          ...form,
+          thu: thuGui,
+          trongSoPhat: trongSo,
+          maGiangVien: gvId,
+          maHocKy,
+        })
+        trangThaiCuoi = res.data.trangThai || trangThaiCuoi
+        if (res.data.khoaCungLichBan) coKhoaCung = true
+      }
+
+      const nhanCacThu =
+        danhSachThuGui.length > 1
+          ? ` cho ${danhSachThuGui.length} ngày (${danhSachThuGui
+              .map((t) => (t === 8 ? 'CN' : `Thứ ${t}`))
+              .join(', ')})`
+          : ''
+
+      if (trangThaiCuoi === 'DaDuyet') {
         setThongBao(
-          res.data.khoaCungLichBan
-            ? 'Đã khai báo hộ, tự động duyệt và khóa cứng lịch bận thành công (các lớp trùng giờ đã được gỡ nếu có).'
-            : 'Đã khai báo hộ và tự động duyệt nguyện vọng cho giảng viên.'
+          coKhoaCung
+            ? `Đã khai báo hộ, tự động duyệt và khóa cứng lịch bận${nhanCacThu} thành công (các lớp trùng giờ đã được gỡ nếu có).`
+            : `Đã khai báo hộ và tự động duyệt nguyện vọng${nhanCacThu} cho giảng viên.`
         )
       } else {
-        setThongBao('Đã gửi nguyện vọng / xin nghỉ thành công và đang chờ Trưởng bộ môn duyệt.')
+        setThongBao(`Đã gửi nguyện vọng / xin nghỉ${nhanCacThu} thành công và đang chờ Trưởng bộ môn duyệt.`)
       }
       setForm((prev) => ({ ...prev, lyDo: '', khoaCungLichBan: false }))
       const gvLoc = laGiangVien && user?.maGiangVien ? user.maGiangVien : boLocGiangVien
@@ -587,9 +635,14 @@ function DanhSachNguyenVong() {
             </div>
 
             <div className="row g-2 mb-3">
-              {/* Thứ */}
-              <div className="col-md-2">
-                <label className="form-label small fw-semibold">Thứ</label>
+              {/* Thứ (Multi-select) */}
+              <div className="col-md-6">
+                <label className="form-label small fw-semibold">
+                  Thứ áp dụng{' '}
+                  {form.maRangBuocMem !== 'SC03' && (
+                    <span className="text-muted fw-normal">(có thể chọn nhiều ngày)</span>
+                  )}
+                </label>
                 {form.maRangBuocMem === 'SC03' ? (
                   <input
                     type="text"
@@ -598,22 +651,46 @@ function DanhSachNguyenVong() {
                     disabled
                   />
                 ) : (
-                  <select
-                    className="form-select form-select-sm"
-                    value={form.thu ?? 0}
-                    onChange={(e) => setForm({ ...form, thu: Number(e.target.value) })}
-                  >
-                    {CAC_THU.map((thu) => (
-                      <option key={thu.id} value={thu.id}>
-                        {thu.ten}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="d-flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${
+                        thuDaChon.includes(0) ? 'btn-primary fw-semibold' : 'btn-outline-secondary'
+                      }`}
+                      onClick={() => handleToggleThu(0)}
+                    >
+                      Cả tuần
+                    </button>
+                    {[
+                      { id: 2, label: 'T2' },
+                      { id: 3, label: 'T3' },
+                      { id: 4, label: 'T4' },
+                      { id: 5, label: 'T5' },
+                      { id: 6, label: 'T6' },
+                      { id: 7, label: 'T7' },
+                      { id: 8, label: 'CN' },
+                    ].map((d) => {
+                      const dangChon = !thuDaChon.includes(0) && thuDaChon.includes(d.id)
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          className={`btn btn-sm ${
+                            dangChon ? 'btn-primary fw-semibold' : 'btn-outline-secondary'
+                          }`}
+                          style={{ minWidth: '40px' }}
+                          onClick={() => handleToggleThu(d.id)}
+                        >
+                          {d.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 )}
               </div>
 
               {/* Tiết bắt đầu */}
-              <div className="col-md-2">
+              <div className="col-md-3">
                 <label className="form-label small fw-semibold">Thời gian bắt đầu (Tiết)</label>
                 <select
                   className="form-select form-select-sm"
@@ -629,7 +706,7 @@ function DanhSachNguyenVong() {
               </div>
 
               {/* Tiết kết thúc */}
-              <div className="col-md-2">
+              <div className="col-md-3">
                 <label className="form-label small fw-semibold">Thời gian kết thúc (Tiết)</label>
                 <select
                   className="form-select form-select-sm"
@@ -643,9 +720,11 @@ function DanhSachNguyenVong() {
                   ))}
                 </select>
               </div>
+            </div>
 
+            <div className="row g-2 mb-3">
               {/* Lí do */}
-              <div className="col-md-4">
+              <div className="col-md-9">
                 <label className="form-label small fw-semibold">Lí do / Ghi chú của GV</label>
                 <input
                   type="text"
@@ -657,13 +736,19 @@ function DanhSachNguyenVong() {
               </div>
 
               {/* Nút thêm */}
-              <div className="col-md-2 d-flex align-items-end">
+              <div className="col-md-3 d-flex align-items-end">
                 <button
                   type="submit"
                   className="btn btn-primary btn-sm w-100"
                   disabled={dangLuu}
                 >
-                  {dangLuu ? 'Đang gửi...' : laGiangVien ? 'Gửi yêu cầu' : '+ Thêm nguyện vọng'}
+                  {dangLuu
+                    ? 'Đang gửi...'
+                    : laGiangVien
+                    ? 'Gửi yêu cầu'
+                    : !thuDaChon.includes(0) && thuDaChon.length > 1 && form.maRangBuocMem !== 'SC03'
+                    ? `+ Thêm nguyện vọng (${thuDaChon.length} ngày)`
+                    : '+ Thêm nguyện vọng'}
                 </button>
               </div>
             </div>
