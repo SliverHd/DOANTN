@@ -61,8 +61,6 @@ function DanhSachNguyenVong() {
     thu: RANG_BUOC_MAC_DINH.thuMacDinh ?? 2,
     tietBatDau: RANG_BUOC_MAC_DINH.tietBdMacDinh ?? 1,
     tietKetThuc: RANG_BUOC_MAC_DINH.tietKtMacDinh ?? 5,
-    tuTuan: 1,
-    denTuan: 20,
     trongSoPhat: RANG_BUOC_MAC_DINH.diemPhatMacDinh,
     lyDo: '',
     khoaCungLichBan: false,
@@ -604,41 +602,8 @@ function DanhSachNguyenVong() {
                 </select>
               </div>
 
-              {/* Khoảng Tuần áp dụng */}
-              <div className="col-md-1">
-                <label className="form-label small fw-semibold">Từ tuần</label>
-                <select
-                  className="form-select form-select-sm"
-                  value={form.tuTuan ?? 1}
-                  onChange={(e) => {
-                    const w = Number(e.target.value)
-                    setForm({
-                      ...form,
-                      tuTuan: w,
-                      denTuan: (form.denTuan ?? 20) < w ? w : form.denTuan,
-                    })
-                  }}
-                >
-                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
-                    <option key={w} value={w}>T{w}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-1">
-                <label className="form-label small fw-semibold">Đến tuần</label>
-                <select
-                  className="form-select form-select-sm"
-                  value={form.denTuan ?? 20}
-                  onChange={(e) => setForm({ ...form, denTuan: Number(e.target.value) })}
-                >
-                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
-                    <option key={w} value={w}>T{w}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* Lí do */}
-              <div className="col-md-2">
+              <div className="col-md-4">
                 <label className="form-label small fw-semibold">Lí do / Ghi chú của GV</label>
                 <input
                   type="text"
