@@ -258,7 +258,10 @@ function DanhSachNguyenVong() {
   // Trưởng bộ môn DUYỆT nguyện vọng
   const handleDuyetNguyenVong = async (item: NguyenVong) => {
     const tenGV = item.tenGiangVien || `Giảng viên #${item.maGiangVien}`
-    const tenThu = !item.thu || item.thu === 0
+    const laSc03 = item.maRangBuocMem === 'SC03' || item.loaiNguyenVong === 'SC03'
+    const tenThu = laSc03
+      ? 'Thứ 7 & Chủ nhật'
+      : !item.thu || item.thu === 0
       ? 'Cả tuần (Thứ 2 - CN)'
       : (CAC_THU.find((t) => t.id === item.thu)?.ten || `Thứ ${item.thu}`)
     const xacNhan = window.confirm(
@@ -587,17 +590,26 @@ function DanhSachNguyenVong() {
               {/* Thứ */}
               <div className="col-md-2">
                 <label className="form-label small fw-semibold">Thứ</label>
-                <select
-                  className="form-select form-select-sm"
-                  value={form.thu ?? 0}
-                  onChange={(e) => setForm({ ...form, thu: Number(e.target.value) })}
-                >
-                  {CAC_THU.map((thu) => (
-                    <option key={thu.id} value={thu.id}>
-                      {thu.ten}
-                    </option>
-                  ))}
-                </select>
+                {form.maRangBuocMem === 'SC03' ? (
+                  <input
+                    type="text"
+                    className="form-control form-control-sm bg-light fw-semibold"
+                    value="Thứ 7 & Chủ nhật"
+                    disabled
+                  />
+                ) : (
+                  <select
+                    className="form-select form-select-sm"
+                    value={form.thu ?? 0}
+                    onChange={(e) => setForm({ ...form, thu: Number(e.target.value) })}
+                  >
+                    {CAC_THU.map((thu) => (
+                      <option key={thu.id} value={thu.id}>
+                        {thu.ten}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Tiết bắt đầu */}
@@ -784,7 +796,10 @@ function DanhSachNguyenVong() {
                   </tr>
                 ) : (
                   dsTheoTab.map((item, idx) => {
-                    const tenThu = !item.thu || item.thu === 0
+                    const laSc03 = item.maRangBuocMem === 'SC03' || item.loaiNguyenVong === 'SC03'
+                    const tenThu = laSc03
+                      ? 'Thứ 7 & Chủ nhật'
+                      : !item.thu || item.thu === 0
                       ? 'Cả tuần (T2 - CN)'
                       : (CAC_THU.find((t) => t.id === item.thu)?.ten || `Thứ ${item.thu}`)
                     const trangThai = item.trangThai || 'ChoDuyet'
