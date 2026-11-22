@@ -33,6 +33,17 @@ type TabTrangThai = 'tatCa' | 'ChoDuyet' | 'DaDuyet' | 'TuChoi'
 const RANG_BUOC_MAC_DINH =
   DANH_MUC_RANG_BUOC_MEM.find((x) => x.maRb === 'SC01') ?? DANH_MUC_RANG_BUOC_MEM[0]
 
+/** Chuẩn hóa số không âm: cho phép rỗng khi đang xóa, hỗ trợ số thập phân và loại bỏ số 0 dư ở đầu. */
+function chuanHoaSoKhongAm(rawValue: string): string {
+  const cleaned = rawValue.replace(',', '.').replace(/[^\d.]/g, '')
+  const dotIdx = cleaned.indexOf('.')
+  const singleDot =
+    dotIdx === -1
+      ? cleaned
+      : cleaned.slice(0, dotIdx + 1) + cleaned.slice(dotIdx + 1).replace(/\./g, '')
+  return singleDot.replace(/^0+(?=\d)/, '').replace(/^0+(?=\.)/, '0')
+}
+
 function DanhSachNguyenVong() {
   const { user } = useAuth()
   const laTruongBoMon = user?.vaiTro === 'TruongBoMon'
@@ -65,6 +76,9 @@ function DanhSachNguyenVong() {
     lyDo: '',
     khoaCungLichBan: false,
   })
+  const [trongSoPhatInput, setTrongSoPhatInput] = useState<string>(
+    String(RANG_BUOC_MAC_DINH.diemPhatMacDinh)
+  )
 
   const [dangTai, setDangTai] = useState(false)
   const [dangLuu, setDangLuu] = useState(false)
@@ -171,6 +185,7 @@ function DanhSachNguyenVong() {
       tietKetThuc: rbChon.tietKtMacDinh ?? prev.tietKetThuc,
       khoaCungLichBan: maRb === 'SC01' ? prev.khoaCungLichBan : false,
     }))
+    setTrongSoPhatInput(String(rbChon.diemPhatMacDinh))
   }
 
   // Thêm mới nguyện vọng ràng buộc mềm
@@ -191,10 +206,17 @@ function DanhSachNguyenVong() {
       return
     }
 
+    const trongSo = Number(trongSoPhatInput)
+    if (!trongSoPhatInput.trim() || !Number.isFinite(trongSo) || trongSo < 0) {
+      setLoi('Vui lòng nhập thông số phạt hợp lệ (số không âm).')
+      return
+    }
+
     try {
       setDangLuu(true)
       const res = await nguyenVongApi.themNguyenVong({
         ...form,
+        trongSoPhat: trongSo,
         maGiangVien: gvId,
         maHocKy,
       })
@@ -550,12 +572,12 @@ function DanhSachNguyenVong() {
               <div className={laGiangVien ? 'col-md-3' : 'col-md-2'}>
                 <label className="form-label small fw-semibold">Thông số phạt</label>
                 <input
-                  type="number"
-                  step="0.5"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   className="form-control form-control-sm"
-                  value={form.trongSoPhat}
-                  onChange={(e) => setForm({ ...form, trongSoPhat: Number(e.target.value) })}
+                  value={trongSoPhatInput}
+                  onChange={(e) => setTrongSoPhatInput(chuanHoaSoKhongAm(e.target.value))}
+                  placeholder="VD: 10"
                   required
                 />
               </div>
