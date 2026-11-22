@@ -522,10 +522,10 @@ function DanhSachNguyenVong() {
                 )}
               </div>
 
-              {/* Lỗi / Mã ràng buộc mềm */}
+              {/* Loại nguyện vọng / Mã ràng buộc */}
               <div className={laGiangVien ? 'col-md-5' : 'col-md-4'}>
                 <label className="form-label small fw-semibold">
-                  Lỗi / Mã ràng buộc mềm <span className="text-danger">*</span>
+                  Loại nguyện vọng / Mã ràng buộc <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-sm"
