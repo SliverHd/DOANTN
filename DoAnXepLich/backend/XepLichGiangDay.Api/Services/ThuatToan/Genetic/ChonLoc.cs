@@ -15,7 +15,7 @@ public class ChonLoc
     /// 1. Ít vi phạm ràng buộc cứng hơn.
     /// 2. Khi cùng số vi phạm cứng: điểm phạt mềm thấp hơn.
     /// </summary>
-    public CaThe ChonCaTheChaMe(List<CaThe> quanThe, int kichThuocGiaiDau = 3)
+    public CaThe ChonCaTheChaMe(List<CaThe> quanThe, int kichThuocGiaiDau = 4)
     {
         if (quanThe == null || quanThe.Count == 0)
         {

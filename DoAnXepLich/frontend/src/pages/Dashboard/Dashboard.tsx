@@ -41,8 +41,10 @@ function Dashboard() {
         maHocKy,
         thoiGianChayToiDa: 15,
         soLuongWorker: 1,
-        soTheHe: 100,
-        kichThuocQuanThe: 50,
+        soTheHe: 350,
+        kichThuocQuanThe: 60,
+        tyLeLaiGhep: 0.7,
+        tyLeDotBien: 0.02,
       })
       setKetQuaSoSanh(res.data)
     } catch (err: unknown) {

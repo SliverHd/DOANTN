@@ -225,10 +225,12 @@ public class XepLichController(
                 MaHocKy = request.MaHocKy,
                 MaBoMon = request.MaBoMon,
                 ThuatToan = "GA",
-                KichThuocQuanThe = request.KichThuocQuanThe > 0 ? request.KichThuocQuanThe : 50,
-                SoTheHe = request.SoTheHe > 0 ? request.SoTheHe : 100,
-                TyLeLaiGhep = request.TyLeLaiGhep > 0 ? request.TyLeLaiGhep : 0.8,
-                TyLeDotBien = request.TyLeDotBien > 0 ? request.TyLeDotBien : 0.15,
+                KichThuocQuanThe = request.KichThuocQuanThe > 0 ? request.KichThuocQuanThe : 60,
+                SoTheHe = request.SoTheHe > 0 ? request.SoTheHe : 350,
+                TyLeLaiGhep = request.TyLeLaiGhep > 0 ? request.TyLeLaiGhep : 0.70,
+                TyLeDotBien = request.TyLeDotBien > 0 ? request.TyLeDotBien : 0.02,
+                KichThuocGiaiDau = request.KichThuocGiaiDau > 0 ? request.KichThuocGiaiDau : 4,
+                SoCaTheUuTu = request.SoCaTheUuTu > 0 ? request.SoCaTheUuTu : 4,
                 LuuKetQua = false
             };
             var kqGa = await gaAlgo.ChayAsync(duLieuGa, cancellationToken);

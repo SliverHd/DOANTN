@@ -17,10 +17,10 @@ function ChayXepLich() {
     maHocKy: 0,
     maBoMon: user?.maBoMon || 0,
     thuatToan: 'GA',
-    kichThuocQuanThe: 80,
+    kichThuocQuanThe: 60,
     soTheHe: 350,
-    tyLeLaiGhep: 0.85,
-    tyLeDotBien: 0.08,
+    tyLeLaiGhep: 0.7,
+    tyLeDotBien: 0.02,
     thoiGianChayToiDa: 30,
     soLuongWorker: 1,
   })

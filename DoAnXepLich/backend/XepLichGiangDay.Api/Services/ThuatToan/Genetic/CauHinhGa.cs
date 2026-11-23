@@ -2,12 +2,12 @@
 
 public class CauHinhGa
 {
-    public int KichThuocQuanThe { get; set; } = 80;
+    public int KichThuocQuanThe { get; set; } = 60;
     public int SoTheHe { get; set; } = 350;
-    public double TyLeLaiGhep { get; set; } = 0.85;
-    public double TyLeDotBien { get; set; } = 0.08;
+    public double TyLeLaiGhep { get; set; } = 0.70;
+    public double TyLeDotBien { get; set; } = 0.02;
     public int KichThuocGiaiDau { get; set; } = 4;
-    public int SoCaTheUuTu { get; set; } = 3;
+    public int SoCaTheUuTu { get; set; } = 4;
     public int? RandomSeed { get; set; }
     public double ThoiGianChayToiDaGiay { get; set; } = 30.0;
 

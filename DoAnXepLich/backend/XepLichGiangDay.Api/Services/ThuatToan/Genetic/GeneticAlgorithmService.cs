@@ -178,17 +178,18 @@ public class GeneticAlgorithmService(
             }).ToList()
         );
 
-        // 7. Cấu hình tham số tiến hóa GA chuẩn hóa
+        // 7. Cấu hình tham số tiến hóa GA chuẩn hóa (lấy mặc định đồng nhất từ CauHinhGa)
+        var macDinh = new CauHinhGa();
         var cauHinh = new CauHinhGa
         {
-            KichThuocQuanThe = duLieu.KichThuocQuanThe.GetValueOrDefault(80),
-            SoTheHe = duLieu.SoTheHe.GetValueOrDefault(350),
-            TyLeLaiGhep = duLieu.TyLeLaiGhep.GetValueOrDefault(0.85),
-            TyLeDotBien = duLieu.TyLeDotBien.GetValueOrDefault(0.08),
-            KichThuocGiaiDau = duLieu.KichThuocGiaiDau.GetValueOrDefault(4),
-            SoCaTheUuTu = duLieu.SoCaTheUuTu.GetValueOrDefault(3),
+            KichThuocQuanThe = duLieu.KichThuocQuanThe.GetValueOrDefault(macDinh.KichThuocQuanThe),
+            SoTheHe = duLieu.SoTheHe.GetValueOrDefault(macDinh.SoTheHe),
+            TyLeLaiGhep = duLieu.TyLeLaiGhep.GetValueOrDefault(macDinh.TyLeLaiGhep),
+            TyLeDotBien = duLieu.TyLeDotBien.GetValueOrDefault(macDinh.TyLeDotBien),
+            KichThuocGiaiDau = duLieu.KichThuocGiaiDau.GetValueOrDefault(macDinh.KichThuocGiaiDau),
+            SoCaTheUuTu = duLieu.SoCaTheUuTu.GetValueOrDefault(macDinh.SoCaTheUuTu),
             RandomSeed = duLieu.RandomSeed,
-            ThoiGianChayToiDaGiay = duLieu.ThoiGianChayToiDa.GetValueOrDefault(30.0)
+            ThoiGianChayToiDaGiay = duLieu.ThoiGianChayToiDa.GetValueOrDefault(macDinh.ThoiGianChayToiDaGiay)
         };
         cauHinh.ChuanHoaVaXacThuc();
 
