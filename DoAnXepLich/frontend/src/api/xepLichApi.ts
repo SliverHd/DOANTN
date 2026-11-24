@@ -49,4 +49,10 @@ export const xepLichApi = {
       params: { maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined },
       responseType: 'blob',
     }),
+
+  xuatExcelMaTran: (maHocKy: number, maBoMon?: number) =>
+    axiosClient.get(`/xep-lich/xuat-excel-ma-tran/${maHocKy}`, {
+      params: { maBoMon: maBoMon && maBoMon > 0 ? maBoMon : undefined },
+      responseType: 'blob',
+    }),
 }

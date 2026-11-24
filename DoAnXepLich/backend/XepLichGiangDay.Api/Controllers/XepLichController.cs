@@ -161,6 +161,17 @@ public class XepLichController(
     }
 
     /// <summary>
+    /// Xuất ma trận Thời khóa biểu & Seminar cả kỳ (tổng hợp bộ môn + thống kê + lịch cá nhân từng giảng viên) ra file Excel (.xlsx).
+    /// </summary>
+    [HttpGet("xuat-excel-ma-tran/{maHocKy:int}")]
+    public async Task<IActionResult> XuatExcelMaTran(int maHocKy, [FromQuery] int? maBoMon, CancellationToken cancellationToken)
+    {
+        var bytes = await xepLichService.XuatExcelMaTranTkbAsync(maHocKy, maBoMon, cancellationToken);
+        var tenFile = $"MaTran_TKB_HocKy_{maHocKy}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", tenFile);
+    }
+
+    /// <summary>
     /// Chạy đối đầu thực nghiệm 2 thuật toán CP-SAT và GA trên cùng một học kỳ để so sánh trên Dashboard.
     /// </summary>
     [Authorize(Roles = "Admin,TruongBoMon")]

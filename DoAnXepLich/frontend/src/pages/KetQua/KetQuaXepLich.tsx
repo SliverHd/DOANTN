@@ -350,6 +350,7 @@ function KetQuaXepLich() {
 
   // 6. Xuất báo cáo Excel
   const [dangXuatExcel, setDangXuatExcel] = useState<boolean>(false)
+  const [dangXuatMaTran, setDangXuatMaTran] = useState<boolean>(false)
 
   const handleXuatExcel = async () => {
     if (!maHocKy) return
@@ -371,6 +372,29 @@ function KetQuaXepLich() {
       alert('Không thể xuất file Excel. Vui lòng thử lại sau.')
     } finally {
       setDangXuatExcel(false)
+    }
+  }
+
+  const handleXuatExcelMaTran = async () => {
+    if (!maHocKy) return
+    try {
+      setDangXuatMaTran(true)
+      const res = await xepLichApi.xuatExcelMaTran(maHocKy, maBoMon)
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `MaTran_TKB_HocKy_${maHocKy}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch {
+      alert('Không thể xuất file Ma trận TKB. Vui lòng thử lại sau.')
+    } finally {
+      setDangXuatMaTran(false)
     }
   }
 
@@ -798,10 +822,19 @@ function KetQuaXepLich() {
             type="button"
             className="btn btn-sm btn-outline-success"
             onClick={handleXuatExcel}
-            disabled={dangTai || dangXuLy || dangXuatExcel || !bangPhanCong || bangPhanCong.tongSoLop === 0}
+            disabled={dangTai || dangXuLy || dangXuatExcel || dangXuatMaTran || !bangPhanCong || bangPhanCong.tongSoLop === 0}
             title="Xuất bảng thời khóa biểu đầy đủ từng buổi học và thống kê tải ra file Excel (.xlsx)"
           >
             {dangXuatExcel ? 'Đang xuất...' : 'Xuất Excel'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-dark"
+            onClick={handleXuatExcelMaTran}
+            disabled={dangTai || dangXuLy || dangXuatExcel || dangXuatMaTran || !bangPhanCong || bangPhanCong.tongSoLop === 0}
+            title="Xuất Ma trận TKB & Seminar tối giản trắng đen (Tổng hợp bộ môn + Thống kê + Lịch cá nhân từng giảng viên)"
+          >
+            {dangXuatMaTran ? 'Đang xuất ma trận...' : 'Xuất Ma trận TKB'}
           </button>
         </div>
       </div>

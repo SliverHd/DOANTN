@@ -278,4 +278,82 @@ public class XepLichServiceTests
         Assert.Contains("GA", problem.Detail ?? string.Empty);
         Assert.False(lockService.DangChay(8));
     }
+
+    [Fact]
+    public async Task XuatExcelMaTranTkbAsync_XuatDayDuTongHopThongKeVaTungGiangVienCoPhongVaSeminar()
+    {
+        using var db = TaoInMemoryDb(nameof(XuatExcelMaTranTkbAsync_XuatDayDuTongHopThongKeVaTungGiangVienCoPhongVaSeminar));
+        db.BoMon.Add(new BoMon { MaBoMon = 5, TenBoMon = "Bộ môn Toán", TenKhoa = "Khoa Khoa học cơ bản" });
+        db.HocKy.Add(new HocKy { MaHocKy = 8, MaNamHoc = 1, TenHocKy = "Học kì 1" });
+        db.HocPhan.AddRange(
+            new HocPhan { MaHocPhan = 1, TenHocPhan = "Giải tích 1", SoTinChi = 3, MaBoMon = 5 },
+            new HocPhan { MaHocPhan = 2, TenHocPhan = "Đại số tuyến tính", SoTinChi = 3, MaBoMon = 5 }
+        );
+        db.GiangVien.AddRange(
+            new GiangVien { MaGiangVien = 10, HoTen = "Mai Hồng", Email = "hongm@huce.edu.vn", TrangThai = "DangLamViec", MaBoMon = 5 },
+            new GiangVien { MaGiangVien = 11, HoTen = "Trần Văn Khiên", Email = "khientv@huce.edu.vn", TrangThai = "DangLamViec", MaBoMon = 5 }
+        );
+        db.LopHocPhan.AddRange(
+            new LopHocPhan { MaLopHocPhan = 100, MaHocKy = 8, MaHocPhan = 1, MaLopHocPhanTruong = "GT1_71KTDT", TenLop = "71KTDT", SoLuongSinhVien = 50 },
+            new LopHocPhan { MaLopHocPhan = 101, MaHocKy = 8, MaHocPhan = 2, MaLopHocPhanTruong = "DSTT_66KTHN", TenLop = "66KTHN", SoLuongSinhVien = 45 }
+        );
+        db.ChiTietThoiKhoaBieu.AddRange(
+            // Mai Hồng: Thứ 2 Ca 1 (T6-15 => 10 tuần = 10 buổi, 30 tiết)
+            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 100, Thu = 2, TietBatDau = 1, TietKetThuc = 3, PhongHoc = "301.H1", TuTuan = 6, DenTuan = 15 },
+            // Trần Văn Khiên: Thứ 4 Ca 2 (T1-5 => 5 tuần = 5 buổi, 15 tiết)
+            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 101, Thu = 4, TietBatDau = 4, TietKetThuc = 6, PhongHoc = "614.H1", TuTuan = 1, DenTuan = 5 }
+        );
+        db.PhanCongGiangDay.AddRange(
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 100, MaGiangVien = 10, NguonPhanCong = "GA", TrangThai = "DuKien" },
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 101, MaGiangVien = 11, NguonPhanCong = "GA", TrangThai = "DaKhoa" }
+        );
+        // Lịch Seminar Thứ 3 Ca 2 cho Trần Văn Khiên
+        db.LichBanGiangVien.Add(new LichBanGiangVien
+        {
+            MaLichBan = 1,
+            MaHocKy = 8,
+            MaGiangVien = 11,
+            Thu = 3,
+            TietBatDau = 4,
+            TietKetThuc = 6,
+            LyDo = "Seminar Bộ môn Toán"
+        });
+        await db.SaveChangesAsync();
+
+        var service = new XepLichService(db, new BoKiemTraRangBuoc());
+        var bytes = await service.XuatExcelMaTranTkbAsync(8, 5);
+
+        using var wb = new XLWorkbook(new MemoryStream(bytes));
+        // Đủ 4 sheet: TongHop_BoMon, ThongKe_GiangVien, Mai Hồng, Trần Văn Khiên
+        Assert.Equal(4, wb.Worksheets.Count);
+        Assert.NotNull(wb.Worksheet("TongHop_BoMon"));
+        Assert.NotNull(wb.Worksheet("ThongKe_GiangVien"));
+        Assert.NotNull(wb.Worksheet("Mai Hồng"));
+        Assert.NotNull(wb.Worksheet("Trần Văn Khiên"));
+
+        // Kiểm tra sheet Tổng hợp có phòng học và [SEMINAR]
+        var wsAll = wb.Worksheet("TongHop_BoMon");
+        Assert.Contains("Mai Hồng - GT1 (71KTDT, P.301.H1, T6-15)", wsAll.Cell(5, 3).GetString()); // Ca 1, Thứ 2
+        Assert.Contains("[SEMINAR] Trần Văn Khiên", wsAll.Cell(6, 4).GetString());                // Ca 2, Thứ 3
+        Assert.Contains("GT1: Giải tích 1", wsAll.Cell(11, 1).GetString());
+        Assert.Contains("ĐSTT: Đại số tuyến tính", wsAll.Cell(11, 1).GetString());
+
+        // Kiểm tra sheet Thống kê tính đúng số buổi / số tiết cả kỳ và không còn cột link thừa
+        var wsTk = wb.Worksheet("ThongKe_GiangVien");
+        Assert.Equal("Tổng số buổi cả kỳ", wsTk.Cell(4, 4).GetString());
+        Assert.Equal("Tổng số tiết cả kỳ", wsTk.Cell(4, 5).GetString());
+        Assert.Equal(6, wsTk.LastColumnUsed()!.ColumnNumber());
+        // Dòng tổng cộng (row 7): 2 lớp, 15 buổi, 45 tiết
+        Assert.Equal("TỔNG CỘNG TOÀN BỘ MÔN", wsTk.Cell(7, 2).GetString());
+        Assert.Equal(2, wsTk.Cell(7, 3).GetValue<int>());
+        Assert.Equal(15, wsTk.Cell(7, 4).GetValue<int>());
+        Assert.Equal(45, wsTk.Cell(7, 5).GetValue<int>());
+
+        // Kiểm tra sheet cá nhân giảng viên có phòng học, có Seminar và không có nút quay lại ở H1/I1
+        var wsKhien = wb.Worksheet("Trần Văn Khiên");
+        Assert.Equal("[SEMINAR] Sinh hoạt Bộ môn", wsKhien.Cell(6, 4).GetString());               // Ca 2, Thứ 3
+        Assert.Equal("ĐSTT (66KTHN, P.614.H1, T1-5)", wsKhien.Cell(6, 5).GetString());            // Ca 2, Thứ 4
+        Assert.DoesNotContain("Mục lục", wsKhien.Cell(1, 8).GetString());
+        Assert.DoesNotContain("Tổng hợp", wsKhien.Cell(1, 9).GetString());
+    }
 }

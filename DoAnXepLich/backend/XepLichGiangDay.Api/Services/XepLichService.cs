@@ -853,4 +853,648 @@ public class XepLichService(
         workbook.SaveAs(ms);
         return ms.ToArray();
     }
+
+    /// <summary>
+    /// Xuất ma trận Thời khóa biểu & Seminar cả kỳ dạng tối giản trắng đen (5 Ca × Thứ 2–CN):
+    /// - Sheet 1: TongHop_BoMon (tổng hợp cả bộ môn kèm phòng học, tuần học và lịch Seminar)
+    /// - Sheet 2: ThongKe_GiangVien (số lớp HP, tổng số buổi cả kỳ, tổng số tiết cả kỳ, lịch Seminar)
+    /// - Các sheet tiếp theo: Ma trận lịch cá nhân cho từng giảng viên (căn sẵn 1 trang A4 ngang)
+    /// </summary>
+    public async Task<byte[]> XuatExcelMaTranTkbAsync(int maHocKy, int? maBoMon = null, CancellationToken cancellationToken = default)
+    {
+        var bangPhanCong = await LayBangPhanCongAsync(maHocKy, maBoMon, cancellationToken);
+
+        string tenBoMon = "TẤT CẢ BỘ MÔN";
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            var bm = await context.BoMon.AsNoTracking().FirstOrDefaultAsync(x => x.MaBoMon == maBoMon.Value, cancellationToken);
+            if (bm != null && !string.IsNullOrWhiteSpace(bm.TenBoMon))
+                tenBoMon = bm.TenBoMon.Trim();
+        }
+
+        // Lấy danh sách giảng viên thuộc phạm vi (để map lịch Seminar)
+        var gvQuery = context.GiangVien.AsNoTracking().AsQueryable();
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+            gvQuery = gvQuery.Where(x => x.MaBoMon == maBoMon.Value);
+        var gvMap = await gvQuery.ToDictionaryAsync(x => x.MaGiangVien, x => x.HoTen, cancellationToken);
+
+        // Lấy lịch Seminar cứng trong học kỳ
+        var dsLichBanHk = await context.LichBanGiangVien.AsNoTracking()
+            .Where(x => x.MaHocKy == maHocKy && x.LyDo != null)
+            .ToListAsync(cancellationToken);
+        var dsSeminar = dsLichBanHk
+            .Where(x => x.LyDo!.Contains("Seminar", StringComparison.OrdinalIgnoreCase) && gvMap.ContainsKey(x.MaGiangVien))
+            .ToList();
+
+        // Định nghĩa 5 ca học chuẩn
+        var cacCaHoc = new (string TenCa, string TietStr, int TietMin, int TietMax)[]
+        {
+            ("Ca 1 · Sáng", "Tiết 1–3", 1, 3),
+            ("Ca 2 · Sáng", "Tiết 4–6", 4, 6),
+            ("Ca 3 · Chiều", "Tiết 7–9", 7, 9),
+            ("Ca 4 · Chiều", "Tiết 10–12", 10, 12),
+            ("Ca 5 · Tối", "Tiết 13–15", 13, 15)
+        };
+        string[] thuHeaders = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
+
+        // Xây dựng bảng viết tắt tên học phần (chuẩn hóa các môn Toán + tự sinh cho môn khác)
+        var tenHpDistinct = bangPhanCong.DanhSachLop
+            .Where(x => !string.IsNullOrWhiteSpace(x.TenHocPhan))
+            .Select(x => x.TenHocPhan.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        var vietTatTheoTenHp = TaoBangVietTatHocPhan(tenHpDistinct);
+
+        // Lưu dữ liệu tổng hợp theo (caIdx, dayIdx) và theo từng giảng viên
+        var allCellClasses = new Dictionary<(int Ca, int Day), List<(string TenGv, string NoiDung)>>();
+        var allCellSeminars = new Dictionary<(int Ca, int Day), SortedSet<string>>();
+        var gvGrid = new Dictionary<string, Dictionary<(int Ca, int Day), List<string>>>(StringComparer.CurrentCultureIgnoreCase);
+        var gvSeminarLabels = new Dictionary<string, List<string>>(StringComparer.CurrentCultureIgnoreCase);
+        var gvLopIds = new Dictionary<string, HashSet<int>>(StringComparer.CurrentCultureIgnoreCase);
+        var gvTongBuoi = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+        var gvTongTiet = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+
+        void EnsureGv(string tenGv)
+        {
+            if (!gvGrid.ContainsKey(tenGv)) gvGrid[tenGv] = [];
+            if (!gvSeminarLabels.ContainsKey(tenGv)) gvSeminarLabels[tenGv] = [];
+            if (!gvLopIds.ContainsKey(tenGv)) gvLopIds[tenGv] = [];
+            if (!gvTongBuoi.ContainsKey(tenGv)) gvTongBuoi[tenGv] = 0;
+            if (!gvTongTiet.ContainsKey(tenGv)) gvTongTiet[tenGv] = 0;
+        }
+
+        // 1. Nạp lịch Seminar
+        foreach (var sem in dsSeminar)
+        {
+            if (sem.Thu < 2 || sem.Thu > 8) continue;
+            int dayIdx = sem.Thu - 2;
+            string tenGv = gvMap[sem.MaGiangVien].Trim();
+            EnsureGv(tenGv);
+
+            for (int caIdx = 0; caIdx < cacCaHoc.Length; caIdx++)
+            {
+                var ca = cacCaHoc[caIdx];
+                if (Math.Max(sem.TietBatDau, ca.TietMin) <= Math.Min(sem.TietKetThuc, ca.TietMax))
+                {
+                    var key = (caIdx, dayIdx);
+                    if (!allCellSeminars.TryGetValue(key, out var setGv))
+                    {
+                        setGv = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+                        allCellSeminars[key] = setGv;
+                    }
+                    setGv.Add(tenGv);
+
+                    if (!gvGrid[tenGv].TryGetValue(key, out var listCell))
+                    {
+                        listCell = [];
+                        gvGrid[tenGv][key] = listCell;
+                    }
+                    const string semText = "[SEMINAR] Sinh hoạt Bộ môn";
+                    if (!listCell.Contains(semText))
+                        listCell.Add(semText);
+
+                    string labelSem = $"{thuHeaders[dayIdx]}, {ca.TenCa} ({ca.TietStr})";
+                    if (!gvSeminarLabels[tenGv].Contains(labelSem))
+                        gvSeminarLabels[tenGv].Add(labelSem);
+                }
+            }
+        }
+
+        // 2. Nạp lịch giảng dạy từng lớp học phần đã phân công
+        foreach (var lop in bangPhanCong.DanhSachLop)
+        {
+            if (string.IsNullOrWhiteSpace(lop.TenGiangVien)) continue;
+            string tenGv = lop.TenGiangVien.Trim();
+            EnsureGv(tenGv);
+            gvLopIds[tenGv].Add(lop.MaLopHocPhan);
+
+            string tenHp = (lop.TenHocPhan ?? "").Trim();
+            string maMon = vietTatTheoTenHp.TryGetValue(tenHp, out var vt) ? vt : tenHp;
+            string tenLopHienThi = !string.IsNullOrWhiteSpace(lop.TenLop) ? lop.TenLop.Trim() : lop.MaLopHocPhanTruong.Trim();
+
+            var cacBuoi = lop.DanhSachBuoiHoc != null && lop.DanhSachBuoiHoc.Count > 0
+                ? lop.DanhSachBuoiHoc
+                : new List<ChiTietBuoiHocDto>
+                {
+                    new()
+                    {
+                        Thu = lop.Thu,
+                        TietBatDau = lop.TietBatDau,
+                        TietKetThuc = lop.TietKetThuc,
+                        PhongHoc = lop.PhongHoc,
+                        TuTuan = lop.TuTuan,
+                        DenTuan = lop.DenTuan
+                    }
+                };
+
+            foreach (var buoi in cacBuoi)
+            {
+                if (buoi.Thu < 2 || buoi.Thu > 8 || buoi.TietBatDau <= 0 || buoi.TietKetThuc <= 0) continue;
+                int dayIdx = buoi.Thu - 2;
+                int soTuan = (buoi.TuTuan > 0 && buoi.DenTuan >= buoi.TuTuan) ? (buoi.DenTuan - buoi.TuTuan + 1) : 1;
+
+                var metaParts = new List<string> { tenLopHienThi };
+                string phongRaw = (buoi.PhongHoc ?? "").Trim();
+                if (!string.IsNullOrEmpty(phongRaw))
+                {
+                    string phongFmt = phongRaw.StartsWith("P.", StringComparison.OrdinalIgnoreCase) ? phongRaw : $"P.{phongRaw}";
+                    metaParts.Add(phongFmt);
+                }
+                if (buoi.TuTuan > 0 && buoi.DenTuan >= buoi.TuTuan)
+                {
+                    metaParts.Add($"T{buoi.TuTuan}-{buoi.DenTuan}");
+                }
+                string detailText = $"{maMon} ({string.Join(", ", metaParts)})";
+
+                for (int caIdx = 0; caIdx < cacCaHoc.Length; caIdx++)
+                {
+                    var ca = cacCaHoc[caIdx];
+                    int ovStart = Math.Max(buoi.TietBatDau, ca.TietMin);
+                    int ovEnd = Math.Min(buoi.TietKetThuc, ca.TietMax);
+                    if (ovStart <= ovEnd)
+                    {
+                        int soTietTrongCa = ovEnd - ovStart + 1;
+                        gvTongBuoi[tenGv] += soTuan;
+                        gvTongTiet[tenGv] += soTuan * soTietTrongCa;
+
+                        var key = (caIdx, dayIdx);
+                        if (!allCellClasses.TryGetValue(key, out var clsList))
+                        {
+                            clsList = [];
+                            allCellClasses[key] = clsList;
+                        }
+                        clsList.Add((tenGv, $"{tenGv} - {detailText}"));
+
+                        if (!gvGrid[tenGv].TryGetValue(key, out var gvList))
+                        {
+                            gvList = [];
+                            gvGrid[tenGv][key] = gvList;
+                        }
+                        gvList.Add(detailText);
+                    }
+                }
+            }
+        }
+
+        // Sắp xếp danh sách giảng viên theo tên chính tiếng Việt (từ cuối cùng)
+        var dsGiangVienSapXep = gvGrid.Keys
+            .OrderBy(LayTenChinhVietNam, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(x => x, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        // Chuỗi chú giải viết tắt môn học
+        string chuGiaiMonHoc = vietTatTheoTenHp.Count > 0
+            ? "Chú giải viết tắt môn học: " + string.Join("  |  ", vietTatTheoTenHp
+                .OrderBy(kv => kv.Value, StringComparer.CurrentCultureIgnoreCase)
+                .Select(kv => $"{kv.Value}: {kv.Key}"))
+            : "Chú giải: Lịch giảng dạy và sinh hoạt chuyên môn trong học kỳ";
+
+        // Dựng workbook ClosedXML trắng đen tối giản
+        using var workbook = new XLWorkbook();
+        var usedSheetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        static void CauHinhTrangInA4Ngang(IXLWorksheet ws)
+        {
+            ws.PageSetup.PageOrientation = XLPageOrientation.Landscape;
+            ws.PageSetup.PaperSize = XLPaperSize.A4Paper;
+            ws.PageSetup.FitToPages(1, 1);
+            ws.PageSetup.Margins.Left = 0.35;
+            ws.PageSetup.Margins.Right = 0.35;
+            ws.PageSetup.Margins.Top = 0.45;
+            ws.PageSetup.Margins.Bottom = 0.45;
+            ws.ShowGridLines = true;
+        }
+
+        static void KeVienHeader(IXLCell cell)
+        {
+            cell.Style.Font.FontName = "Times New Roman";
+            cell.Style.Font.FontSize = 10.5;
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontColor = XLColor.Black;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#F2F2F2");
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            cell.Style.Alignment.WrapText = true;
+            cell.Style.Border.LeftBorder = XLBorderStyleValues.Thin;
+            cell.Style.Border.RightBorder = XLBorderStyleValues.Thin;
+            cell.Style.Border.TopBorder = XLBorderStyleValues.Medium;
+            cell.Style.Border.BottomBorder = XLBorderStyleValues.Medium;
+            cell.Style.Border.LeftBorderColor = XLColor.FromHtml("#404040");
+            cell.Style.Border.RightBorderColor = XLColor.FromHtml("#404040");
+            cell.Style.Border.TopBorderColor = XLColor.Black;
+            cell.Style.Border.BottomBorderColor = XLColor.Black;
+        }
+
+        static void KeVienO(IXLCell cell)
+        {
+            cell.Style.Fill.BackgroundColor = XLColor.White;
+            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            cell.Style.Border.OutsideBorderColor = XLColor.FromHtml("#404040");
+        }
+
+        string[] maTranHeaders = ["Ca học", "Tiết", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
+
+        // =========================================================
+        // SHEET 1: TỔNG HỢP BỘ MÔN
+        // =========================================================
+        var wsAll = workbook.Worksheets.Add("TongHop_BoMon");
+        usedSheetNames.Add("TongHop_BoMon");
+        CauHinhTrangInA4Ngang(wsAll);
+
+        wsAll.Cell(1, 1).Value = $"BẢNG TỔNG HỢP LỊCH GIẢNG DẠY & SEMINAR CẢ KỲ ({tenBoMon.ToUpperInvariant()} — {bangPhanCong.TenHocKy.ToUpperInvariant()})";
+        var rTitleAll = wsAll.Range(1, 1, 1, 9).Merge();
+        rTitleAll.Style.Font.FontName = "Times New Roman";
+        rTitleAll.Style.Font.FontSize = 14;
+        rTitleAll.Style.Font.Bold = true;
+        rTitleAll.Style.Font.FontColor = XLColor.Black;
+        rTitleAll.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        rTitleAll.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        wsAll.Row(1).Height = 28;
+
+        wsAll.Cell(2, 1).Value = "Định dạng rút gọn: Tên GV - Môn (Mã lớp, Phòng học, Tuần) | Bao gồm cả lịch Seminar";
+        var rSubAll = wsAll.Range(2, 1, 2, 9).Merge();
+        rSubAll.Style.Font.FontName = "Times New Roman";
+        rSubAll.Style.Font.FontSize = 10.5;
+        rSubAll.Style.Font.Italic = true;
+        rSubAll.Style.Font.FontColor = XLColor.FromHtml("#262626");
+        rSubAll.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        rSubAll.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        wsAll.Row(2).Height = 20;
+        wsAll.Row(3).Height = 8;
+
+        wsAll.Row(4).Height = 26;
+        for (int c = 0; c < maTranHeaders.Length; c++)
+        {
+            var cell = wsAll.Cell(4, c + 1);
+            cell.Value = maTranHeaders[c];
+            KeVienHeader(cell);
+        }
+
+        for (int caIdx = 0; caIdx < cacCaHoc.Length; caIdx++)
+        {
+            int rowNum = 5 + caIdx;
+            int maxLines = 2;
+
+            var cCa = wsAll.Cell(rowNum, 1);
+            cCa.Value = cacCaHoc[caIdx].TenCa;
+            KeVienO(cCa);
+            cCa.Style.Font.FontName = "Times New Roman";
+            cCa.Style.Font.FontSize = 10;
+            cCa.Style.Font.Bold = true;
+            cCa.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cCa.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            cCa.Style.Alignment.WrapText = true;
+
+            var cTiet = wsAll.Cell(rowNum, 2);
+            cTiet.Value = cacCaHoc[caIdx].TietStr;
+            KeVienO(cTiet);
+            cTiet.Style.Font.FontName = "Times New Roman";
+            cTiet.Style.Font.FontSize = 9.5;
+            cTiet.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cTiet.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            cTiet.Style.Alignment.WrapText = true;
+
+            for (int dayIdx = 0; dayIdx < 7; dayIdx++)
+            {
+                var key = (caIdx, dayIdx);
+                var lines = new List<string>();
+                if (allCellSeminars.TryGetValue(key, out var semGvs) && semGvs.Count > 0)
+                {
+                    lines.Add("[SEMINAR] " + string.Join(", ", semGvs));
+                }
+                if (allCellClasses.TryGetValue(key, out var clsItems))
+                {
+                    lines.AddRange(clsItems
+                        .OrderBy(x => x.TenGv, StringComparer.CurrentCultureIgnoreCase)
+                        .ThenBy(x => x.NoiDung, StringComparer.CurrentCultureIgnoreCase)
+                        .Select(x => x.NoiDung));
+                }
+
+                string cellText = string.Join("\n", lines);
+                var cell = wsAll.Cell(rowNum, 3 + dayIdx);
+                cell.Value = cellText;
+                KeVienO(cell);
+                cell.Style.Font.FontName = "Times New Roman";
+                cell.Style.Font.FontSize = 9.5;
+                cell.Style.Font.FontColor = XLColor.Black;
+                cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+                cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+                cell.Style.Alignment.WrapText = true;
+
+                if (lines.Count > 0)
+                {
+                    int est = lines.Sum(ln => Math.Max(1, (ln.Length / 36) + 1));
+                    if (est > maxLines) maxLines = est;
+                }
+            }
+            wsAll.Row(rowNum).Height = Math.Max(36, maxLines * 14.5 + 8);
+        }
+
+        wsAll.Row(10).Height = 8;
+        wsAll.Cell(11, 1).Value = chuGiaiMonHoc;
+        var rLegAll = wsAll.Range(11, 1, 11, 9).Merge();
+        rLegAll.Style.Font.FontName = "Times New Roman";
+        rLegAll.Style.Font.FontSize = 9.5;
+        rLegAll.Style.Font.Italic = true;
+        rLegAll.Style.Font.FontColor = XLColor.FromHtml("#262626");
+        rLegAll.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+        rLegAll.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        rLegAll.Style.Alignment.WrapText = true;
+        rLegAll.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        rLegAll.Style.Border.OutsideBorderColor = XLColor.FromHtml("#404040");
+        wsAll.Row(11).Height = 24;
+
+        double[] colWidthsAll = [15, 11.5, 40, 44, 42, 42, 42, 40, 14];
+        for (int i = 0; i < colWidthsAll.Length; i++)
+            wsAll.Column(i + 1).Width = colWidthsAll[i];
+        wsAll.SheetView.Freeze(4, 2);
+
+        // =========================================================
+        // SHEET 2: THỐNG KÊ KHỐI LƯỢNG GIẢNG VIÊN
+        // =========================================================
+        var wsTk = workbook.Worksheets.Add("ThongKe_GiangVien");
+        usedSheetNames.Add("ThongKe_GiangVien");
+        CauHinhTrangInA4Ngang(wsTk);
+
+        wsTk.Cell(1, 1).Value = $"BẢNG TỔNG HỢP KHỐI LƯỢNG GIẢNG DẠY & SEMINAR CẢ KỲ ({tenBoMon.ToUpperInvariant()} — {bangPhanCong.TenHocKy.ToUpperInvariant()})";
+        var rTitleTk = wsTk.Range(1, 1, 1, 6).Merge();
+        rTitleTk.Style.Font.FontName = "Times New Roman";
+        rTitleTk.Style.Font.FontSize = 14;
+        rTitleTk.Style.Font.Bold = true;
+        rTitleTk.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        rTitleTk.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        wsTk.Row(1).Height = 28;
+
+        wsTk.Cell(2, 1).Value = $"Tổng số giảng viên: {dsGiangVienSapXep.Count}  |  Tổng buổi và tổng tiết cả kỳ được tính theo đúng số tuần học của từng lớp";
+        var rSubTk = wsTk.Range(2, 1, 2, 6).Merge();
+        rSubTk.Style.Font.FontName = "Times New Roman";
+        rSubTk.Style.Font.FontSize = 10.5;
+        rSubTk.Style.Font.Italic = true;
+        rSubTk.Style.Font.FontColor = XLColor.FromHtml("#262626");
+        rSubTk.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        rSubTk.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        wsTk.Row(2).Height = 20;
+
+        string[] tkHeaders = ["STT", "Họ và tên giảng viên", "Số lớp HP", "Tổng số buổi cả kỳ", "Tổng số tiết cả kỳ", "Lịch Seminar"];
+        wsTk.Row(4).Height = 26;
+        for (int c = 0; c < tkHeaders.Length; c++)
+        {
+            var cell = wsTk.Cell(4, c + 1);
+            cell.Value = tkHeaders[c];
+            KeVienHeader(cell);
+        }
+
+        int tongLopBm = 0, tongBuoiBm = 0, tongTietBm = 0, soGvCoSeminar = 0;
+        for (int i = 0; i < dsGiangVienSapXep.Count; i++)
+        {
+            int rnum = 5 + i;
+            wsTk.Row(rnum).Height = 22;
+            string tenGv = dsGiangVienSapXep[i];
+            int nLop = gvLopIds[tenGv].Count;
+            int nBuoi = gvTongBuoi[tenGv];
+            int nTiet = gvTongTiet[tenGv];
+            bool coSem = gvSeminarLabels[tenGv].Count > 0;
+            string semStr = coSem ? string.Join("; ", gvSeminarLabels[tenGv]) : "Không";
+
+            tongLopBm += nLop;
+            tongBuoiBm += nBuoi;
+            tongTietBm += nTiet;
+            if (coSem) soGvCoSeminar++;
+
+            wsTk.Cell(rnum, 1).Value = i + 1;
+            wsTk.Cell(rnum, 2).Value = tenGv;
+            wsTk.Cell(rnum, 3).Value = nLop;
+            wsTk.Cell(rnum, 4).Value = nBuoi;
+            wsTk.Cell(rnum, 5).Value = nTiet;
+            wsTk.Cell(rnum, 6).Value = semStr;
+
+            for (int c = 1; c <= 6; c++)
+            {
+                var cell = wsTk.Cell(rnum, c);
+                KeVienO(cell);
+                cell.Style.Font.FontName = "Times New Roman";
+                cell.Style.Font.FontSize = c == 6 ? 10 : 10.5;
+                cell.Style.Font.Bold = (c == 2) || (c == 6 && coSem);
+                cell.Style.Font.FontColor = XLColor.Black;
+                cell.Style.Alignment.Horizontal = c == 2 ? XLAlignmentHorizontalValues.Left : XLAlignmentHorizontalValues.Center;
+                cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            }
+        }
+
+        int totRow = 5 + dsGiangVienSapXep.Count;
+        wsTk.Row(totRow).Height = 24;
+        wsTk.Cell(totRow, 1).Value = "";
+        wsTk.Cell(totRow, 2).Value = "TỔNG CỘNG TOÀN BỘ MÔN";
+        wsTk.Cell(totRow, 3).Value = tongLopBm;
+        wsTk.Cell(totRow, 4).Value = tongBuoiBm;
+        wsTk.Cell(totRow, 5).Value = tongTietBm;
+        wsTk.Cell(totRow, 6).Value = $"{soGvCoSeminar} giảng viên tham gia";
+        for (int c = 1; c <= 6; c++)
+        {
+            var cell = wsTk.Cell(totRow, c);
+            KeVienHeader(cell);
+            cell.Style.Alignment.Horizontal = c == 2 ? XLAlignmentHorizontalValues.Left : XLAlignmentHorizontalValues.Center;
+        }
+
+        double[] colWidthsTk = [7, 28, 14, 20, 20, 36];
+        for (int i = 0; i < colWidthsTk.Length; i++)
+            wsTk.Column(i + 1).Width = colWidthsTk[i];
+
+        // =========================================================
+        // SHEETS 3..N: LỊCH CÁ NHÂN TỪNG GIẢNG VIÊN
+        // =========================================================
+        double[] colWidthsGv = [15, 11.5, 28, 28, 28, 28, 28, 28, 14];
+        foreach (var tenGv in dsGiangVienSapXep)
+        {
+            string sheetName = TaoTenSheetHopLe(tenGv, usedSheetNames);
+            var ws = workbook.Worksheets.Add(sheetName);
+            CauHinhTrangInA4Ngang(ws);
+
+            int nLop = gvLopIds[tenGv].Count;
+            int nBuoi = gvTongBuoi[tenGv];
+            int nTiet = gvTongTiet[tenGv];
+            string semInfo = gvSeminarLabels[tenGv].Count > 0 ? string.Join("; ", gvSeminarLabels[tenGv]) : "Không có";
+
+            ws.Cell(1, 1).Value = $"LỊCH GIẢNG DẠY & SEMINAR CÁ NHÂN — {tenGv.ToUpperInvariant()}";
+            var rTitleGv = ws.Range(1, 1, 1, 9).Merge();
+            rTitleGv.Style.Font.FontName = "Times New Roman";
+            rTitleGv.Style.Font.FontSize = 14;
+            rTitleGv.Style.Font.Bold = true;
+            rTitleGv.Style.Font.FontColor = XLColor.Black;
+            rTitleGv.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            rTitleGv.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            ws.Row(1).Height = 28;
+
+            ws.Cell(2, 1).Value = $"{tenBoMon} ({bangPhanCong.TenHocKy})  |  Số lớp phụ trách: {nLop} lớp  |  Tổng số buổi cả kỳ: {nBuoi} buổi ({nTiet} tiết)  |  Seminar: {semInfo}";
+            var rSubGv = ws.Range(2, 1, 2, 9).Merge();
+            rSubGv.Style.Font.FontName = "Times New Roman";
+            rSubGv.Style.Font.FontSize = 10.5;
+            rSubGv.Style.Font.Italic = true;
+            rSubGv.Style.Font.FontColor = XLColor.FromHtml("#262626");
+            rSubGv.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            rSubGv.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            ws.Row(2).Height = 20;
+            ws.Row(3).Height = 8;
+
+            ws.Row(4).Height = 26;
+            for (int c = 0; c < maTranHeaders.Length; c++)
+            {
+                var cell = ws.Cell(4, c + 1);
+                cell.Value = maTranHeaders[c];
+                KeVienHeader(cell);
+            }
+
+            var grid = gvGrid[tenGv];
+            for (int caIdx = 0; caIdx < cacCaHoc.Length; caIdx++)
+            {
+                int rowNum = 5 + caIdx;
+                int maxLines = 3;
+
+                var cCa = ws.Cell(rowNum, 1);
+                cCa.Value = cacCaHoc[caIdx].TenCa;
+                KeVienO(cCa);
+                cCa.Style.Font.FontName = "Times New Roman";
+                cCa.Style.Font.FontSize = 10;
+                cCa.Style.Font.Bold = true;
+                cCa.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                cCa.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                cCa.Style.Alignment.WrapText = true;
+
+                var cTiet = ws.Cell(rowNum, 2);
+                cTiet.Value = cacCaHoc[caIdx].TietStr;
+                KeVienO(cTiet);
+                cTiet.Style.Font.FontName = "Times New Roman";
+                cTiet.Style.Font.FontSize = 9.5;
+                cTiet.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                cTiet.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                cTiet.Style.Alignment.WrapText = true;
+
+                for (int dayIdx = 0; dayIdx < 7; dayIdx++)
+                {
+                    var cell = ws.Cell(rowNum, 3 + dayIdx);
+                    KeVienO(cell);
+                    if (grid.TryGetValue((caIdx, dayIdx), out var entries) && entries.Count > 0)
+                    {
+                        bool laSem = entries.Any(e => e.StartsWith("[SEMINAR]", StringComparison.Ordinal));
+                        cell.Value = string.Join("\n", entries);
+                        cell.Style.Font.FontName = "Times New Roman";
+                        cell.Style.Font.FontSize = 10.5;
+                        cell.Style.Font.Bold = laSem;
+                        cell.Style.Font.FontColor = XLColor.Black;
+                        cell.Style.Alignment.Horizontal = laSem ? XLAlignmentHorizontalValues.Center : XLAlignmentHorizontalValues.Left;
+                        cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                        cell.Style.Alignment.WrapText = true;
+
+                        int est = entries.Sum(e => Math.Max(1, (e.Length / 26) + 1));
+                        if (est > maxLines) maxLines = est;
+                    }
+                    else
+                    {
+                        cell.Value = "";
+                        cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                        cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                    }
+                }
+                ws.Row(rowNum).Height = Math.Max(56, maxLines * 17 + 12);
+            }
+
+            ws.Row(10).Height = 8;
+            ws.Cell(11, 1).Value = chuGiaiMonHoc;
+            var rLegGv = ws.Range(11, 1, 11, 9).Merge();
+            rLegGv.Style.Font.FontName = "Times New Roman";
+            rLegGv.Style.Font.FontSize = 9.5;
+            rLegGv.Style.Font.Italic = true;
+            rLegGv.Style.Font.FontColor = XLColor.FromHtml("#262626");
+            rLegGv.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+            rLegGv.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            rLegGv.Style.Alignment.WrapText = true;
+            rLegGv.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            rLegGv.Style.Border.OutsideBorderColor = XLColor.FromHtml("#404040");
+            ws.Row(11).Height = 24;
+
+            for (int i = 0; i < colWidthsGv.Length; i++)
+                ws.Column(i + 1).Width = colWidthsGv[i];
+            ws.SheetView.Freeze(4, 2);
+        }
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    private static string LayTenChinhVietNam(string hoTen)
+    {
+        var parts = hoTen.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 0 ? parts[^1] : hoTen;
+    }
+
+    private static string TaoTenSheetHopLe(string rawName, HashSet<string> usedNames)
+    {
+        var invalid = new[] { ':', '\\', '/', '?', '*', '[', ']' };
+        string cleaned = new string(rawName.Where(c => !invalid.Contains(c)).ToArray()).Trim();
+        if (string.IsNullOrEmpty(cleaned)) cleaned = "GiangVien";
+        if (cleaned.Length > 31) cleaned = cleaned[..31].Trim();
+
+        string candidate = cleaned;
+        int suffix = 2;
+        while (!usedNames.Add(candidate))
+        {
+            string tag = $" ({suffix++})";
+            candidate = cleaned[..Math.Min(cleaned.Length, 31 - tag.Length)] + tag;
+        }
+        return candidate;
+    }
+
+    private static Dictionary<string, string> TaoBangVietTatHocPhan(List<string> dsTenHocPhan)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var usedAbbr = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        static string? TraVietTatChuan(string tenHp)
+        {
+            string norm = tenHp.Trim().ToLowerInvariant();
+            return norm switch
+            {
+                "giải tích 1" => "GT1",
+                "giải tích 2" => "GT2",
+                "giải tích 3" => "GT3",
+                "giải tích ứng dụng kỹ thuật" or "giải tích ứng dụng" => "GTUD",
+                "đại số tuyến tính kỹ thuật" => "ĐSKT",
+                "đại số tuyến tính" => "ĐSTT",
+                "nhập môn giải tích kỹ thuật" or "nhập môn giải tích" => "NMGT",
+                "xác suất thống kê" or "xác suất và thống kê" => "XSTK",
+                _ => null
+            };
+        }
+
+        foreach (var tenHp in dsTenHocPhan)
+        {
+            string abbr = TraVietTatChuan(tenHp) ?? SinhVietTatTuDong(tenHp);
+            string uniqueAbbr = abbr;
+            int idx = 2;
+            while (!usedAbbr.Add(uniqueAbbr))
+            {
+                uniqueAbbr = $"{abbr}{idx++}";
+            }
+            result[tenHp] = uniqueAbbr;
+        }
+        return result;
+    }
+
+    private static string SinhVietTatTuDong(string tenHp)
+    {
+        var tokens = tenHp.Split([' ', '-', '_', '(', ')', ',', '/'], StringSplitOptions.RemoveEmptyEntries);
+        var chars = new List<string>();
+        foreach (var tok in tokens)
+        {
+            if (tok.All(char.IsDigit))
+                chars.Add(tok);
+            else
+                chars.Add(char.ToUpperInvariant(tok[0]).ToString());
+        }
+        string raw = string.Concat(chars);
+        return string.IsNullOrWhiteSpace(raw) ? tenHp[..Math.Min(6, tenHp.Length)].ToUpperInvariant() : raw;
+    }
 }
