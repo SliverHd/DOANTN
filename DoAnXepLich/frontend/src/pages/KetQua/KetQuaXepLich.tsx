@@ -795,14 +795,14 @@ function KetQuaXepLich() {
           <select
             id="selectHocKy"
             className="form-select form-select-sm"
-            style={{ width: 'auto', minWidth: '180px' }}
+            style={{ width: 'auto', minWidth: '210px' }}
             value={maHocKy}
             onChange={(e) => setMaHocKy(Number(e.target.value))}
             disabled={dangTai || dangXuLy}
           >
             {danhSachHocKy.map((hk) => (
               <option key={hk.maHocKy} value={hk.maHocKy}>
-                {hk.tenHocKy}
+                {hk.tenNamHoc ? `${hk.tenHocKy} (${hk.tenNamHoc})` : hk.tenHocKy}
               </option>
             ))}
           </select>

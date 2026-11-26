@@ -78,4 +78,54 @@ public class ThoiKhoaBieuService(AppDbContext context)
         await context.SaveChangesAsync();
         return (true, null);
     }
+
+    public async Task<(int SoLopDaXoa, int SoPhanCongDaXoa)> XoaToanBoLopHocPhanAsync(int maHocKy, int? maBoMon = null)
+    {
+        if (maHocKy <= 0) return (0, 0);
+
+        var query = context.LopHocPhan.Where(x => x.MaHocKy == maHocKy);
+        if (maBoMon.HasValue && maBoMon.Value > 0)
+        {
+            var dsMaHp = await context.HocPhan
+                .Where(hp => hp.MaBoMon == maBoMon.Value)
+                .Select(hp => hp.MaHocPhan)
+                .ToListAsync();
+            query = query.Where(x => dsMaHp.Contains(x.MaHocPhan));
+        }
+
+        var dsLop = await query.ToListAsync();
+        if (dsLop.Count == 0) return (0, 0);
+
+        var dsMaLop = dsLop.Select(x => x.MaLopHocPhan).ToList();
+
+        // Xóa các bảng con theo đúng thứ tự ràng buộc khóa ngoại (bao gồm cả lớp đã khóa DaKhoa)
+        var dsKq = await context.KetQuaXepLich
+            .Where(x => dsMaLop.Contains(x.MaLopHocPhan))
+            .ToListAsync();
+        if (dsKq.Count > 0)
+        {
+            context.KetQuaXepLich.RemoveRange(dsKq);
+        }
+
+        var dsPc = await context.PhanCongGiangDay
+            .Where(x => dsMaLop.Contains(x.MaLopHocPhan))
+            .ToListAsync();
+        if (dsPc.Count > 0)
+        {
+            context.PhanCongGiangDay.RemoveRange(dsPc);
+        }
+
+        var dsCt = await context.ChiTietThoiKhoaBieu
+            .Where(x => dsMaLop.Contains(x.MaLopHocPhan))
+            .ToListAsync();
+        if (dsCt.Count > 0)
+        {
+            context.ChiTietThoiKhoaBieu.RemoveRange(dsCt);
+        }
+
+        context.LopHocPhan.RemoveRange(dsLop);
+        await context.SaveChangesAsync();
+
+        return (dsLop.Count, dsPc.Count);
+    }
 }

@@ -193,7 +193,7 @@ function ImportThoiKhoaBieu({ maHocKyChon, maBoMonChon, onImportThanhCong }: Pro
             <option value={0}>-- Chọn học kỳ --</option>
             {danhSachHocKy.map((hk) => (
               <option key={hk.maHocKy} value={hk.maHocKy}>
-                {hk.tenHocKy}
+                {hk.tenNamHoc ? `${hk.tenHocKy} (${hk.tenNamHoc})` : hk.tenHocKy}
               </option>
             ))}
           </select>

@@ -469,7 +469,7 @@ function DanhSachNguyenVong() {
           >
             {danhSachHocKy.map((hk) => (
               <option key={hk.maHocKy} value={hk.maHocKy}>
-                {hk.tenHocKy}
+                {hk.tenNamHoc ? `${hk.tenHocKy} (${hk.tenNamHoc})` : hk.tenHocKy}
               </option>
             ))}
           </select>

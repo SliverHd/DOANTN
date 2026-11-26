@@ -28,4 +28,22 @@ public class ThoiKhoaBieuController(ThoiKhoaBieuService service) : ControllerBas
         }
         return NoContent();
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("xoa-toan-bo")]
+    public async Task<IActionResult> DeleteAll([FromQuery] int maHocKy, [FromQuery] int? maBoMon)
+    {
+        if (maHocKy <= 0)
+        {
+            return BadRequest("Vui lòng chọn học kỳ hợp lệ.");
+        }
+
+        var (soLopDaXoa, soPhanCongDaXoa) = await service.XoaToanBoLopHocPhanAsync(maHocKy, maBoMon);
+        return Ok(new
+        {
+            SoLopDaXoa = soLopDaXoa,
+            SoPhanCongDaXoa = soPhanCongDaXoa,
+            Message = $"Đã xóa {soLopDaXoa} lớp học phần (bao gồm {soPhanCongDaXoa} phân công) thành công."
+        });
+    }
 }

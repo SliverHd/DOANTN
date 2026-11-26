@@ -197,7 +197,7 @@ function DanhSachHocPhan() {
               <option value={0}>-- Tất cả học kỳ (Danh mục gốc) --</option>
               {danhSachHocKy.map((hk) => (
                 <option key={hk.maHocKy} value={hk.maHocKy}>
-                  {hk.tenHocKy}
+                  {hk.tenNamHoc ? `${hk.tenHocKy} (${hk.tenNamHoc})` : hk.tenHocKy}
                 </option>
               ))}
             </select>

@@ -92,7 +92,7 @@ function Dashboard() {
           <select
             id="selectHocKyDash"
             className="form-select form-select-sm"
-            style={{ width: 'auto', minWidth: '180px' }}
+            style={{ width: 'auto', minWidth: '210px' }}
             value={maHocKy}
             onChange={(e) => {
               setMaHocKy(Number(e.target.value))
@@ -103,7 +103,7 @@ function Dashboard() {
           >
             {danhSachHocKy.map((hk) => (
               <option key={hk.maHocKy} value={hk.maHocKy}>
-                {hk.tenHocKy}
+                {hk.tenNamHoc ? `${hk.tenHocKy} (${hk.tenNamHoc})` : hk.tenHocKy}
               </option>
             ))}
           </select>

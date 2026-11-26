@@ -190,13 +190,13 @@ function DanhSachRangBuoc() {
           <label className="form-label small fw-semibold mb-0">Học kỳ:</label>
           <select
             className="form-select form-select-sm"
-            style={{ width: '180px' }}
+            style={{ width: 'auto', minWidth: '210px' }}
             value={maHocKy}
             onChange={(e) => setMaHocKy(Number(e.target.value))}
           >
             {danhSachHocKy.map((hk) => (
               <option key={hk.maHocKy} value={hk.maHocKy}>
-                {hk.tenHocKy}
+                {hk.tenNamHoc ? `${hk.tenHocKy} (${hk.tenNamHoc})` : hk.tenHocKy}
               </option>
             ))}
           </select>

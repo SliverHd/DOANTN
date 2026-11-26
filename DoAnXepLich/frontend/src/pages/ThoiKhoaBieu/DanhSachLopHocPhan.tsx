@@ -20,6 +20,7 @@ function DanhSachLopHocPhan() {
   const [danhSachLop, setDanhSachLop] = useState<LopHocPhan[]>([])
   const [tuKhoa, setTuKhoa] = useState<string>('')
   const [dangTai, setDangTai] = useState(false)
+  const [dangXoaTatCa, setDangXoaTatCa] = useState(false)
   const [tabHienTai, setTabHienTai] = useState<'danhSach' | 'import'>('danhSach')
 
   const dsLopHienThi = danhSachLop.filter((lop) => {
@@ -79,6 +80,60 @@ function DanhSachLopHocPhan() {
     }
   }
 
+  const handleXoaTatCa = async () => {
+    if (!maHocKy || danhSachLop.length === 0) return
+
+    const mapLopDuyNhat = new Map<number, LopHocPhan>()
+    for (const lop of danhSachLop) {
+      if (!mapLopDuyNhat.has(lop.maLopHocPhan)) {
+        mapLopDuyNhat.set(lop.maLopHocPhan, lop)
+      }
+    }
+    const dsLopDuyNhat = Array.from(mapLopDuyNhat.values())
+    const soLopCoPhanCong = dsLopDuyNhat.filter((x) => Boolean(x.maGiangVien)).length
+    const soLopDaKhoa = dsLopDuyNhat.filter((x) => x.trangThaiPhanCong === 'DaKhoa').length
+
+    const hkHienTai = danhSachHocKy.find((h) => h.maHocKy === maHocKy)
+    const tenHocKy = hkHienTai
+      ? hkHienTai.tenNamHoc
+        ? `${hkHienTai.tenHocKy} (${hkHienTai.tenNamHoc})`
+        : hkHienTai.tenHocKy
+      : `Học kỳ #${maHocKy}`
+    const tenBoMon =
+      maBoMon > 0
+        ? danhSachBoMon.find((b) => b.maBoMon === maBoMon)?.tenBoMon || `Bộ môn #${maBoMon}`
+        : 'Tất cả bộ môn'
+
+    const xacNhan = confirm(
+      `Bạn có chắc chắn muốn XÓA TOÀN BỘ thời khóa biểu đang chọn không?\n\n` +
+        `- Học kỳ: ${tenHocKy}\n` +
+        `- Phạm vi: ${tenBoMon}\n` +
+        `- Tổng số lớp học phần sẽ xóa: ${dsLopDuyNhat.length} lớp (${danhSachLop.length} dòng lịch học)\n` +
+        `- Bao gồm: ${soLopCoPhanCong} lớp đã phân công (trong đó có ${soLopDaKhoa} lớp ĐÃ KHÓA)\n\n` +
+        `Thao tác này sẽ xóa cả lớp đã khóa và không thể hoàn tác. Bạn vẫn muốn tiếp tục?`
+    )
+    if (!xacNhan) return
+
+    try {
+      setDangXoaTatCa(true)
+      const res = await thoiKhoaBieuApi.deleteAll(maHocKy, maBoMon > 0 ? maBoMon : undefined)
+      alert(res.data.message || 'Đã xóa toàn bộ lớp học phần thành công.')
+      await taiDanhSachLop(maHocKy, maBoMon)
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: unknown } }
+      const data = errorObj.response?.data
+      const msg =
+        typeof data === 'string'
+          ? data
+          : data && typeof data === 'object' && 'message' in data
+          ? String((data as { message: unknown }).message)
+          : 'Không thể xóa toàn bộ lớp học phần.'
+      alert(msg)
+    } finally {
+      setDangXoaTatCa(false)
+    }
+  }
+
   return (
     <section>
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -110,13 +165,13 @@ function DanhSachLopHocPhan() {
           <label className="form-label small fw-semibold mb-0 ms-2">Học kỳ:</label>
           <select
             className="form-select form-select-sm"
-            style={{ width: '160px' }}
+            style={{ width: 'auto', minWidth: '210px' }}
             value={maHocKy}
             onChange={(e) => setMaHocKy(Number(e.target.value))}
           >
             {danhSachHocKy.map((hk) => (
               <option key={hk.maHocKy} value={hk.maHocKy}>
-                {hk.tenHocKy}
+                {hk.tenNamHoc ? `${hk.tenHocKy} (${hk.tenNamHoc})` : hk.tenHocKy}
               </option>
             ))}
           </select>
@@ -146,18 +201,32 @@ function DanhSachLopHocPhan() {
 
       {(!isAdmin || tabHienTai === 'danhSach') ? (
         <>
-          <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <span className="small text-muted">
               Hiển thị <strong>{dsLopHienThi.length}</strong> / {danhSachLop.length} lớp học phần
             </span>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              style={{ maxWidth: '300px' }}
-              placeholder="Tìm theo mã lớp, môn học, giảng viên, phòng..."
-              value={tuKhoa}
-              onChange={(e) => setTuKhoa(e.target.value)}
-            />
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                style={{ maxWidth: '300px' }}
+                placeholder="Tìm theo mã lớp, môn học, giảng viên, phòng..."
+                value={tuKhoa}
+                onChange={(e) => setTuKhoa(e.target.value)}
+              />
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm text-nowrap"
+                  disabled={dangTai || dangXoaTatCa || danhSachLop.length === 0 || !maHocKy}
+                  onClick={handleXoaTatCa}
+                  title="Xóa toàn bộ lớp học phần (bao gồm cả lớp đã khóa) theo Học kỳ & Bộ môn đang chọn để import lại"
+                >
+                  <IconTrash />
+                  <span>{dangXoaTatCa ? 'Đang xóa...' : 'Xóa tất cả'}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="table-responsive border bg-white shadow-sm">

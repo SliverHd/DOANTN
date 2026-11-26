@@ -356,4 +356,45 @@ public class XepLichServiceTests
         Assert.DoesNotContain("Mục lục", wsKhien.Cell(1, 8).GetString());
         Assert.DoesNotContain("Tổng hợp", wsKhien.Cell(1, 9).GetString());
     }
+
+    [Fact]
+    public async Task ThoiKhoaBieuService_XoaToanBoLopHocPhanAsync_XoaCaLopDaKhoaVaGiuBoMonKhac()
+    {
+        using var db = TaoInMemoryDb(nameof(ThoiKhoaBieuService_XoaToanBoLopHocPhanAsync_XoaCaLopDaKhoaVaGiuBoMonKhac));
+        db.HocPhan.AddRange(
+            new HocPhan { MaHocPhan = 1, TenHocPhan = "Giải tích 1", SoTinChi = 3, MaBoMon = 5 },
+            new HocPhan { MaHocPhan = 2, TenHocPhan = "Lập trình C#", SoTinChi = 3, MaBoMon = 6 }
+        );
+        db.LopHocPhan.AddRange(
+            new LopHocPhan { MaLopHocPhan = 10, MaHocKy = 8, MaHocPhan = 1, MaLopHocPhanTruong = "TOAN_01", TenLop = "71IT1" },
+            new LopHocPhan { MaLopHocPhan = 11, MaHocKy = 8, MaHocPhan = 1, MaLopHocPhanTruong = "TOAN_02", TenLop = "71IT2" },
+            new LopHocPhan { MaLopHocPhan = 12, MaHocKy = 8, MaHocPhan = 2, MaLopHocPhanTruong = "CNTT_01", TenLop = "71CS1" }
+        );
+        db.ChiTietThoiKhoaBieu.AddRange(
+            new ChiTietThoiKhoaBieu { MaChiTiet = 1, MaLopHocPhan = 10, Thu = 2, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 2, MaLopHocPhan = 11, Thu = 3, TietBatDau = 4, TietKetThuc = 6, TuTuan = 1, DenTuan = 15 },
+            new ChiTietThoiKhoaBieu { MaChiTiet = 3, MaLopHocPhan = 12, Thu = 4, TietBatDau = 1, TietKetThuc = 3, TuTuan = 1, DenTuan = 15 }
+        );
+        db.PhanCongGiangDay.AddRange(
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 10, MaGiangVien = 100, TrangThai = "DaKhoa", NguonPhanCong = "ThuCong" },
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 11, MaGiangVien = 101, TrangThai = "DuKien", NguonPhanCong = "GA" },
+            new PhanCongGiangDay { MaHocKy = 8, MaLopHocPhan = 12, MaGiangVien = 102, TrangThai = "DaKhoa", NguonPhanCong = "ThuCong" }
+        );
+        db.KetQuaXepLich.Add(new KetQuaXepLich { MaKetQua = 1, MaHocKy = 8, MaLopHocPhan = 10, MaGiangVien = 100 });
+        await db.SaveChangesAsync();
+
+        var service = new ThoiKhoaBieuService(db);
+        var (soLopDaXoa, soPhanCongDaXoa) = await service.XoaToanBoLopHocPhanAsync(maHocKy: 8, maBoMon: 5);
+
+        Assert.Equal(2, soLopDaXoa);
+        Assert.Equal(2, soPhanCongDaXoa);
+
+        // Bộ môn 5 đã sạch (gồm cả lớp DaKhoa và KetQuaXepLich), Bộ môn 6 vẫn nguyên vẹn
+        var lopConLai = await db.LopHocPhan.ToListAsync();
+        Assert.Single(lopConLai);
+        Assert.Equal(12, lopConLai[0].MaLopHocPhan);
+        Assert.Single(await db.ChiTietThoiKhoaBieu.ToListAsync());
+        Assert.Single(await db.PhanCongGiangDay.ToListAsync());
+        Assert.Empty(await db.KetQuaXepLich.ToListAsync());
+    }
 }
